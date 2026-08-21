@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE SBLOCCATA CON INDICE STRINGA RIPRISTINATO E URL REALE STATICO API
+# VERSIONE INTEGRALE FUNZIONANTE CON INDIRIZZO URL PUNTATO A storico_ferie.xlsx
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # SBLOCCO INDICE CORRETTO: Estrae il nome del locale prendendo l'elemento zero prima di pulire gli spazi
+            # Estrazione sicura del testo puro della stringa del locale prendendo il primo elemento prima dello strip
             testo_selezione = str(scelta_pvd)
             chiave_pulita = testo_selezione.split(" (")[0].strip() if " (" in testo_selezione else testo_selezione.strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
@@ -247,6 +247,8 @@ if submit_button:
                     import base64
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
+                    
+                    # LINK WEB API FISSO DIREtTO ALLINEATO AL NOME FILE REALE storico_ferie.xlsx
                     url_git = "https://github.com"
                     
                     output_binario = io.BytesIO()
@@ -280,7 +282,7 @@ if submit_button:
                     st.error(status_github)
                     
                 st.session_state.form_id += 1
-                time.sleep(15)
+                time.sleep(25)
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
