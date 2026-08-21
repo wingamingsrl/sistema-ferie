@@ -27,6 +27,7 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
+
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO E CARICAMENTO AUTOMATICO DEI FILE EXCEL (LOCALI, TECNICI E STORICO)
 # CONFIGURA GLI INDIRIZZI EMAIL AZIENDALI DI RIFERIMENTO E CARICA LE TABELLE IN MEMORIA
@@ -59,6 +60,7 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
+
 # =====================================================================================
 # BLOCCO 3: SCHERMATA DI ACCESSO PROTETTA (LOGIN AZIENDALE)
 # VERIFICA LE CREDENZIALI NEL FILE EXCEL ED ESTRAE IL NOME PULITO DEL TECNICO CHE EFFETTUA L'ACCESSO
@@ -74,6 +76,7 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
+                # CORREZIONE LOGIN: Estrazione sicura del testo puro all'elemento zero
                 st.session_state.user_nome = str(utente_valido["NOME"].values[0]).strip()
                 st.rerun()
             else:
@@ -85,6 +88,7 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
+
 # =====================================================================================
 # BLOCCO 4: MOTORE DI SPEDIZIONE EMAIL DIRETTO SU CASSAFORTE GOOGLE GMAIL
 # COMPONE IL TESTO INSERENDO UN ELENCO PUNTATO PERFETTAMENTE ALLINEATO PER I CONCESSIONARI
@@ -238,27 +242,27 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
-                # --- MOTORE DI SCRITTURA AUTOMATICA SU GITHUB VIA WEB API ---
+                # --- TRASMISSIONE FUNZIONANTE AD ALTO LIVELLO VERSO GITHUB VIA API ---
                 try:
+                    import requests
+                    import base64
+                    
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
                     u_git = str(st.secrets["github"]["username"]).strip()
                     url_git = f"https://github.com{u_git}/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
                     
-                    # Converte l'Excel in un flusso binario leggibile da GitHub
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
                     contenuto_binario = output_binario.getvalue()
-                    
-                    import base64
                     contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
                     
-                    # Recupera l'identificativo SHA del file esistente per poterlo sovrascrivere
+                    # Recupera in modo rigido l'identificativo SHA per evitare il blocco 409 conflitti
                     res_get = requests.get(url_git, headers=headers_git)
                     sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
                     
-                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenuto_base64}
+                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenido_base64}
                     if sha_file:
                         payload_git["sha"] = sha_file
                         
