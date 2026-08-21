@@ -13,17 +13,16 @@ st.set_page_config(page_title="Ferie Gestori", page_icon="🛡️", layout="cent
 st.markdown("""
     <style>
     .stApp { background-color: #f8fafc !important; color: #1e293b !important; font-family: 'Segoe UI', sans-serif; }
-    h1 { color: #1e3a8a !important; font-size: 28px !important; text-align: center; font-weight: 800 !important; margin-bottom: 25px; }
+    h1 { color: #115e59 !important; font-size: 28px !important; text-align: center; font-weight: 800 !important; margin-bottom: 25px; }
     .stMarkdown h3, label, p, [data-testid="stWidgetLabel"] p, .stSelectbox label { color: #1e293b !important; font-weight: 800 !important; font-size: 16px !important; opacity: 1 !important; }
     div[data-testid="stForm"] { background-color: #ffffff !important; border: 2px solid #94a3b8 !important; border-radius: 14px !important; padding: 25px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     input, div[data-baseweb="select"], div[data-baseweb="input"], select { background-color: #ffffff !important; color: #0f172a !important; border: 2px solid #64748b !important; border-radius: 8px !important; font-weight: 700 !important; }
     input, div[data-baseweb="select"] *, select { color: #0f172a !important; }
-    .stButton>button { background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 17px !important; width: 100%; border-radius: 10px !important; height: 54px !important; border: none !important; box-shadow: 0 4px 14 rgba(29, 78, 216, 0.3); }
-    .stButton>button:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
-    .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #1d4ed8; margin-bottom: 30px; text-align: center; color: #1e3a8a !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .stButton>button { background: linear-gradient(135deg, #0f766e 0%, #115e59 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 17px !important; width: 100%; border-radius: 10px !important; height: 54px !important; border: none !important; box-shadow: 0 4px 14px rgba(17, 94, 89, 0.3); }
+    .stButton>button:hover { background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%) !important; box-shadow: 0 6px 20px rgba(20, 184, 166, 0.4); }
+    .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
-
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
 FILE_STORICO_PERMANENTE = "registro_ferie_salvato.xlsx"
@@ -52,7 +51,6 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
-
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
     with st.container(border=True):
@@ -64,7 +62,7 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                st.session_state.user_nome = str(utente_valido.loc[:, "NOME"].values).strip()
+                st.session_state.user_nome = str(utente_valido["NOME"].iloc[0]).strip()
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -75,7 +73,6 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
-
 def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
     try:
         pass_gmail = str(st.secrets["gmail"]["password_applicativa"]).strip()
@@ -96,7 +93,6 @@ def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
         return True, "OK"
     except Exception as e:
         return False, str(e)
-
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
@@ -125,7 +121,6 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
-
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
         st.error("Errore: Seleziona un locale valido.")
@@ -147,7 +142,7 @@ if submit_button:
         if invio_ok:
             st.session_state.storico_cloud.append(nuova)
             pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
-            st.success(f"✅ OPERAZIONE COMPLETATA!\n\n📧 **Notifica inviata con successo a:** {', '.join(lista_m)}")
+            st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Notifica inviata con successo.")
             st.session_state.form_id += 1
             time.sleep(5)
             st.rerun()
@@ -178,10 +173,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
-
         with io.BytesIO() as buffer:
             df_vis.to_excel(buffer, index=False)
             st.download_button(label="📥 Scarica Registro Storico in Excel", data=buffer.getvalue(), file_name="registro_chiusure_wingaming.xlsx", mime="application/vnd.ms-excel")
     else:
         st.write("Nessuna chiusura presente nel registro.")
-
