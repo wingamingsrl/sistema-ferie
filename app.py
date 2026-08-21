@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE INTERAMENTE CORRETTA CON INDIRIZZO URL RIGIDO BLINDATO CONTRO ERRORI DI CONCATENAZIONE
+# VERSIONE INTERAMENTE CORRETTA CON INDIRIZZO URL RIGIDO BLINDATO ED ESTRAZIONE STRINGA CORRETTA [0]
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,8 +221,8 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # Estrazione sicura del testo puro della stringa prima del comando strip
-            chiave_pulita = scelta_pvd.split(" (").strip()
+            # RISOLUZIONE INTEGRALE: Inserito [0] per prendere il testo del locale ed evitare l'AttributeError
+            chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -247,7 +247,6 @@ if submit_button:
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
                     
-                    # URL INTEGRALE FISSO SENZA VARIABILI INTERMEDIE CONTRO GLI ERRORI DI BATTITURA
                     url_git = "https://github.com"
                     
                     output_binario = io.BytesIO()
@@ -266,7 +265,6 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # SINTASSI DI CONFRONTO STANDARD BLINDATA
                     if res_put.status_code == 200 or res_put.status_code == 201:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
