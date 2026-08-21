@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE INTERAMENTE CORRETTA CON INDIRIZZO URL RIGIDO BLINDATO ED ESTRAZIONE STRINGA CORRETTA [0]
+# VERSIONE FINALE CON VARIABILI BINARIE BONIFICATE E ALLINEATE AL 100% SENZA REFUSI NATIVI
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # RISOLUZIONE INTEGRALE: Inserito [0] per prendere il testo del locale ed evitare l'AttributeError
+            # Estrazione sicura del testo puro della stringa prendendo l'elemento zero prima dello strip
             chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
@@ -246,20 +246,21 @@ if submit_button:
                     import base64
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
-                    
                     url_git = "https://github.com"
                     
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
                     contenuto_binario = output_binario.getvalue()
-                    contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
+                    
+                    # VARIABILE REALE CRIPTONATA: Creata e richiamata in modo identico e blindato
+                    dati_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
                     
                     res_get = requests.get(url_git, headers=headers_git)
                     sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
                     
-                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenido_base64}
+                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": dati_base64}
                     if sha_file:
                         payload_git["sha"] = sha_file
                         
@@ -308,3 +309,4 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
+
