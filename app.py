@@ -10,14 +10,25 @@ from datetime import datetime, timedelta, time as dtime
 
 st.set_page_config(page_title="Ferie Gestori", page_icon="🛡️", layout="centered")
 
+# --- NUOVA GRAFICA AD ALTO CONTRASTO ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0f0f14; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
-    h1 { color: #3b82f6; text-shadow: 0px 0px 10px rgba(59, 130, 246, 0.5); font-size: 24px !important; text-align: center; font-weight: 800 !important; }
-    div[data-testid="stForm"] { background-color: #1e1e26 !important; border: 1px solid #2d2d3d !important; border-radius: 12px !important; padding: 20px !important; }
-    div[data-baseweb="select"], input { background-color: #252538 !important; color: #ffffff !important; border-radius: 6px !important; }
-    .stButton>button { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: #ffffff !important; font-weight: bold !important; width: 100%; border-radius: 10px !important; height: 50px !important; border: none !important; }
-    .user-badge { background-color: #1e1e26; padding: 12px; border-radius: 8px; border: 1px solid #3b82f6; margin-bottom: 25px; text-align: center; color: #e2e8f0; font-weight: bold; }
+    .stApp { background-color: #121214; color: #ffffff; font-family: 'Segoe UI', sans-serif; }
+    h1 { color: #3b82f6; text-shadow: 0px 0px 12px rgba(59, 130, 246, 0.4); font-size: 26px !important; text-align: center; font-weight: 800 !important; margin-bottom: 20px; }
+    
+    /* Titolini e Label dei campi con contrasto massimo */
+    .stMarkdown h3, label, data-testid="stWidgetLabel" { color: #ffffff !important; font-weight: 700 !important; font-size: 16px !important; }
+    p { color: #e2e8f0 !important; }
+    
+    /* Form e Input più chiari e leggibili */
+    div[data-testid="stForm"] { background-color: #1a1a1e !important; border: 2px solid #2d2d3d !important; border-radius: 14px !important; padding: 25px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+    div[data-baseweb="select"], input, div[data-baseweb="input"] { background-color: #26262b !important; color: #ffffff !important; border: 1px solid #4a4a54 !important; border-radius: 8px !important; }
+    
+    /* Pulsante accattivante */
+    .stButton>button { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 16px !important; width: 100%; border-radius: 10px !important; height: 52px !important; border: none !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: all 0.2s; }
+    .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
+    
+    .user-badge { background-color: #1a1a1e; padding: 14px; border-radius: 10px; border: 1px solid #3b82f6; margin-bottom: 30px; text-align: center; color: #ffffff; font-weight: 700; font-size: 15px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -83,10 +94,20 @@ def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
         msg['To'] = ", ".join(lista_m)
         msg['Subject'] = f"🛡️ Registrazione Chiusura Ferie - {locale}"
         
-        corpo = f"Nuova chiusura ferie registrata.\n\nLocale: {locale}\nTecnico: {esecutore}\nInizio: {chiusura}\nRiapertura: {riapertura}"
+        corpo = f"""Nuova chiusura ferie registrata nel sistema WinGaming.
+
+Dettagli dell'inserimento:
+--------------------------------------------------
+👤 Tecnico Esecutore: {esecutore}
+📍 Locale Coinvolto: {locale}
+📅 Inizio Chiusura:  {chiusura}
+🚚 Data Riapertura:  {riapertura}
+--------------------------------------------------
+
+WINGAMING SRL"""
+        
         msg.attach(MIMEText(corpo, 'plain'))
         
-        # 🚀 ACCESSO AD IP DIRETTO DI GOOGLE (AGGIRA IL BLOCCO DI RESOLUTION INTERNO)
         server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
         server.login(EMAIL_MITTENTE_GMAIL, pass_gmail)
         server.sendmail(EMAIL_MITTENTE_GMAIL, lista_m, msg.as_string())
@@ -100,23 +121,28 @@ if "form_id" not in st.session_state:
 
 with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     st.markdown("### 📝 Registra Chiusura Ferie")
+    
     elenco_c = [f"{r['NOME']} ({r['EMAIL']})" for _, r in df_tecnici.iterrows() if str(r['EMAIL']).lower().strip() != esecutore_email.lower()]
     co_destinatario = st.selectbox("Invia copia promemoria a:", ["Nessun collega"] + elenco_c)
+    
     st.markdown("---")
-    filtro_testo = st.text_input("🔍 Cerca Locale:").strip().lower()
+    
     lista_pvd = ["- Selezionare il Locale -"]
     for _, r in df_locali.iterrows():
-        if not filtro_testo or filtro_testo in str(r["NOME_LOCALE"]).lower() or filtro_testo in str(r["CODICE_LOCALE"]).lower():
-            lista_pvd.append(f"{r['CODICE_LOCALE']} - {r['NOME_LOCALE']} ({r['CONCESSIONARIO']})")
-    scelta_pvd = st.selectbox("Seleziona locale:", lista_pvd, index=0)
+        lista_pvd.append(f"{r['CODICE_LOCALE']} - {r['NOME_LOCALE']} ({r['CONCESSIONARIO']})")
+        
+    scelta_pvd = st.selectbox("Seleziona o cerca locale:", lista_pvd, index=0)
+    
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1: data_chiusura = st.date_input("Giorno Chiusura:", datetime.now(), format="DD-MM-YYYY")
     with col2: ora_chiusura = st.time_input("Ora Chiusura:", dtime(6, 0))
+    
     st.markdown("---")
     col3, col4 = st.columns(2)
     with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
+    
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 if submit_button:
