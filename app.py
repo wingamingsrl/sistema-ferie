@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE BLINDATA CON URL API STATICO FISSO (ELIMINA OGNI ERRORE DI NOME UTENTE)
+# VERSIONE FINALE BLINDATA CON URL API STATICO FISSO ED ESTRAZIONE STRINGA CORRETTA [0]
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,8 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            chiave_pulita = scelta_pvd.split(" (").strip()
+            # CORREZIONE BLINDATA: Aggiunto [0] per ripulire la stringa senza errori di AttributeError sulla lista
+            chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -245,8 +246,6 @@ if submit_button:
                     import base64
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
-                    
-                    # URL RIGIDO SCRITTO IN MODO STATICO VERSO LA TUA CARTELLA REALE DI GITHUB
                     url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
                     
                     output_binario = io.BytesIO()
@@ -309,3 +308,4 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
+
