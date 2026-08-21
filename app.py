@@ -157,9 +157,10 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
         
         chiave_chiave = f"{cod_loc} - {nome_loc}"
         
-        if chiave_chiave not in locales_raggruppati:
+        # CORREZIONE ERRORE: Rimosse le "s" errate per allinearsi alla variabile corretta
+        if chiave_chiave not in locali_raggruppati:
             locali_raggruppati[chiave_chiave] = []
-        if conc_loc and conc_loc not in locales_raggruppati[chiave_chiave]:
+        if conc_loc and conc_loc not in locali_raggruppati[chiave_chiave]:
             locali_raggruppati[chiave_chiave].append(conc_loc)
 
     lista_pvd = ["- Selezionare il Locale -"]
@@ -177,13 +178,13 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     col3, col4 = st.columns(2)
-    with st.markdown("---"): pass
     with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
     
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
+
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
 # CONNESSO VIA CHIAVE WEB API AL REPOSITORY CON LOG INFORMATIVI DEI CODICI DI SUCCESSO HTTP
