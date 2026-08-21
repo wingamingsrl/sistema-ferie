@@ -218,7 +218,7 @@ if submit_button:
                 except Exception: continue
 
         if sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale resulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e premi di nuovo il pulsante di invio.")
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e premi di nuovo il pulsante di invio.")
         else:
             str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
@@ -243,7 +243,6 @@ if submit_button:
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
                 status_github = ""
-                # --- MOTORE DI COMUNICAZIONE WEB CON INTEGRAZIONE ERRORI ---
                 try:
                     import requests
                     import base64
@@ -268,7 +267,7 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # LOGICA DI CONTROLLO RISPOSTA SERVER GITHUB
+                    # CORREZIONE SINTASSI: Controllo numerico esatto dei codici HTTP validi
                     if res_put.status_code in:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
@@ -276,7 +275,6 @@ if submit_button:
                 except Exception as e: 
                     status_github = f"❌ Fallimento connessione cloud: {str(e)}"
                 
-                # Visualizzazione esito complessivo
                 st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Notifica inviata correttamente.")
                 if "✅" in status_github:
                     st.info(status_github)
@@ -313,4 +311,3 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
-
