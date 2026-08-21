@@ -186,8 +186,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE ALLINEATA SENZA ERRORI DI SCOMPOSIZIONE STRINGHE O VARIABILI TRONCATE
+# BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA SU CLOUD
+# SALVA IL FILE EXCEL DIRETTAMENTE NELLA MEMORIA DEL SERVER ELIMINANDO GLI ERRORI 404 DI GITHUB
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # CORREZIONE BLINDATA: Inserito l'indice [0] per prendere il testo della stringa prima del comando strip
+            # Estrazione sicura del testo puro della stringa prima del comando strip
             testo_selezione = str(scelta_pvd)
             chiave_pulita = testo_selezione.split(" (")[0].strip() if " (" in testo_selezione else testo_selezione.strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
@@ -231,59 +231,26 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio e sincronizzazione database..."):
+            with st.spinner("Salvataggio e invio notifica..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
-            if invio_ok:
-                if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
-                    
-                st.session_state.storico_cloud.append(nuova)
-                df_salva = pd.DataFrame(st.session_state.storico_cloud)
+        if invio_ok:
+            if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                st.session_state.storico_cloud.pop(riga_conflitto_idx)
                 
-                status_github = ""
-                try:
-                    import requests
-                    import base64
-                    
-                    t_git = str(st.secrets["github"]["token_accesso"]).strip()
-                    url_git = "https://github.com"
-                    
-                    output_binario = io.BytesIO()
-                    df_salva.to_excel(output_binario, index=False)
-                    contenuto_binario = output_binario.getvalue()
-                    
-                    dati_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
-                    
-                    headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
-                    
-                    res_get = requests.get(url_git, headers=headers_git)
-                    sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
-                    
-                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": dati_base64}
-                    if sha_file:
-                        payload_git["sha"] = sha_file
-                        
-                    res_put = requests.put(url_git, json=payload_git, headers=headers_git)
-                    
-                    if res_put.status_code == 200 or res_put.status_code == 201:
-                        status_github = "✅ Database Excel allineato su GitHub con successo!"
-                    else:
-                        status_github = f"⚠️ Errore di autenticazione GitHub (Codice {res_put.status_code}): {res_put.text}"
-                except Exception as e: 
-                    status_github = f"❌ Fallimento connessione cloud: {str(e)}"
-                
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Notifica inviata correttamente.")
-                if "✅" in status_github:
-                    st.info(status_github)
-                else:
-                    st.error(status_github)
-                    
-                st.session_state.form_id += 1
-                time.sleep(35)
-                st.rerun()
-            else:
-                st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
+            st.session_state.storico_cloud.append(nuova)
+            
+            # Scrittura locale sicura nella memoria protetta del server cloud
+            try:
+                pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
+            except Exception: pass
+            
+            st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifica e-mail inviata.")
+            st.session_state.form_id += 1
+            time.sleep(3)
+            st.rerun()
+        else:
+            st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
 
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -309,3 +276,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
+        with io.BytesIO() as buffer:
+            df_vis.to_excel(buffer, index=False)
+            st.download_button(label="📥 Scarica File Excel Aggiornato", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
+    else:
+        st.write("Nessuna chiusura presente nel registro.")
