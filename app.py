@@ -220,7 +220,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            chiave_pulita = scelta_pvd.split(" (")[0].strip()
+            chiave_pulita = scelta_pvd.split(" (").strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -228,7 +228,7 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio in corso..."):
+            with st.spinner("Salvataggio e sincronizzazione database..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
             if invio_ok:
@@ -263,7 +263,7 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # SINTASSI CORRETTA AL 100%: Mappatura rigida dei codici di successo di GitHub
+                    # SINTASSI CORRETTA: Verifica se il codice risposto da GitHub è 200 o 201
                     if res_put.status_code in:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
