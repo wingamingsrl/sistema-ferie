@@ -2,9 +2,8 @@ name: Pulizia Automatica Notturna Storico Ferie
 
 on:
   schedule:
-    # Si attiva ogni notte alle 02:00 UTC (corrisponde alle 03:00 o 04:00 italiane)
     - cron: '0 2 * * *'
-  workflow_dispatch: # Ti permette di avviare la pulizia anche a mano se vuoi
+  workflow_dispatch:
 
 jobs:
   clean-database:
@@ -16,7 +15,7 @@ jobs:
       - name: Configura Python sul server
         uses: actions/setup-python@v4
         with:
-          python-python: '3.11'
+          python-version: '3.11'
 
       - name: Installa le librerie per l'Excel
         run: |
@@ -29,6 +28,6 @@ jobs:
         run: |
           git config --global user.name "GitHub Action Robot"
           git config --global user.email "actions@github.com"
-          git add registro_ferie_salvato.xlsx
+          git add storico_ferie.xlsx
           git commit -m "🤖 [Robot] Pulizia automatica notturna chiusure scadute" || echo "Nessuna modifica da salvare"
           git push
