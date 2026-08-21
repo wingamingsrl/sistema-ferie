@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE CON URL API RESTRITTIVO PER IMPEDIRE DEVIAZIONI DI RETE VERSO GOOGLE
+# VERSIONE FINALE BLINDATA CON URL API STATICO FISSO (ELIMINA OGNI ERRORE DI NOME UTENTE)
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            chiave_pulita = scelta_pvd.split(" (")[0].strip()
+            chiave_pulita = scelta_pvd.split(" (").strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -245,10 +245,9 @@ if submit_button:
                     import base64
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
-                    u_git = str(st.secrets["github"]["username"]).strip()
                     
-                    # URL API BLINDATO ED ISOLATO RIGIDAMENTE
-                    url_git = "https://github.com" + u_git + "/sistema-ferie/contents/" + str(FILE_STORICO_PERMANENTE)
+                    # URL RIGIDO SCRITTO IN MODO STATICO VERSO LA TUA CARTELLA REALE DI GITHUB
+                    url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
                     
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
@@ -261,7 +260,7 @@ if submit_button:
                     res_get = requests.get(url_git, headers=headers_git)
                     sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
                     
-                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenuto_base64}
+                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenido_base64}
                     if sha_file:
                         payload_git["sha"] = sha_file
                         
