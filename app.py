@@ -263,8 +263,8 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # SINTASSI CORRETTA: Elenco codici HTTP inserito esplicitamente nelle parentesi quadre
-                    if res_put.status_code in:
+                    # LOGICA DI CONTROLLO CONDIZIONALE DIRETTA SENZA OPERATORE TRONCATO
+                    if res_put.status_code == 200 or res_put.status_code == 201:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
                         status_github = f"⚠️ Errore di autenticazione GitHub (Codice {res_put.status_code}): {res_put.text}"
