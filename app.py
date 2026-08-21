@@ -10,25 +10,17 @@ from datetime import datetime, timedelta, time as dtime
 
 st.set_page_config(page_title="Ferie Gestori", page_icon="🛡️", layout="centered")
 
-# --- NUOVA GRAFICA AD ALTO CONTRASTO ---
 st.markdown("""
     <style>
-    .stApp { background-color: #121214; color: #ffffff; font-family: 'Segoe UI', sans-serif; }
-    h1 { color: #3b82f6; text-shadow: 0px 0px 12px rgba(59, 130, 246, 0.4); font-size: 26px !important; text-align: center; font-weight: 800 !important; margin-bottom: 20px; }
-    
-    /* Titolini e Label dei campi con contrasto massimo */
-    .stMarkdown h3, label, data-testid="stWidgetLabel" { color: #ffffff !important; font-weight: 700 !important; font-size: 16px !important; }
-    p { color: #e2e8f0 !important; }
-    
-    /* Form e Input più chiari e leggibili */
-    div[data-testid="stForm"] { background-color: #1a1a1e !important; border: 2px solid #2d2d3d !important; border-radius: 14px !important; padding: 25px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
-    div[data-baseweb="select"], input, div[data-baseweb="input"] { background-color: #26262b !important; color: #ffffff !important; border: 1px solid #4a4a54 !important; border-radius: 8px !important; }
-    
-    /* Pulsante accattivante */
-    .stButton>button { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 16px !important; width: 100%; border-radius: 10px !important; height: 52px !important; border: none !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: all 0.2s; }
-    .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
-    
-    .user-badge { background-color: #1a1a1e; padding: 14px; border-radius: 10px; border: 1px solid #3b82f6; margin-bottom: 30px; text-align: center; color: #ffffff; font-weight: 700; font-size: 15px; }
+    .stApp { background-color: #f8fafc !important; color: #1e293b !important; font-family: 'Segoe UI', sans-serif; }
+    h1 { color: #1e3a8a !important; font-size: 28px !important; text-align: center; font-weight: 800 !important; margin-bottom: 25px; }
+    .stMarkdown h3, label, p, [data-testid="stWidgetLabel"] p, .stSelectbox label { color: #1e293b !important; font-weight: 800 !important; font-size: 16px !important; opacity: 1 !important; }
+    div[data-testid="stForm"] { background-color: #ffffff !important; border: 2px solid #94a3b8 !important; border-radius: 14px !important; padding: 25px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    input, div[data-baseweb="select"], div[data-baseweb="input"], select { background-color: #ffffff !important; color: #0f172a !important; border: 2px solid #64748b !important; border-radius: 8px !important; font-weight: 700 !important; }
+    input, div[data-baseweb="select"] *, select { color: #0f172a !important; }
+    .stButton>button { background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 17px !important; width: 100%; border-radius: 10px !important; height: 54px !important; border: none !important; box-shadow: 0 4px 14 rgba(29, 78, 216, 0.3); }
+    .stButton>button:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
+    .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #1d4ed8; margin-bottom: 30px; text-align: center; color: #1e3a8a !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -61,7 +53,6 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
-# --- 🔐 SCHERMATA DI LOGIN AZIENDALE ---
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
     with st.container(border=True):
@@ -94,17 +85,7 @@ def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
         msg['To'] = ", ".join(lista_m)
         msg['Subject'] = f"🛡️ Registrazione Chiusura Ferie - {locale}"
         
-        corpo = f"""Nuova chiusura ferie registrata nel sistema WinGaming.
-
-Dettagli dell'inserimento:
---------------------------------------------------
-👤 Tecnico Esecutore: {esecutore}
-📍 Locale Coinvolto: {locale}
-📅 Inizio Chiusura:  {chiusura}
-🚚 Data Riapertura:  {riapertura}
---------------------------------------------------
-
-WINGAMING SRL"""
+        corpo = f"Nuova chiusura ferie registrata nel sistema WinGaming.\n\nDettagli dell'inserimento:\n--------------------------------------------------\n👤 Tecnico Esecutore: {esecutore}\n📍 Locale Coinvolto: {locale}\n📅 Inizio Chiusura:  {chiusura}\n🚚 Data Riapertura:  {riapertura}\n--------------------------------------------------\n\nWINGAMING SRL"
         
         msg.attach(MIMEText(corpo, 'plain'))
         
@@ -197,6 +178,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
+
         with io.BytesIO() as buffer:
             df_vis.to_excel(buffer, index=False)
             st.download_button(label="📥 Scarica Registro Storico in Excel", data=buffer.getvalue(), file_name="registro_chiusure_wingaming.xlsx", mime="application/vnd.ms-excel")
