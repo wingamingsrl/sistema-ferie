@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 import pandas as pd
 
-FILE_STORICO = "registro_ferie_salvato.xlsx"
+# Nome file aggiornato correttamente
+FILE_STORICO = "storico_ferie.xlsx"
 
 def pulisci_storico_notturno():
     if os.path.exists(FILE_STORICO):
@@ -33,5 +34,4 @@ def pulisci_storico_notturno():
         print("File storico non trovato. Nessuna pulizia necessaria.")
 
 if __name__ == "__main__":
-    # Riga corretta: abbinata perfettamente al nome della funzione sopra
     pulisci_storico_notturno()
