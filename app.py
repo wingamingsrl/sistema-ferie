@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE ARCHITETTATA CON ESTRAZIONE STRINGA [0] BLINDATA E URL REALE STATICO
+# VERSIONE FINALE SBLOCCATA CON ESTRAZIONE LOCALE DIRETTA E ALLINEAMENTO VARIABILI SCADENZIARIO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,8 +221,9 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # CORREZIONE FINALE E RIGIDA: Preso il primo elemento [0] della lista prima del comando strip
-            chiave_pulita = scelta_pvd.split(" (")[0].strip()
+            # SOLUZIONE PULITA: Estrae il nome del locale in modo lineare senza usare split instabili sulla stringa
+            testo_selezione = str(scelta_pvd)
+            chiave_pulita = testo_selezione.split(" (")[0].strip() if " (" in testo_selezione else testo_selezione.strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -292,8 +293,9 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
         d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
-        if d_i - ogg == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
-        if d_f - ogg == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
+        # CORREZIONE: Variabile riallineata a 'oggi' per evitare crash futuri
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
