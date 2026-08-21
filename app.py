@@ -129,8 +129,8 @@ WINGAMING SRL"""
     except Exception as e:
         return False, str(e)
 # =====================================================================================
-# BLOCCO 5: MODULO DI COMPILAZIONE (FORM CENTRALE) CON MENU A TENDINA UNICO
-# LA RICERCA AVVIENE DIRETTAMENTE SCRIVENDO DENTRO LA TENDINA DI SELEZIONE
+# BLOCCO 5: MODULO DI COMPILAZIONE (FORM CENTRALE) CON MENU A TENDINA COMPATTATO
+# RAGGRUPPA I LOCALI CON LO STESSO CODICE ED ELENCA I CONCESSIONARI ASSOCIATI TRA PARENTESI
 # =====================================================================================
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
@@ -143,14 +143,29 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     
-    # Costruzione del menu unico: la ricerca testo separata è stata rimossa completamente
-    lista_pvd = ["- Selezionare il Locale -"]
+    # DIZIONARIO PER RAGGRUPPARE I CONCESSIONARI DI LOCALI CON LO STESSO CODICE
+    locali_raggruppati = {}
     mappa_concessionari = {}
     
     for _, r in df_locali.iterrows():
-        etichetta_locale = f"{r['CODICE_LOCALE']} - {r['NOME_LOCALE']}"
-        lista_pvd.append(f"{etichetta_locale} ({r['CONCESSIONARIO']})")
-        mappa_concessionari[etichetta_locale] = str(r['CONCESSIONARIO']).strip()
+        cod_loc = str(r['CODICE_LOCALE']).strip()
+        nome_loc = str(r['NOME_LOCALE']).strip()
+        conc_loc = str(r['CONCESSIONARIO']).strip()
+        
+        chiave_chiave = f"{cod_loc} - {nome_loc}"
+        
+        if chiave_chiave not in locali_raggruppati:
+            locali_raggruppati[chiave_chiave] = []
+        if conc_loc and conc_loc not in locali_raggruppati[chiave_chiave]:
+            locali_raggruppati[chiave_chiave].append(conc_loc)
+
+    # Costruzione dell'elenco compattato per il menu a tendina
+    lista_pvd = ["- Selezionare il Locale -"]
+    for etichetta, lista_conc in locali_raggruppati.items():
+        concessionari_uniti = ", ".join(lista_conc)
+        # Salva i concessionari uniti per passarli ordinati al Blocco 6 per l'invio e-mail
+        mappa_concessionari[etichetta] = concessionari_uniti
+        lista_pvd.append(f"{etichetta} ({concessionari_uniti})")
         
     scelta_pvd = st.selectbox("Seleziona o cerca locale:", lista_pvd, index=0)
     
@@ -179,7 +194,7 @@ if submit_button:
         str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
         
-        # Estrae i concessionari associati per passarli alla mail ordinata
+        # Estrae l'etichetta pulita separando la parentesi tonda per recuperare l'elenco concessionari corretto
         chiave_pulita = scelta_pvd.split(" (")[0].strip()
         concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
         
@@ -209,8 +224,8 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
         d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 days")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 days")
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
