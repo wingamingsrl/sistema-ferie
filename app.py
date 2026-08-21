@@ -33,7 +33,7 @@ st.markdown("""
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
-FILE_STORICO_PERMANENTE = "registro_ferie_salvato.xlsx"
+FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
