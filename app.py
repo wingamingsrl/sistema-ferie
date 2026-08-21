@@ -87,7 +87,7 @@ st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
 # =====================================================================================
 # BLOCCO 4: MOTORE DI SPEDIZIONE EMAIL DIRETTO SU CASSAFORTE GOOGLE GMAIL
-# UTILIZZA L'IP NUMERICO FISSO DI GOOGLE PER EVITARE I BLOCCHI DI RETE INTERNI DI STREAMLIT CLOUD
+# COMPONE IL TESTO INSERENDO UN ELENCO PUNTATO PERFETTAMENTE ALLINEATO PER I CONCESSIONARI
 # =====================================================================================
 def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, riapertura, esecutore):
     try:
@@ -98,11 +98,13 @@ def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, ria
         msg['To'] = ", ".join(lista_m)
         msg['Subject'] = f"🛡️ Registrazione Chiusura Ferie - {locale}"
         
-        # LOGICA DI INCOLONNAMENTO ED ELENCO ORDINATO PER CONCESSIONARI MULTIPLI
+        # LOGICA DI SPAZIATURA ED ELENCO PUNTATO PERFETTAMENTE INCOLONNATO
         linee_concessionari = ""
         elenco_conc = [c.strip() for c in concessionario_testo.split(",") if c.strip()]
+        
         if len(elenco_conc) > 1:
-            linee_concessionari = "\n".join([f"  • {c}" for c in elenco_conc])
+            # Crea un elenco puntato pulito andando a capo per ogni concessionario
+            linee_concessionari = "\n" + "\n".join([f"                     • {c}" for c in elenco_conc])
         else:
             linee_concessionari = f" {concessionario_testo}"
             
@@ -128,6 +130,7 @@ WINGAMING SRL"""
         return True, "OK"
     except Exception as e:
         return False, str(e)
+
 # =====================================================================================
 # BLOCCO 5: MODULO DI COMPILAZIONE (FORM CENTRALE) CON MENU A TENDINA COMPATTATO
 # RAGGRUPPA I LOCALI CON LO STESSO CODICE ED ELENCA I CONCESSIONARI ASSOCIATI TRA PARENTESI
