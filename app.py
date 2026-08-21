@@ -263,7 +263,7 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # SINTASSI CORRETTA E COPERTA DA ERRORI: Elenco codici HTTP validi inserito nelle quadre
+                    # SINTASSI CORRETTA: Elenco codici HTTP inserito esplicitamente nelle parentesi quadre
                     if res_put.status_code in:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
@@ -307,4 +307,3 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
-
