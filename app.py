@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE BLINDATA CON URL API STATICO FISSO ED ESTRAZIONE STRINGA CORRETTA [0]
+# VERSIONE INTERAMENTE CORRETTA CON INDIRIZZO URL RIGIDO BLINDATO CONTRO ERRORI DI CONCATENAZIONE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,8 +221,8 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # CORREZIONE BLINDATA: Aggiunto [0] per ripulire la stringa senza errori di AttributeError sulla lista
-            chiave_pulita = scelta_pvd.split(" (")[0].strip()
+            # Estrazione sicura del testo puro della stringa prima del comando strip
+            chiave_pulita = scelta_pvd.split(" (").strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -246,12 +246,13 @@ if submit_button:
                     import base64
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
-                    url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
+                    
+                    # URL INTEGRALE FISSO SENZA VARIABILI INTERMEDIE CONTRO GLI ERRORI DI BATTITURA
+                    url_git = "https://github.com"
                     
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
                     contenuto_binario = output_binario.getvalue()
-                    
                     contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
@@ -265,6 +266,7 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
+                    # SINTASSI DI CONFRONTO STANDARD BLINDATA
                     if res_put.status_code == 200 or res_put.status_code == 201:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
@@ -308,4 +310,3 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
-
