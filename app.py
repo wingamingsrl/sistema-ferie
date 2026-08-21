@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE SBLOCCATA CON ESTRAZIONE LOCALE DIRETTA E ALLINEAMENTO VARIABILI SCADENZIARIO
+# VERSIONE FINALE SBLOCCATA CON INDICE STRINGA RIPRISTINATO E URL REALE STATICO API
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # SOLUZIONE PULITA: Estrae il nome del locale in modo lineare senza usare split instabili sulla stringa
+            # SBLOCCO INDICE CORRETTO: Estrae il nome del locale prendendo l'elemento zero prima di pulire gli spazi
             testo_selezione = str(scelta_pvd)
             chiave_pulita = testo_selezione.split(" (")[0].strip() if " (" in testo_selezione else testo_selezione.strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
@@ -280,7 +280,7 @@ if submit_button:
                     st.error(status_github)
                     
                 st.session_state.form_id += 1
-                time.sleep(5)
+                time.sleep(15)
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
@@ -293,7 +293,6 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
         d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
-        # CORREZIONE: Variabile riallineata a 'oggi' per evitare crash futuri
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
