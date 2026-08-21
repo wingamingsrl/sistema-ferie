@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE CON ESTRAZIONE STRINGA CORRETTA [0] E INDIRIZZO REPOSITORY BLINDATO
+# VERSIONE FINALE ARCHITETTATA CON ESTRAZIONE STRINGA [0] BLINDATA E URL REALE STATICO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # CORREZIONE TASSATIVA: Estratto il primo elemento [0] della lista prima dello strip
+            # CORREZIONE FINALE E RIGIDA: Preso il primo elemento [0] della lista prima del comando strip
             chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
@@ -292,8 +292,8 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
         d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
+        if d_i - ogg == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
+        if d_f - ogg == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
