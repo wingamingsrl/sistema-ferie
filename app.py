@@ -190,7 +190,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# USA IL TOKEN DI ACCESSO PER APRIRE L'EXCEL ONLINE E POPOLARLO AD OGNI INSERIMENTO DEI TECNICI
+# INTRATTENE UNA COMUNICAZIONE WEB CON IL REPOSITORY E MOSTRA L'ESITO DEL SALVATAGGIO A SCHERMO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -218,7 +218,7 @@ if submit_button:
                 except Exception: continue
 
         if sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e premi di nuovo il pulsante di invio.")
+            st.error(f"⚠️ ATTENZIONE: Questo locale resulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e premi di nuovo il pulsante di invio.")
         else:
             str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
@@ -242,7 +242,8 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
-                # --- TRASMISSIONE FUNZIONANTE AD ALTO LIVELLO VERSO GITHUB VIA API ---
+                status_github = ""
+                # --- MOTORE DI COMUNICAZIONE WEB CON INTEGRAZIONE ERRORI ---
                 try:
                     import requests
                     import base64
@@ -258,7 +259,6 @@ if submit_button:
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
                     
-                    # Recupera in modo rigido l'identificativo SHA per evitare il blocco 409 conflitti
                     res_get = requests.get(url_git, headers=headers_git)
                     sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
                     
@@ -266,12 +266,25 @@ if submit_button:
                     if sha_file:
                         payload_git["sha"] = sha_file
                         
-                    requests.put(url_git, json=payload_git, headers=headers_git)
-                except Exception: pass
+                    res_put = requests.put(url_git, json=payload_git, headers=headers_git)
+                    
+                    # LOGICA DI CONTROLLO RISPOSTA SERVER GITHUB
+                    if res_put.status_code in:
+                        status_github = "✅ Database Excel allineato su GitHub con successo!"
+                    else:
+                        status_github = f"⚠️ Errore di autenticazione GitHub (Codice {res_put.status_code}): {res_put.text}"
+                except Exception as e: 
+                    status_github = f"❌ Fallimento connessione cloud: {str(e)}"
                 
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro ferie salvato su GitHub e notifica inviata.")
+                # Visualizzazione esito complessivo
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Notifica inviata correttamente.")
+                if "✅" in status_github:
+                    st.info(status_github)
+                else:
+                    st.error(status_github)
+                    
                 st.session_state.form_id += 1
-                time.sleep(5)
+                time.sleep(7)
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
@@ -300,3 +313,4 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
+
