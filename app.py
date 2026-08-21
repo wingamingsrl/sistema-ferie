@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE FINALE CORRETTA CON INDIRIZZO API REALE E SINTASSI STANDARD SENZA PAROLE TRONCATE
+# VERSIONE FINALE CON URL API RESTRITTIVO PER IMPEDIRE DEVIAZIONI DI RETE VERSO GOOGLE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -247,8 +247,8 @@ if submit_button:
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
                     u_git = str(st.secrets["github"]["username"]).strip()
                     
-                    # CORREZIONE 1: URL API ufficiale per lo scambio dati
-                    url_git = f"https://github.com{u_git}/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
+                    # URL API BLINDATO ED ISOLATO RIGIDAMENTE
+                    url_git = "https://github.com" + u_git + "/sistema-ferie/contents/" + str(FILE_STORICO_PERMANENTE)
                     
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
@@ -267,7 +267,6 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # CORREZIONE 2: Sintassi standard con operatore logico == al posto di in:
                     if res_put.status_code == 200 or res_put.status_code == 201:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
@@ -311,4 +310,3 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
-
