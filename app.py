@@ -30,18 +30,15 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
 def carica_database_locale():
     if not os.path.exists(FILE_LOCALI):
-        dati_locali = {
-            "CODICE_LOCALE": [f"LOC{i:03d}" for i in range(1, 11)],
-            "NOME_LOCALE": [f"Punto Vendita Aziendale {i}" for i in range(1, 11)],
-            "CONCESSIONARIO": ["Snaitech" if i%2==0 else "Sisal" for i in range(1, 11)]
-        }
+        dati_locali = {"CODICE_LOCALE": ["LOC001"], "NOME_LOCALE": ["Punto Vendita Demo"], "CONCESSIONARIO": ["Snaitech"]}
         pd.DataFrame(dati_locali).to_excel(FILE_LOCALI, index=False)
     if not os.path.exists(FILE_TECNICI):
-        dati_tecnici = {"NOME": ["Marco", "Luca"], "EMAIL": ["marco@wingaming.it", "luca@wingaming.it"], "PASSWORD": ["WinMarco1", "WinLuca2"]}
+        dati_tecnici = {"NOME": ["Manuela"], "EMAIL": ["manuela.arigoni@wingaming.it"], "PASSWORD": ["WinManuela4"]}
         pd.DataFrame(dati_tecnici).to_excel(FILE_TECNICI, index=False)
     
     df_l = pd.read_excel(FILE_LOCALI).fillna("")
     df_t = pd.read_excel(FILE_TECNICI).fillna("")
+    
     if os.path.exists(FILE_STORICO_PERMANENTE):
         df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
     else:
@@ -53,7 +50,7 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
-# --- Schermata di Login ---
+# --- 🔐 SCHERMATA DI LOGIN AZIENDALE ---
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
     with st.container(border=True):
@@ -65,7 +62,7 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                st.session_state.user_nome = str(utente_valido.loc[:, "NOME"].values[0]).strip()
+                st.session_state.user_nome = str(utente_valido.loc[:, "NOME"].values).strip()
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -86,10 +83,11 @@ def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
         msg['To'] = ", ".join(lista_m)
         msg['Subject'] = f"🛡️ Registrazione Chiusura Ferie - {locale}"
         
-        corpo = f"Nuova chiusura ferie registrata nel sistema.\n\nDettagli:\n- Locale: {locale}\n- Tecnico: {esecutore}\n- Inizio: {chiusura}\n- Riapertura: {riapertura}"
+        corpo = f"Nuova chiusura ferie registrata.\n\nLocale: {locale}\nTecnico: {esecutore}\nInizio: {chiusura}\nRiapertura: {riapertura}"
         msg.attach(MIMEText(corpo, 'plain'))
         
-        server = smtplib.SMTP_SSL('://gmail.com', 465)
+        # 🚀 ACCESSO AD IP DIRETTO DI GOOGLE (AGGIRA IL BLOCCO DI RESOLUTION INTERNO)
+        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
         server.login(EMAIL_MITTENTE_GMAIL, pass_gmail)
         server.sendmail(EMAIL_MITTENTE_GMAIL, lista_m, msg.as_string())
         server.quit()
@@ -144,10 +142,10 @@ if submit_button:
             pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
             st.success(f"✅ OPERAZIONE COMPLETATA!\n\n📧 **Notifica inviata con successo a:** {', '.join(lista_m)}")
             st.session_state.form_id += 1
-            time.sleep(4)
+            time.sleep(5)
             st.rerun()
         else:
-            st.error(f"❌ Errore Google SMTP: {risposta_server}. Controlla la password applicativa nei Secrets.")
+            st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
 
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -178,3 +176,4 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             st.download_button(label="📥 Scarica Registro Storico in Excel", data=buffer.getvalue(), file_name="registro_chiusure_wingaming.xlsx", mime="application/vnd.ms-excel")
     else:
         st.write("Nessuna chiusura presente nel registro.")
+
