@@ -183,9 +183,10 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
+
 # =====================================================================================
-# BLOCCO 6: VALIDAZIONE DATI, SALVATAGGIO IN EXCEL, BANNER SEMPLICE E PROMEMORIA SCADENZE 3 GIORNI
-# COMPLETA L'OPERAZIONE AGGIORNANDO LA TABELLA CLOUD E MOSTRANDO IL REGISTRO STORICO SE SEI MANUELA
+# BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
+# USA IL TOKEN DI ACCESSO PER APRIRE L'EXCEL ONLINE E POPOLARLO AD OGNI INSERIMENTO DEI TECNICI
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -193,31 +194,83 @@ if submit_button:
     elif datetime.combine(data_riapertura, ora_riapertura) <= datetime.combine(data_chiusura, ora_chiusura):
         st.error("Errore: La data di riapertura deve essere successiva alla chiusura.")
     else:
-        str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
-        str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
-        nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
+        new_inizio = data_chiusura
+        new_fine = data_riapertura
         
-        # Estrae l'etichetta pulita separando la parentesi tonda per recuperare l'elenco concessionari corretto
-        chiave_pulita = scelta_pvd.split(" (")[0].strip()
-        concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
+        sovrapposizione_rilevata = False
+        riga_conflitto_idx = None
+        dettagli_conflitto = ""
         
-        lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
-        if co_destinatario != "Nessun collega":
-            mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
-            lista_m.append(mail_pulita)
-            
-        with st.spinner("Salvataggio in corso..."):
-            invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
-        
-        if invio_ok:
-            st.session_state.storico_cloud.append(nuova)
-            pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
-            st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Notifica inviata con successo.")
-            st.session_state.form_id += 1
-            time.sleep(5)
-            st.rerun()
+        for idx, row in enumerate(st.session_state.storico_cloud):
+            if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
+                try:
+                    old_inizio = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
+                    if (new_inizio <= old_fine) and (new_fine >= old_inizio):
+                        sovrapposizione_rilevata = True
+                        riga_conflitto_idx = idx
+                        dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row['TECNICO']})"
+                        break
+                except Exception: continue
+
+        if sovrapposizione_rilevata and not forza_sovrascrittura:
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e premi di nuovo il pulsante di invio.")
         else:
-            st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
+            str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
+            str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
+            nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
+            
+            chiave_pulita = scelta_pvd.split(" (")[0].strip()
+            concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
+            
+            lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
+            if co_destinatario != "Nessun collega":
+                mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
+                lista_m.append(mail_pulita)
+                
+            with st.spinner("Salvataggio e sincronizzazione database..."):
+                invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
+            
+            if invio_ok:
+                if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    
+                st.session_state.storico_cloud.append(nuova)
+                df_salva = pd.DataFrame(st.session_state.storico_cloud)
+                
+                # --- MOTORE DI SCRITTURA AUTOMATICA SU GITHUB VIA WEB API ---
+                try:
+                    t_git = str(st.secrets["github"]["token_accesso"]).strip()
+                    u_git = str(st.secrets["github"]["username"]).strip()
+                    url_git = f"https://github.com{u_git}/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
+                    
+                    # Converte l'Excel in un flusso binario leggibile da GitHub
+                    output_binario = io.BytesIO()
+                    df_salva.to_excel(output_binario, index=False)
+                    contenuto_binario = output_binario.getvalue()
+                    
+                    import base64
+                    contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
+                    
+                    headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
+                    
+                    # Recupera l'identificativo SHA del file esistente per poterlo sovrascrivere
+                    res_get = requests.get(url_git, headers=headers_git)
+                    sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+                    
+                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenuto_base64}
+                    if sha_file:
+                        payload_git["sha"] = sha_file
+                        
+                    requests.put(url_git, json=payload_git, headers=headers_git)
+                except Exception: pass
+                
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro ferie salvato su GitHub e notifica inviata.")
+                st.session_state.form_id += 1
+                time.sleep(5)
+                st.rerun()
+            else:
+                st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
 
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -243,8 +296,3 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
-        with io.BytesIO() as buffer:
-            df_vis.to_excel(buffer, index=False)
-            st.download_button(label="📥 Scarica Registro Storico in Excel", data=buffer.getvalue(), file_name="registro_chiusure_wingaming.xlsx", mime="application/vnd.ms-excel")
-    else:
-        st.write("Nessuna chiusura presente nel registro.")
