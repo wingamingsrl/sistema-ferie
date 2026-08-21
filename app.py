@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# CONNESSO VIA CHIAVE WEB API AL REPOSITORY CON INDIRIZZO API CORRETTO E BLINDATO
+# CONNESSO VIA CHIAVE WEB API AL REPOSITORY CON VARIABILI BINARIE INTERAMENTE ALLINEATE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -248,13 +248,13 @@ if submit_button:
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
                     u_git = str(st.secrets["github"]["username"]).strip()
                     
-                    # CORREZIONE INDIRIZZO: Puntato alle API ufficiali di rete di GitHub
                     url_git = f"https://github.com{u_git}/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
                     
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
                     contenuto_binario = output_binario.getvalue()
                     
+                    # ALLINEAMENTO VARIABILI: Nominata 'contenuto_base64' con due "t" in modo uniforme
                     contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
@@ -262,7 +262,7 @@ if submit_button:
                     res_get = requests.get(url_git, headers=headers_git)
                     sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
                     
-                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenido_base64}
+                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenuto_base64}
                     if sha_file:
                         payload_git["sha"] = sha_file
                         
