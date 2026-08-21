@@ -129,8 +129,8 @@ WINGAMING SRL"""
     except Exception as e:
         return False, str(e)
 # =====================================================================================
-# BLOCCO 5: MODULO DI COMPILAZIONE (FORM CENTRALE) CON FILTRO RIGIDO SUI LOCALI
-# ISOLA SULLO SCHERMO ESCLUSIVAMENTE I LOCALI CHE CONTENGONO IL TESTO INSERITO
+# BLOCCO 5: MODULO DI COMPILAZIONE (FORM CENTRALE) CON MENU A TENDINA UNICO
+# LA RICERCA AVVIENE DIRETTAMENTE SCRIVENDO DENTRO LA TENDINA DI SELEZIONE
 # =====================================================================================
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
@@ -143,23 +143,16 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     
-    # Campo di inserimento isolato per il filtraggio rigido del locale
-    ricerca_utente = st.text_input("🔍 Cerca per Nome o Codice Locale:").strip().lower()
-    
+    # Costruzione del menu unico: la ricerca testo separata è stata rimossa completamente
     lista_pvd = ["- Selezionare il Locale -"]
-    mappa_concessionari = {} # Memorizza temporaneamente l'associazione dei concessionari per il blocco di invio
+    mappa_concessionari = {}
     
     for _, r in df_locali.iterrows():
-        codice_str = str(r['CODICE_LOCALE']).lower()
-        nome_str = str(r['NOME_LOCALE']).lower()
+        etichetta_locale = f"{r['CODICE_LOCALE']} - {r['NOME_LOCALE']}"
+        lista_pvd.append(f"{etichetta_locale} ({r['CONCESSIONARIO']})")
+        mappa_concessionari[etichetta_locale] = str(r['CONCESSIONARIO']).strip()
         
-        # Filtro rigido: compare solo se la parola cercata è dentro il codice o il nome
-        if not ricerca_utente or (ricerca_utente in codice_str or ricerca_utente in nome_str):
-            etichetta_locale = f"{r['CODICE_LOCALE']} - {r['NOME_LOCALE']}"
-            lista_pvd.append(f"{etichetta_locale} ({r['CONCESSIONARIO']})")
-            mappa_concessionari[etichetta_locale] = str(r['CONCESSIONARIO']).strip()
-        
-    scelta_pvd = st.selectbox("Seleziona il locale filtrato:", lista_pvd, index=0)
+    scelta_pvd = st.selectbox("Seleziona o cerca locale:", lista_pvd, index=0)
     
     st.markdown("---")
     col1, col2 = st.columns(2)
@@ -216,8 +209,8 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
         d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 days")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 days")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
