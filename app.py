@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE INTEGRALE FUNZIONANTE CON ESTRAZIONE STRINGA CORRETTA ED INDICE ZERO INCLUSO
+# VERSIONE INTEGRALE FUNZIONANTE CON VARIABILI BINARIE BONIFICATE AL 100% IN DATI_BASE64
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # CORREZIONE SINTASSI: Estrazione stringa pulita con indice zero prima dello strip
+            # Estrazione sicura del testo puro della stringa prima del comando strip
             chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
@@ -251,14 +251,16 @@ if submit_button:
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
                     contenuto_binario = output_binario.getvalue()
-                    contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
+                    
+                    # VARIABILE RIGIDA BLINDATA: Creata e richiamata come dati_base64 senza refusi spuri
+                    dati_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
                     
                     res_get = requests.get(url_git, headers=headers_git)
                     sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
                     
-                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": contenido_base64}
+                    payload_git = {"message": "🤖 [App] Popolamento automatico nuove ferie inserite", "content": dati_base64}
                     if sha_file:
                         payload_git["sha"] = sha_file
                         
