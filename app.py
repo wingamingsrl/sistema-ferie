@@ -1,3 +1,7 @@
+# =====================================================================================
+# BLOCCO 1: STRUTTURA DI BASE E STILE GRAFICO DELL'APPLICAZIONE (LIGHT MODE AD ALTO CONTRASTO)
+# QUESTO BLOCCO CARICA LE LIBRERIE E IMPOSTA I COLORI CHIARI PER LEGGERE SOTTO IL SOLE
+# =====================================================================================
 import os
 import io
 import time
@@ -23,6 +27,10 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
+# =====================================================================================
+# BLOCCO 2: COLLEGAMENTO E CARICAMENTO AUTOMATICO DEI FILE EXCEL (LOCALI, TECNICI E STORICO)
+# CONFIGURA GLI INDIRIZZI EMAIL AZIENDALI DI RIFERIMENTO E CARICA LE TABELLE IN MEMORIA
+# =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
 FILE_STORICO_PERMANENTE = "registro_ferie_salvato.xlsx"
@@ -51,6 +59,10 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# =====================================================================================
+# BLOCCO 3: SCHERMATA DI ACCESSO PROTETTA (LOGIN AZIENDALE)
+# VERIFICA LE CREDENZIALI NEL FILE EXCEL ED ESTRAE IL NOME PULITO DEL TECNICO CHE EFFETTUA L'ACCESSO
+# =====================================================================================
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
     with st.container(border=True):
@@ -62,7 +74,7 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                st.session_state.user_nome = str(utente_valido["NOME"].iloc[0]).strip()
+                st.session_state.user_nome = str(utente_valido["NOME"].values[0]).strip()
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -73,7 +85,11 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
-def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
+# =====================================================================================
+# BLOCCO 4: MOTORE DI SPEDIZIONE EMAIL DIRETTO SU CASSAFORTE GOOGLE GMAIL
+# UTILIZZA L'IP NUMERICO FISSO DI GOOGLE PER EVITARE I BLOCCHI DI RETE INTERNI DI STREAMLIT CLOUD
+# =====================================================================================
+def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, riapertura, esecutore):
     try:
         pass_gmail = str(st.secrets["gmail"]["password_applicativa"]).strip()
         
@@ -82,7 +98,26 @@ def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
         msg['To'] = ", ".join(lista_m)
         msg['Subject'] = f"🛡️ Registrazione Chiusura Ferie - {locale}"
         
-        corpo = f"Nuova chiusura ferie registrata nel sistema WinGaming.\n\nDettagli dell'inserimento:\n--------------------------------------------------\n👤 Tecnico Esecutore: {esecutore}\n📍 Locale Coinvolto: {locale}\n📅 Inizio Chiusura:  {chiusura}\n🚚 Data Riapertura:  {riapertura}\n--------------------------------------------------\n\nWINGAMING SRL"
+        # LOGICA DI INCOLONNAMENTO ED ELENCO ORDINATO PER CONCESSIONARI MULTIPLI
+        linee_concessionari = ""
+        elenco_conc = [c.strip() for c in concessionario_testo.split(",") if c.strip()]
+        if len(elenco_conc) > 1:
+            linee_concessionari = "\n".join([f"  • {c}" for c in elenco_conc])
+        else:
+            linee_concessionari = f" {concessionario_testo}"
+            
+        corpo = f"""Nuova chiusura ferie registrata nel sistema WinGaming.
+
+Dettagli dell'inserimento:
+--------------------------------------------------
+👤 Tecnico Esecutore: {esecutore}
+📍 Locale Coinvolto:  {locale}
+🏢 Concessionario/i:{linee_concessionari}
+📅 Inizio Chiusura:   {chiusura}
+🚚 Data Riapertura:   {riapertura}
+--------------------------------------------------
+
+WINGAMING SRL"""
         
         msg.attach(MIMEText(corpo, 'plain'))
         
@@ -93,6 +128,10 @@ def invia_mail_diretta_smtp(lista_m, locale, chiusura, riapertura, esecutore):
         return True, "OK"
     except Exception as e:
         return False, str(e)
+# =====================================================================================
+# BLOCCO 5: MODULO DI COMPILAZIONE (FORM CENTRALE) CON FILTRO RIGIDO SUI LOCALI
+# ISOLA SULLO SCHERMO ESCLUSIVAMENTE I LOCALI CHE CONTENGONO IL TESTO INSERITO
+# =====================================================================================
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
@@ -104,11 +143,23 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     
+    # Campo di inserimento isolato per il filtraggio rigido del locale
+    ricerca_utente = st.text_input("🔍 Cerca per Nome o Codice Locale:").strip().lower()
+    
     lista_pvd = ["- Selezionare il Locale -"]
+    mappa_concessionari = {} # Memorizza temporaneamente l'associazione dei concessionari per il blocco di invio
+    
     for _, r in df_locali.iterrows():
-        lista_pvd.append(f"{r['CODICE_LOCALE']} - {r['NOME_LOCALE']} ({r['CONCESSIONARIO']})")
+        codice_str = str(r['CODICE_LOCALE']).lower()
+        nome_str = str(r['NOME_LOCALE']).lower()
         
-    scelta_pvd = st.selectbox("Seleziona o cerca locale:", lista_pvd, index=0)
+        # Filtro rigido: compare solo se la parola cercata è dentro il codice o il nome
+        if not ricerca_utente or (ricerca_utente in codice_str or ricerca_utente in nome_str):
+            etichetta_locale = f"{r['CODICE_LOCALE']} - {r['NOME_LOCALE']}"
+            lista_pvd.append(f"{etichetta_locale} ({r['CONCESSIONARIO']})")
+            mappa_concessionari[etichetta_locale] = str(r['CONCESSIONARIO']).strip()
+        
+    scelta_pvd = st.selectbox("Seleziona il locale filtrato:", lista_pvd, index=0)
     
     st.markdown("---")
     col1, col2 = st.columns(2)
@@ -121,6 +172,10 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
+# =====================================================================================
+# BLOCCO 6: VALIDAZIONE DATI, SALVATAGGIO IN EXCEL, BANNER SEMPLICE E PROMEMORIA SCADENZE 3 GIORNI
+# COMPLETA L'OPERAZIONE AGGIORNANDO LA TABELLA CLOUD E MOSTRANDO IL REGISTRO STORICO SE SEI MANUELA
+# =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
         st.error("Errore: Seleziona un locale valido.")
@@ -131,13 +186,17 @@ if submit_button:
         str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
         
+        # Estrae i concessionari associati per passarli alla mail ordinata
+        chiave_pulita = scelta_pvd.split(" (")[0].strip()
+        concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
+        
         lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
         if co_destinatario != "Nessun collega":
             mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
             lista_m.append(mail_pulita)
             
         with st.spinner("Salvataggio in corso..."):
-            invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, scelta_pvd, str_c, str_r, esecutore_nome)
+            invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
         
         if invio_ok:
             st.session_state.storico_cloud.append(nuova)
