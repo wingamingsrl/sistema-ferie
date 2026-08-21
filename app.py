@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# VERSIONE INTEGRALE FUNZIONANTE CON TUTTI E 4 I CORRETTIVI DEGLI ERRORI CEMENTATI INSIEME
+# VERSIONE FINALE CON ESTRAZIONE STRINGA CORRETTA [0] E INDIRIZZO REPOSITORY BLINDATO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # CORREZIONE 1: Estrazione stringa pulita con indice zero blindato contro AttributeError
+            # CORREZIONE TASSATIVA: Estratto il primo elemento [0] della lista prima dello strip
             chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
@@ -246,15 +246,12 @@ if submit_button:
                     import base64
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
-                    
-                    # CORREZIONE 2: URL statico rigido allineato al tuo account reale wingamingsrl
                     url_git = "https://github.com"
                     
                     output_binario = io.BytesIO()
                     df_salva.to_excel(output_binario, index=False)
                     contenuto_binario = output_binario.getvalue()
                     
-                    # CORREZIONE 3: Variabile definita 'dati_base64' in modo coerente e univoco contro NameError
                     dati_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
@@ -268,7 +265,6 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # CORREZIONE 4: Sintassi di controllo nativa robusta senza operatori "in" troncati
                     if res_put.status_code == 200 or res_put.status_code == 201:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
