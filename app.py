@@ -246,6 +246,8 @@ if submit_button:
                     
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
                     u_git = str(st.secrets["github"]["username"]).strip()
+                    
+                    # URL API DIRETTO E CORRETTO VERSO I SERVER DI GITHUB
                     url_git = f"https://github.com{u_git}/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
                     
                     output_binario = io.BytesIO()
@@ -253,7 +255,11 @@ if submit_button:
                     contenuto_binario = output_binario.getvalue()
                     contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
-                    headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
+                    headers_git = {
+                        "Authorization": f"token {t_git}", 
+                        "Accept": "application/vnd.github.v3+json",
+                        "Content-Type": "application/json"
+                    }
                     
                     res_get = requests.get(url_git, headers=headers_git)
                     sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
@@ -264,7 +270,6 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # LOGICA DI CONTROLLO CONDIZIONALE DIRETTA SENZA OPERATORE TRONCATO
                     if res_put.status_code == 200 or res_put.status_code == 201:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
