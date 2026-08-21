@@ -13,7 +13,6 @@ def pulisci_storico_notturno():
                 righe_valide = []
                 for _, riga in df.iterrows():
                     try:
-                        # Se la fine delle ferie è oggi o nel futuro, la teniamo
                         data_riap = datetime.strptime(str(riga["FINE_FERIE"]).strip(), "%d-%m-%Y").date()
                         if data_riap >= oggi:
                             righe_valide.append(riga)
@@ -34,4 +33,5 @@ def pulisci_storico_notturno():
         print("File storico non trovato. Nessuna pulizia necessaria.")
 
 if __name__ == "__main__":
-    puli_storico_notturno()
+    # Riga corretta: abbinata perfettamente al nome della funzione sopra
+    pulisci_storico_notturno()
