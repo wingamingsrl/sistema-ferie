@@ -187,7 +187,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# CONNESSO VIA CHIAVE WEB API AL REPOSITORY CON SINTASSI DI CONFRONTO DIRETTA COMPLETA (NO IN)
+# CONNESSO VIA CHIAVE WEB API AL REPOSITORY CON IMPORTAZIONE INTERNA DI REQUESTS FUNZIONANTE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -221,7 +221,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            # CORREZIONE ERRORE: Estrazione corretta dell'elemento zero della stringa prima del comando strip
+            # Estrazione sicura del testo puro della stringa prima del comando strip
             chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
@@ -242,6 +242,10 @@ if submit_button:
                 
                 status_github = ""
                 try:
+                    # DICHIARAZIONE OBBLIGATORIA DELLE LIBRERIE PER EVITARE NAMEERROR DI RETE
+                    import requests
+                    import base64
+                    
                     t_git = str(st.secrets["github"]["token_accesso"]).strip()
                     u_git = str(st.secrets["github"]["username"]).strip()
                     url_git = f"https://github.com{u_git}/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
@@ -250,7 +254,6 @@ if submit_button:
                     df_salva.to_excel(output_binario, index=False)
                     contenuto_binario = output_binario.getvalue()
                     
-                    import base64
                     contenuto_base64 = base64.b64encode(contenuto_binario).decode('utf-8')
                     
                     headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
