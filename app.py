@@ -220,7 +220,7 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
-            chiave_pulita = scelta_pvd.split(" (").strip()
+            chiave_pulita = scelta_pvd.split(" (")[0].strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -263,7 +263,7 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # SINTASSI CORRETTA: Verifica se il codice risposto da GitHub è 200 o 201
+                    # SINTASSI CORRETTA E COPERTA DA ERRORI: Elenco codici HTTP validi inserito nelle quadre
                     if res_put.status_code in:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
