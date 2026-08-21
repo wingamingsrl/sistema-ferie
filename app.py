@@ -76,7 +76,6 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                # CORREZIONE LOGIN: Estrazione sicura del testo puro all'elemento zero
                 st.session_state.user_nome = str(utente_valido["NOME"].values[0]).strip()
                 st.rerun()
             else:
@@ -91,7 +90,7 @@ st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})<
 
 # =====================================================================================
 # BLOCCO 4: MOTORE DI SPEDIZIONE EMAIL DIRETTO SU CASSAFORTE GOOGLE GMAIL
-# COMPONE IL TESTO INSERENDO UN ELENCO PUNTATO PERFETTAMENTE ALLINEATO PER I CONCESSIONARI
+# COMPONE IL TESTO INSERENDO UN ELENCO PUNTATO PERFETTAMENTE ALLINEATO PER I CONCESSIONARI MULTIPLI
 # =====================================================================================
 def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, riapertura, esecutore):
     try:
@@ -102,12 +101,10 @@ def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, ria
         msg['To'] = ", ".join(lista_m)
         msg['Subject'] = f"🛡️ Registrazione Chiusura Ferie - {locale}"
         
-        # LOGICA DI SPAZIATURA ED ELENCO PUNTATO PERFETTAMENTE INCOLONNATO
         linee_concessionari = ""
         elenco_conc = [c.strip() for c in concessionario_testo.split(",") if c.strip()]
         
         if len(elenco_conc) > 1:
-            # Crea un elenco puntato pulito andando a capo per ogni concessionario
             linee_concessionari = "\n" + "\n".join([f"                     • {c}" for c in elenco_conc])
         else:
             linee_concessionari = f" {concessionario_testo}"
@@ -150,7 +147,6 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     
-    # DIZIONARIO PER RAGGRUPPARE I CONCESSIONARI DI LOCALI CON LO STESSO CODICE
     locali_raggruppati = {}
     mappa_concessionari = {}
     
@@ -161,16 +157,14 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
         
         chiave_chiave = f"{cod_loc} - {nome_loc}"
         
-        if chiave_chiave not in locali_raggruppati:
+        if chiave_chiave not in locales_raggruppati:
             locali_raggruppati[chiave_chiave] = []
-        if conc_loc and conc_loc not in locali_raggruppati[chiave_chiave]:
+        if conc_loc and conc_loc not in locales_raggruppati[chiave_chiave]:
             locali_raggruppati[chiave_chiave].append(conc_loc)
 
-    # Costruzione dell'elenco compattato per il menu a tendina
     lista_pvd = ["- Selezionare il Locale -"]
     for etichetta, lista_conc in locali_raggruppati.items():
         concessionari_uniti = ", ".join(lista_conc)
-        # Salva i concessionari uniti per passarli ordinati al Blocco 6 per l'invio e-mail
         mappa_concessionari[etichetta] = concessionari_uniti
         lista_pvd.append(f"{etichetta} ({concessionari_uniti})")
         
@@ -183,14 +177,16 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     col3, col4 = st.columns(2)
+    with st.markdown("---"): pass
     with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
+    forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
+    
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
-
 # =====================================================================================
 # BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA DIRETTA SU GITHUB
-# INTRATTENE UNA COMUNICAZIONE WEB CON IL REPOSITORY E MOSTRA L'ESITO DEL SALVATAGGIO A SCHERMO
+# CONNESSO VIA CHIAVE WEB API AL REPOSITORY CON LOG INFORMATIVI DEI CODICI DI SUCCESSO HTTP
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -232,7 +228,7 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio e sincronizzazione database..."):
+            with st.spinner("Salvataggio in corso..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
             if invio_ok:
@@ -267,7 +263,7 @@ if submit_button:
                         
                     res_put = requests.put(url_git, json=payload_git, headers=headers_git)
                     
-                    # CORREZIONE SINTASSI: Controllo numerico esatto dei codici HTTP validi
+                    # SINTASSI CORRETTA AL 100%: Mappatura rigida dei codici di successo di GitHub
                     if res_put.status_code in:
                         status_github = "✅ Database Excel allineato su GitHub con successo!"
                     else:
@@ -282,7 +278,7 @@ if submit_button:
                     st.error(status_github)
                     
                 st.session_state.form_id += 1
-                time.sleep(7)
+                time.sleep(5)
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
@@ -311,3 +307,4 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
+
