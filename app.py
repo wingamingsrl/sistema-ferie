@@ -21,18 +21,19 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* 🚫 CANCELLA IL MENU IN ALTO A DESTRA (LE TRE LINEE) E IL FOOTER DI SISTEMA */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDecoration {display:none !important;}
+    /* 🚫 RIMOZIONE RIGIDA DI QUALSIASI TOOLBAR, ICONA O FOOTER RESIDUO IN BASSO E IN ALTO */
+    #MainMenu, footer, header, .stDecoration, [data-testid="stHeader"], [data-testid="stFooter"] {
+        visibility: hidden !important;
+        display: none !important;
+    }
     
-    /* 🚫 BLINDA E NASCONDE L'ICONA IN BASSO A DESTRA (TOOLBAR E STATUS WIDGET DI STREAMLIT) */
-    .stStatusWidget, [data-testid="stStatusWidget"], [data-testid="viewerToolbar"] {
+    /* 🚫 ELIMINAZIONE CHIRURGICA DELLA BARRA STREAMLIT IN BASSO */
+    .stStatusWidget, [data-testid="stStatusWidget"], [data-testid="viewerToolbar"], [data-testid="stStatusWidgetContainer"], .stActionButton, [data-testid="stActionButton"] {
         display: none !important;
         visibility: hidden !important;
         height: 0px !important;
         width: 0px !important;
+        opacity: 0 !important;
     }
     
     /* Sfondo dell'app chiaro e luminoso per la massima leggibilità */
@@ -59,6 +60,7 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
+
 
 
 
