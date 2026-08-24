@@ -223,4 +223,136 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
-V
+# =====================================================================================
+# BLOCCO 6: VALIDAZIONE, NOTIFICA EMAIL E INIETTORE AUTOMATICO DIRETTO IN SANSONE
+# VERSIONE FINALE ALLINEATA SUL LINK DIRETTO GESTIONALE.GAMESLODI.IT/LOCALI/EDIT
+# =====================================================================================
+if submit_button:
+    if scelta_pvd == "- Selezionare il Locale -":
+        st.error("Errore: Seleziona un locale valido.")
+    elif datetime.combine(data_riapertura, ora_riapertura) <= datetime.combine(data_chiusura, ora_chiusura):
+        st.error("Errore: La data di riapertura deve essere successiva alla chiusura.")
+    else:
+        new_inizio = data_chiusura
+        new_fine = data_riapertura
+        
+        sovrapposizione_rilevata = False
+        riga_conflitto_idx = None
+        dettagli_conflitto = ""
+        
+        for idx, row in enumerate(st.session_state.storico_cloud):
+            if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
+                try:
+                    old_inizio = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
+                    if (new_inizio <= old_fine) and (new_fine >= old_inizio):
+                        sovrapposizione_rilevata = True
+                        riga_conflitto_idx = idx
+                        dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row['TECNICO']})"
+                        break
+                except Exception: continue
+
+        if sovrapposizione_rilevata and not forza_sovrascrittura:
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e premi di nuovo il pulsante di invio.")
+        else:
+            str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
+            str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
+            nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
+            
+            testo_selezione = str(scelta_pvd)
+            # CORREZIONE TASSATIVA: Inserito l'indice [0] prima dello strip per evitare l'AttributeError
+            chiave_pulita = testo_selezione.split(" (")[0].strip() if " (" in testo_selezione else testo_selezione.strip()
+            concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
+            
+            lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
+            if co_destinatario != "Nessun collega":
+                mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
+                lista_m.append(mail_pulita)
+                
+            with st.spinner("Salvataggio e sincronizzazione database..."):
+                invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
+            
+            if invio_ok:
+                if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    
+                st.session_state.storico_cloud.append(nuova)
+                
+                try:
+                    pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
+                except Exception: pass
+                
+                # 🚀 --- MOTORE INIETTORE SU LINK CORRETTO GESTIONALE ---
+                status_sansone = ""
+                try:
+                    import requests
+                    import time
+                    
+                    s_user = str(st.secrets["sansone"]["email"]).strip()
+                    s_pass = str(st.secrets["sansone"]["password"]).strip()
+                    
+                    sessione = requests.Session()
+                    
+                    # Login puntato rigidamente al sottodominio gestionale
+                    url_login = "https://gameslodi.it"
+                    res_login = sessione.post(url_login, data={"email": s_user, "password": s_pass}, timeout=7)
+                    
+                    ts = int(time.time())
+                    
+                    payload_sansone = {
+                        "localeId": "10900",  
+                        "localeCodice": str(chiave_pulita),
+                        f"ferie[{ts}][data_inizio]": str(nuova["INIZIO_FERIE"].replace("-", "/")),
+                        f"ferie[{ts}][data_fine]": str(nuova["FINE_FERIE"].replace("-", "/")),
+                        f"ferie[{ts}][note]": "Inserimento automatico App"
+                    }
+                    
+                    # Invio alla rotta di edit corretta ricavata da F12
+                    url_salva = "https://gameslodi.it"
+                    res_salva = sessione.post(url_salva, data=payload_sansone, timeout=7)
+                    
+                    if res_salva.status_code == 200:
+                        status_sansone = "✅ Gestionale Sansone: Aggiornato in automatico!"
+                    else:
+                        status_sansone = f"⚠️ Gestionale Sansone: Errore di sincronizzazione (Codice {res_salva.status_code})"
+                except Exception as e:
+                    status_sansone = f"❌ Sincronizzazione fallita: {str(e)}"
+                
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifica inviata.")
+                if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
+                    st.info(status_sansone)
+                    
+                st.session_state.form_id += 1
+                time.sleep(4)
+                st.rerun()
+            else:
+                st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
+
+st.markdown("---")
+st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
+oggi = datetime.now().date()
+alert_c, alert_r = [], []
+for row in st.session_state.storico_cloud:
+    try:
+        d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
+        d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
+    except Exception: continue
+for a in alert_c: st.error(a)
+for r in alert_r: st.warning(r)
+if not alert_c and not alert_r: st.write("✅ Nessun adempimento logistico per i primi 3 giorni di scadenza.")
+
+if st.sidebar.button("🚪 Disconnetti Account"):
+    del st.session_state.autenticato
+    st.rerun()
+
+if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
+    st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
+    if st.session_state.storico_cloud:
+        df_vis = pd.DataFrame(st.session_state.storico_cloud)
+        st.dataframe(df_vis, hide_index=True)
+        with io.BytesIO() as buffer:
+            df_vis.to_excel(buffer, index=False)
+            st.download_button(label="📥 Scarica File Excel Aggiornato", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
+
