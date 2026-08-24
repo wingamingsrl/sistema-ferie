@@ -1,0 +1,12 @@
+[client]
+# Spegne l'icona e il menu in alto a destra
+showErrorDetails = false
+toolbarMode = "minimal"
+
+[development]
+# Disattiva completamente la barra grigia, i link del progetto e l'icona di Streamlit in basso
+showSidebarNavigation = false
+
+[theme]
+# Forza il sistema a non mostrare opzioni di modifica del tema
+base = "light"
