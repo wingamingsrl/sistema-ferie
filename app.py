@@ -1,6 +1,6 @@
 # =====================================================================================
-# BLOCCO 1: STRUTTURA DI BASE E STILE GRAFICO DELL'APPLICAZIONE (LIGHT MODE AD ALTO CONTRASTO)
-# QUESTO BLOCCO CARICA LE LIBRERIE E IMPOSTA I COLORI CHIARI PER LEGGERE SOTTO IL SOLE
+# BLOCCO 1: STRUTTURA DI BASE, ICONA PERSONALIZZATA E RIMOZIONE MENU DI SISTEMA
+# IMPOSTA L'ICONA DELL'APP, NASCONDE I MENU STREAMLIT IN ALTO E CONFIGURA LA GRAFICA LIGHT
 # =====================================================================================
 import os
 import io
@@ -12,21 +12,49 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, time as dtime
 
-st.set_page_config(page_title="Ferie Gestori", page_icon="🛡️", layout="centered")
+# --- CONFIGURAZIONE ICONA PERSONALIZZATA ---
+# Puoi cambiare "🛡️" con un'altra emoji a tua scelta (es. "📅", "🚚", "🏢", "🚀")
+st.set_page_config(
+    page_title="Ferie Gestori", 
+    page_icon="📅", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
+# --- INTERFACCIA LIGHT AD ALTO CONTRASTO + RIMOZIONE MENU STREAMLIT ---
 st.markdown("""
     <style>
+    /* NASCONDE IL MENU IN ALTO A DESTRA (LE TRE LINEE) E IL FOOTER IN BASSO */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    stDecoration {display:none;}
+    
+    /* Sfondo dell'app chiaro e luminoso per la massima leggibilità */
     .stApp { background-color: #f8fafc !important; color: #1e293b !important; font-family: 'Segoe UI', sans-serif; }
+    
+    /* Titolo principale scuro e nitido */
     h1 { color: #115e59 !important; font-size: 28px !important; text-align: center; font-weight: 800 !important; margin-bottom: 25px; }
+    
+    /* Tutte le scritte e i titoli dei campi neri/blu scuro */
     .stMarkdown h3, label, p, [data-testid="stWidgetLabel"] p, .stSelectbox label { color: #1e293b !important; font-weight: 800 !important; font-size: 16px !important; opacity: 1 !important; }
+    
+    /* Contenitore del modulo con sfondo bianco puro e bordo grigio scuro marcato */
     div[data-testid="stForm"] { background-color: #ffffff !important; border: 2px solid #94a3b8 !important; border-radius: 14px !important; padding: 25px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    
+    /* Caselle di testo, Date e Menu a tendina bianchi con testo nero e bordo scuro definito */
     input, div[data-baseweb="select"], div[data-baseweb="input"], select { background-color: #ffffff !important; color: #0f172a !important; border: 2px solid #64748b !important; border-radius: 8px !important; font-weight: 700 !important; }
     input, div[data-baseweb="select"] *, select { color: #0f172a !important; }
+    
+    /* PULSANTE VERDE SMERALDO: Più leggero ma ad alto contrasto */
     .stButton>button { background: linear-gradient(135deg, #0f766e 0%, #115e59 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 17px !important; width: 100%; border-radius: 10px !important; height: 54px !important; border: none !important; box-shadow: 0 4px 14px rgba(17, 94, 89, 0.3); }
     .stButton>button:hover { background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%) !important; box-shadow: 0 6px 20px rgba(20, 184, 166, 0.4); }
+    
+    /* Badge del Tecnico Loggato chiaro con bordo verde smeraldo */
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
+
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO E CARICAMENTO AUTOMATICO DEI FILE EXCEL (LOCALI, TECNICI E STORICO)
