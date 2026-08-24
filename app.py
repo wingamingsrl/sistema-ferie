@@ -224,8 +224,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA SU CLOUD
-# VERSIONE FINALE DI PRODUZIONE PER LA RACCOLTA DATI CONDIVISA SUL SERVER STREAMLIT
+# BLOCCO 6: VALIDAZIONE, NOTIFICA EMAIL E INIETTORE AUTOMATICO DIRETTO IN SANSONE
+# VERSIONE FINALE ALLINEATA SUL LINK DIRETTO GESTIONALE.GAMESLODI.IT/LOCALI/EDIT
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -268,7 +268,7 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio e invio notifica..."):
+            with st.spinner("Salvataggio e sincronizzazione database..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
             if invio_ok:
@@ -281,9 +281,48 @@ if submit_button:
                     pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
                 except Exception: pass
                 
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifica e-mail inviata.")
+                # 🚀 --- MOTORE INIETTORE SU LINK CORRETTO GESTIONALE ---
+                status_sansone = ""
+                try:
+                    import requests
+                    import time
+                    
+                    s_user = str(st.secrets["sansone"]["email"]).strip()
+                    s_pass = str(st.secrets["sansone"]["password"]).strip()
+                    
+                    sessione = requests.Session()
+                    
+                    # 1. Login puntato rigidamente al sottodominio gestionale
+                    url_login = "https://gameslodi.it"
+                    res_login = sessione.post(url_login, data={"email": s_user, "password": s_pass}, timeout=7)
+                    
+                    ts = int(time.time())
+                    
+                    payload_sansone = {
+                        "localeId": "10900",  
+                        "localeCodice": str(chiave_pulita),
+                        f"ferie[{ts}][data_inizio]": str(nuova["INIZIO_FERIE"].replace("-", "/")),
+                        f"ferie[{ts}][data_fine]": str(nuova["FINE_FERIE"].replace("-", "/")),
+                        f"ferie[{ts}][note]": "Inserimento automatico App"
+                    }
+                    
+                    # 2. Invio alla rotta di edit corretta ricavata da F12
+                    url_salva = "https://gameslodi.it"
+                    res_salva = sessione.post(url_salva, data=payload_sansone, timeout=7)
+                    
+                    if res_salva.status_code == 200:
+                        status_sansone = "✅ Gestionale Sansone: Aggiornato in automatico!"
+                    else:
+                        status_sansone = f"⚠️ Gestionale Sansone: Errore di sincronizzazione (Codice {res_salva.status_code})"
+                except Exception as e:
+                    status_sansone = f"❌ Sincronizzazione fallita: {str(e)}"
+                
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifica inviata.")
+                if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
+                    st.info(status_sansone)
+                    
                 st.session_state.form_id += 1
-                time.sleep(3)
+                time.sleep(4)
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
@@ -315,5 +354,3 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         with io.BytesIO() as buffer:
             df_vis.to_excel(buffer, index=False)
             st.download_button(label="📥 Scarica File Excel Aggiornato", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
-    else:
-        st.write("Nessuna chiusura presente nel registro.")
