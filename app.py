@@ -224,8 +224,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: VALIDAZIONE, NOTIFICA EMAIL E MOTORE DI EMULAZIONE LOGIN BROWSER SANSONE
-# EFFETTUA UN ACCESSO IN BACKGROUND SIMULANDO L'UTENTE PER AGGIORNARE IL PORTALE GAMESLODI
+# BLOCCO 6: VALIDAZIONE, CONTROLLO INCROCIO DATE, NOTIFICA EMAIL E SCRITTURA SU CLOUD
+# VERSIONE FINALE DI PRODUZIONE PER LA RACCOLTA DATI CONDIVISA SUL SERVER STREAMLIT
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -260,7 +260,7 @@ if submit_button:
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
             testo_selezione = str(scelta_pvd)
-            chiave_pulita = testo_selezione.split(" (")[0].strip() if " (" in testo_selezione else testo_selezione.strip()
+            chiave_pulita = testo_selezione.split(" (").strip() if " (" in testo_selezione else testo_selezione.strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -268,7 +268,7 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio e sincronizzazione database..."):
+            with st.spinner("Salvataggio e invio notifica..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
             if invio_ok:
@@ -281,57 +281,9 @@ if submit_button:
                     pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
                 except Exception: pass
                 
-                # 🧪 --- MOTORE DI EMULAZIONE UTENTE AVANZATO (NO API) ---
-                status_gestionale = ""
-                try:
-                    import requests
-                    
-                    url_login = "https://gestionale.gameslodi.it/"
-                    
-                    # Creazione di una sessione persistente per mantenere i cookie di accesso
-                    sessione = requests.Session()
-                    
-                    # 1. Chiamata iniziale per svegliare il server e recuperare i cookie di sessione protetti
-                    visita_iniziale = sessione.get(url_login, timeout=5)
-                    
-                    # Credenziali forzate per verificare l'allineamento della form di Sansone
-                    dati_accesso_simulati = {
-                        "email": "manuela.arigoni@wingaming.it",
-                        "password": "Salmi123!"
-                    }
-                    
-                    # 2. Invia la richiesta di Login imitando il comportamento del browser desktop
-                    risposta_login = sessione.post(url_login, data=dati_accesso_simulati, timeout=5)
-                    
-                    if "auth-login" not in risposta_login.url and risposta_login.status_code == 200:
-                        status_gestionale = "📡 Simulazione Browser: Login effettuato! Connessione stabilita con Sansone."
-                        
-                        # Inserimento dati ferie simulato dentro l'endpoint di Sansone
-                        payload_ferie = {
-                            "codice": str(chiave_pulita),
-                            "dal": str(nuova["INIZIO_FERIE"]),
-                            "al": str(nuova["FINE_FERIE"])
-                        }
-                        # Tentativo di inserimento (URL ipotetico basato sulla struttura standard rgweb)
-                        url_inserimento = "https://gestionale.gameslodi.it/"
-                        risposta_inserimento = sessione.post(url_inserimento, data=payload_ferie, timeout=5)
-                        
-                        if risposta_inserimento.status_code == 200:
-                            status_gestionale += " ✅ Ferie caricate in anagrafica."
-                        else:
-                            status_gestionale += f" ⚠️ Connesso ma modulo ferie rifiutato (Errore {risposta_inserimento.status_code})."
-                    else:
-                        status_gestionale = f"📡 Simulazione Browser: Pagina raggiunta, ma credenziali rifiutate o blocco CSRF (Codice {risposta_login.status_code})"
-                except Exception as e:
-                    status_gestionale = f"📡 Simulazione Browser: Connessione fallita o protetta da Firewall aziendale"
-                
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifica inviata.")
-                # Mostra l'esito del test solo a te (Manuela) per monitorare i progressi delle prove
-                if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
-                    st.info(status_gestionale)
-                    
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifica e-mail inviata.")
                 st.session_state.form_id += 1
-                time.sleep(5)
+                time.sleep(3)
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
@@ -363,3 +315,5 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         with io.BytesIO() as buffer:
             df_vis.to_excel(buffer, index=False)
             st.download_button(label="📥 Scarica File Excel Aggiornato", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
+    else:
+        st.write("Nessuna chiusura presente nel registro.")
