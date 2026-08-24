@@ -286,7 +286,7 @@ if submit_button:
                 try:
                     import requests
                     
-                    url_login = "https://gameslodi.it"
+                    url_login = "https://gestionale.gameslodi.it/"
                     
                     # Creazione di una sessione persistente per mantenere i cookie di accesso
                     sessione = requests.Session()
@@ -313,7 +313,7 @@ if submit_button:
                             "al": str(nuova["FINE_FERIE"])
                         }
                         # Tentativo di inserimento (URL ipotetico basato sulla struttura standard rgweb)
-                        url_inserimento = "https://gameslodi.it"
+                        url_inserimento = "https://gestionale.gameslodi.it/"
                         risposta_inserimento = sessione.post(url_inserimento, data=payload_ferie, timeout=5)
                         
                         if risposta_inserimento.status_code == 200:
