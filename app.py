@@ -1,6 +1,6 @@
 # =====================================================================================
-# BLOCCO 1: STRUTTURA DI BASE, ICONA PERSONALIZZATA E RIMOZIONE MENU DI SISTEMA
-# IMPOSTA L'ICONA DELL'APP, NASCONDE I MENU STREAMLIT IN ALTO E CONFIGURA LA GRAFICA LIGHT
+# BLOCCO 1: STRUTTURA DI BASE, ICONA IMMAGINE REALE E RIMOZIONE MENU DI SISTEMA
+# IMPOSTA IL LOGO PROPRIETARIO PNG COME ICONA SCHEDA E SALVATAGGIO HOME TELEFONO
 # =====================================================================================
 import os
 import io
@@ -12,9 +12,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, time as dtime
 
+# CONTROLLO PRESENZA LOGO: Usa il file PNG se esiste, altrimenti usa l'emoji di backup
+icona_app = "logo.png" if os.path.exists("logo.png") else "📅"
+
 st.set_page_config(
     page_title="Ferie Gestori", 
-    page_icon="📅", 
+    page_icon=icona_app, 
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -60,7 +63,6 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
-
 
 
 
