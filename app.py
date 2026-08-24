@@ -224,8 +224,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: VALIDAZIONE, NOTIFICA EMAIL E INIETTORE AUTOMATICO DIRETTO IN SANSONE
-# VERSIONE FINALE ALLINEATA SUL LINK DIRETTO GESTIONALE.GAMESLODI.IT/LOCALI/EDIT
+# BLOCCO 6: VALIDAZIONE, INIETTORE DIRETTO SANSONE E INVIO NOTIFICA EMAIL SEQUENZIALE
+# DISPONE LE OPERAZIONI IN SEQUENZA RIGIDA PER EVITARE TIMEOUT DI RETE SUL SERVER CLOUD
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -260,7 +260,6 @@ if submit_button:
             nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
             
             testo_selezione = str(scelta_pvd)
-            # CORREZIONE TASSATIVA: Inserito l'indice [0] prima dello strip per evitare l'AttributeError
             chiave_pulita = testo_selezione.split(" (")[0].strip() if " (" in testo_selezione else testo_selezione.strip()
             concessionario_estratto = mappa_concessionari.get(chiave_pulita, "")
             
@@ -269,7 +268,41 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio e sincronizzazione database..."):
+            # 🚀 --- OPERAZIONE 1: INIETTORE AUTOMATICO IN SANSONE (BACKGROUND) ---
+            status_sansone = ""
+            with st.spinner("Sincronizzazione gestionale aziendale..."):
+                try:
+                    import requests
+                    import time
+                    
+                    s_user = str(st.secrets["sansone"]["email"]).strip()
+                    s_pass = str(st.secrets["sansone"]["password"]).strip()
+                    
+                    sessione = requests.Session()
+                    url_login = "https://gameslodi.it"
+                    res_login = sessione.post(url_login, data={"email": s_user, "password": s_pass}, timeout=10)
+                    
+                    ts = int(time.time())
+                    payload_sansone = {
+                        "localeId": "10900",  
+                        "localeCodice": str(chiave_pulita),
+                        f"ferie[{ts}][data_inizio]": str(nuova["INIZIO_FERIE"].replace("-", "/")),
+                        f"ferie[{ts}][data_fine]": str(nuova["FINE_FERIE"].replace("-", "/")),
+                        f"ferie[{ts}][note]": "Inserimento automatico App"
+                    }
+                    
+                    url_salva = "https://gameslodi.it"
+                    res_salva = sessione.post(url_salva, data=payload_sansone, timeout=10)
+                    
+                    if res_salva.status_code == 200:
+                        status_sansone = "✅ Sincronizzazione Sansone: Completata!"
+                    else:
+                        status_sansone = f"⚠️ Sincronizzazione Sansone: Rifiutata (Codice {res_salva.status_code})"
+                except Exception as e:
+                    status_sansone = f"❌ Sincronizzazione Sansone: Timeout o Server protetto"
+
+            # 📧 --- OPERAZIONE 2: SPEDIZIONE NOTIFICA EMAIL SMTP GOOGLE ---
+            with st.spinner("Invio notifiche e-mail in corso..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
             if invio_ok:
@@ -282,43 +315,7 @@ if submit_button:
                     pd.DataFrame(st.session_state.storico_cloud).to_excel(FILE_STORICO_PERMANENTE, index=False)
                 except Exception: pass
                 
-                # 🚀 --- MOTORE INIETTORE SU LINK CORRETTO GESTIONALE ---
-                status_sansone = ""
-                try:
-                    import requests
-                    import time
-                    
-                    s_user = str(st.secrets["sansone"]["email"]).strip()
-                    s_pass = str(st.secrets["sansone"]["password"]).strip()
-                    
-                    sessione = requests.Session()
-                    
-                    # Login puntato rigidamente al sottodominio gestionale
-                    url_login = "https://gameslodi.it"
-                    res_login = sessione.post(url_login, data={"email": s_user, "password": s_pass}, timeout=7)
-                    
-                    ts = int(time.time())
-                    
-                    payload_sansone = {
-                        "localeId": "10900",  
-                        "localeCodice": str(chiave_pulita),
-                        f"ferie[{ts}][data_inizio]": str(nuova["INIZIO_FERIE"].replace("-", "/")),
-                        f"ferie[{ts}][data_fine]": str(nuova["FINE_FERIE"].replace("-", "/")),
-                        f"ferie[{ts}][note]": "Inserimento automatico App"
-                    }
-                    
-                    # Invio alla rotta di edit corretta ricavata da F12
-                    url_salva = "https://gameslodi.it"
-                    res_salva = sessione.post(url_salva, data=payload_sansone, timeout=7)
-                    
-                    if res_salva.status_code == 200:
-                        status_sansone = "✅ Gestionale Sansone: Aggiornato in automatico!"
-                    else:
-                        status_sansone = f"⚠️ Gestionale Sansone: Errore di sincronizzazione (Codice {res_salva.status_code})"
-                except Exception as e:
-                    status_sansone = f"❌ Sincronizzazione fallita: {str(e)}"
-                
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifica inviata.")
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e notifiche inviate.")
                 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.info(status_sansone)
                     
@@ -326,7 +323,7 @@ if submit_button:
                 time.sleep(4)
                 st.rerun()
             else:
-                st.error(f"❌ Errore Google SMTP: {risposta_server}. Verifica la password applicativa nei Secrets.")
+                st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -336,8 +333,8 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
         d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 days")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 days")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
