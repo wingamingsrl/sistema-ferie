@@ -12,8 +12,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, time as dtime
 
-# --- CONFIGURAZIONE ICONA PERSONALIZZATA ---
-# Puoi cambiare "🛡️" con un'altra emoji a tua scelta (es. "📅", "🚚", "🏢", "🚀")
 st.set_page_config(
     page_title="Ferie Gestori", 
     page_icon="📅", 
@@ -21,14 +19,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- INTERFACCIA LIGHT AD ALTO CONTRASTO + RIMOZIONE MENU STREAMLIT ---
 st.markdown("""
     <style>
-    /* NASCONDE IL MENU IN ALTO A DESTRA (LE TRE LINEE) E IL FOOTER IN BASSO */
+    /* 🚫 CANCELLA IL MENU IN ALTO A DESTRA (LE TRE LINEE) E IL FOOTER DI SISTEMA */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    stDecoration {display:none;}
+    .stDecoration {display:none !important;}
+    
+    /* 🚫 BLINDA E NASCONDE L'ICONA IN BASSO A DESTRA (TOOLBAR E STATUS WIDGET DI STREAMLIT) */
+    .stStatusWidget, [data-testid="stStatusWidget"], [data-testid="viewerToolbar"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        width: 0px !important;
+    }
     
     /* Sfondo dell'app chiaro e luminoso per la massima leggibilità */
     .stApp { background-color: #f8fafc !important; color: #1e293b !important; font-family: 'Segoe UI', sans-serif; }
@@ -54,6 +59,7 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 """, unsafe_allow_html=True)
+
 
 
 # =====================================================================================
