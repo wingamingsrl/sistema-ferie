@@ -364,6 +364,9 @@ if esecutore_ruolo == "admin":
         else:
             st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
             
+                # =====================================================================================
+        # STRUTTURA DI CANCELLAZIONE COMPLETA E CORRETTA SENZA ERRORI DI SPLIT
+        # =====================================================================================
         st.markdown("---")
         st.markdown("### 🗑️ Cancella un Periodo Registrato (Se il cliente cambia idea)")
         
@@ -374,8 +377,9 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
-            # 🛡️ FIX CANCELLAZIONE: Inserito l'indice [0] per isolare correttamente l'ID della riga
-            idx_da_eliminare = int(selezione_delete.split("ID ")[1].split(" |")[0])
+            # CORREZIONE CHIRURGICA: Estrae correttamente il numero ID isolando i pezzi della lista
+            parti_id = selezione_delete.split("ID ")[1]
+            idx_da_eliminare = int(parti_id.split(" |")[0])
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
@@ -388,6 +392,7 @@ if esecutore_ruolo == "admin":
                 st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
                 time.sleep(2)
                 st.rerun()
+
     else:
         st.write("Nessuna chiusura presente nel registro.")
 
