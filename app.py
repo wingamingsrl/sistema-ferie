@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE CORRETTA: RIMOZIONE REFUSETTO SINTATTICO SUL CONTROLLO STATUS
+# VERSIONE DI PRODUZIONE BLINDATA - RIMOZIONE TOTALE DEL CONTROLLO 'IN' TRONCATO
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -124,13 +124,14 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ CORREZIONE SINTATTICA DEFINITIVA: Controllo corretto sui codici di successo
-        if risposta_put.status_code in:
+        # 🛡️ CONTROLLO DIRETTO ALGEBRICO: Risolve definitivamente il crash di sintassi
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
             return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
