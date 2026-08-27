@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE BLINDATA - RIMOZIONE TOTALE DEL CONTROLLO 'IN' TRONCATO
+# VERSIONE DI PRODUZIONE BLINDATA - FORZATURA SCRITTURA RAMO MAIN DI GITHUB
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -111,12 +111,15 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        res_get = requests.get(url_git, headers=headers_git, timeout=5)
+        # Recupera lo SHA passando esplicitamente il parametro del ramo principale per sbloccare la sovrascrittura
+        res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
+        # 🛡️ STRUTTURA PAYLOAD BLINDATA: Forziamo la scrittura sul ramo 'main' per evitare rifiuti di sicurezza
         payload_git = {
             "message": "🤖 [App] Sincronizzazione permanente ed allineamento database ferie", 
-            "content": dati_base64
+            "content": dati_base64,
+            "branch": "main"
         }
         
         if sha_file: 
@@ -124,7 +127,6 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ CONTROLLO DIRETTO ALGEBRICO: Risolve definitivamente il crash di sintassi
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
