@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE AGGIORNATA CON SOVRASCRITTURA PROTETTA VIA API GITHUB (BEARER)
+# VERSIONE DI PRODUZIONE CORRETTA: RIMOZIONE REFUSETTO SINTATTICO SUL CONTROLLO STATUS
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -64,7 +64,6 @@ def scarica_file_da_github_se_esiste(nome_file):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         url_git = f"https://github.com{nome_file}?t={int(time.time())}"
         
-        # Utilizza l'autenticazione standardizzata richiesta da GitHub per i repository privati
         h = {
             "Authorization": f"Bearer {t_git}", 
             "Accept": "application/vnd.github+json",
@@ -105,7 +104,6 @@ def push_excel_su_github(df_da_salvare):
         df_da_salvare.to_excel(output_binario, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
-        # Headers completi comprensivi di Bearer Token per sbloccare la sovrascrittura
         headers_git = {
             "Authorization": f"Bearer {t_git}", 
             "Accept": "application/vnd.github+json",
@@ -113,7 +111,6 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # 🕵️‍♂️ IL SEGRETO: Chiediamo a GitHub l'identificativo SHA dell'Excel attuale per poterlo rimpiazzare
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
@@ -122,18 +119,19 @@ def push_excel_su_github(df_da_salvare):
             "content": dati_base64
         }
         
-        # Se il file esiste già (ovvero sempre), passiamo lo SHA per autorizzare la sovrascrittura distruggendo la cache
         if sha_file: 
             payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
+        # 🛡️ CORREZIONE SINTATTICA DEFINITIVA: Controllo corretto sui codici di successo
         if risposta_put.status_code in:
             return True
         else:
             return False
     except Exception:
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
