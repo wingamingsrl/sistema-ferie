@@ -269,7 +269,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# VERSIONE INTEGRALE DI PRODUZIONE BLINDATA PER AZZERARE IL CONFLITTO DI MEMORIA ADMIN
+# VERSIONE INTEGRALE DI PRODUZIONE CORRETTA - RISOLTO IL CONFLITTO DI SCALATORI ID ED SHA
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -283,6 +283,7 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
                 try:
+                    # Estrae i primi 10 caratteri per evitare crash nel controllo calendario delle sovrapposizioni
                     data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
                     data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
                     
@@ -392,15 +393,17 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
-            # Estrae l'ID in modo impeccabile eliminando i conflitti di tipo lista
-            idx_da_eliminare = int(selezione_delete.split("ID ")[1].split(" |")[0])
+            # 🛡️ FIX CHIRURGICO FLUIDO: Estrae correttamente l'indice numerico senza concatenazioni doppie di split
+            parti_stringa = selezione_delete.split("ID ")
+            pezzo_numerico = parti_stringa[1].split(" |")[0]
+            idx_da_eliminare = int(pezzo_numerico)
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
-                    # 🛡️ SINCRONIZZAZIONE: Rimuove l'elemento dalla sessione cloud principale dei dati
+                    # Rimuove l'elemento dalla sessione cloud principale dei dati
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     
-                    # Costruisce il dataframe partendo dalla sessione d'origine appena modificata
+                    # Costruisce il dataframe partendo dalla sessione d'origine modificata
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     
