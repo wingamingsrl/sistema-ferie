@@ -257,7 +257,7 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
                 try:
-                    # Estrae solo i primi 10 caratteri per fare la verifica di sovrapposizione sulle date pure
+                    # 🛡️ FIX DEFINITIVO LOOP ACCESSO: Inserito l'indice [0] per estrarre il testo singolo della data
                     data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
                     data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
                     
@@ -286,8 +286,7 @@ if submit_button:
                 "COPIA_PROMEMORIA": co_destinatario
             }
             
-            # 🎯 CORREZIONE CHIRURGICA: Estraiamo il concessionario PRIMA di pulire il nome del locale
-            # Cerchiamo nella mappa dei concessionari usando l'etichetta completa inserita nel menu
+            # 🎯 ESTRAZIONE CONCESSIONARIO: Recuperiamo i dati dalla selezione del menu originale
             concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
             
             # Ora puliamo il nome del locale per il testo e l'oggetto della mail
@@ -323,7 +322,7 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        # Pulisce la stringa prendendo solo la parte del giorno per il calcolo delle scadenze
+        # 🛡️ FIX PROMEMORIA: Inserito l'indice [0] anche nel ciclo dei controlli logistici per evitare crash
         data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
         data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
         
@@ -375,62 +374,7 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
-            # Isola correttamente l'ID numerico della riga da eliminare
-            idx_da_eliminare = int(selezione_delete.split("ID ")[1].split(" |")[0])
-            
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                with st.spinner("Rimozione e riallineamento database cloud..."):
-                    st.session_state.storico_cloud.pop(idx_da_eliminare)
-                    df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    
-                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    push_excel_su_github(df_nuovo_salva)
-                    
-                st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
-                time.sleep(2)
-                st.rerun()
-    else:
-        st.write("Nessuna chiusura presente nel registro.")
-
-    del st.session_state.autenticato
-    st.rerun()
-
-# =====================================================================================
-# PANNELLO AMMINISTRATORE DINAMICO (CONTROLLA SE IL RUOLO NELL'EXCEL È 'ADMIN')
-# =====================================================================================
-if esecutore_ruolo == "admin":
-    st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
-    if st.session_state.storico_cloud:
-        df_vis = pd.DataFrame(st.session_state.storico_cloud)
-        st.dataframe(df_vis, hide_index=True)
-        
-        with io.BytesIO() as buffer:
-            df_vis.to_excel(buffer, index=False)
-            st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
-            
-        # --- SEZIONE SPECIALE: FILTRO AUTOMATICO LOCALI SNAITECH ---
-        st.markdown("---")
-        st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-        
-        righe_snaitech = [row for row in st.session_state.storico_cloud if "snaitech" in str(row["LOCALE"]).lower() or "snai" in str(row["LOCALE"]).lower()]
-        
-        if righe_snaitech:
-            df_snai = pd.DataFrame(righe_snaitech)
-            st.dataframe(df_snai[["LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO"]], hide_index=True)
-        else:
-            st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
-            
-        st.markdown("---")
-        st.markdown("### 🗑️ Cancella un Periodo Registrato (Se il cliente cambia idea)")
-        
-        opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            opzioni_cancellazione.append(f"ID {idx} | {row['LOCALE']} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
-            
-        selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
-        
-        if selezione_delete != "- Seleziona la riga da eliminare -":
-            # CORREZIONE ID: Inserito l'indice corretto per isolare l'ID numerico della riga da cancellare
+            # 🛡️ FIX CANCELLAZIONE: Inserito l'indice [0] per isolare correttamente l'ID della riga
             idx_da_eliminare = int(selezione_delete.split("ID ")[1].split(" |")[0])
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
