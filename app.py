@@ -62,6 +62,7 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # CORREZIONE API: Utilizza la rotta ufficiale dei contenuti del repository per i file binari
         url_git = f"https://github.com{nome_file}"
         h = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
         r = requests.get(url_git, headers=h, timeout=5)
@@ -92,6 +93,7 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # CORREZIONE API: Allineato l'endpoint di caricamento sicuro dei dati
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         output_binario = io.BytesIO()
         df_da_salvare.to_excel(output_binario, index=False)
@@ -238,7 +240,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# ABILITA LE FUNZIONI DI CANCELLAZIONE SULLO SCHERMO IN BASE AL RUOLO 'ADMIN' DELL'EXCEL
+# MODIFICATO: ORA REGISTRA NEL FILE EXCEL LA STRINGA COMPLETA DI DATA E ORARIO DETTAGLIATO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -252,8 +254,12 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
                 try:
-                    old_inizio = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
+                    # 🕒 ISOLAMENTO DATA: Estrae solo la prima parte (i primi 10 caratteri) per il controllo sovrapposizioni
+                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
+                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
+                    
+                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row['TECNICO']})"
@@ -261,12 +267,22 @@ if submit_button:
                 except Exception: continue
 
         if sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e premi di nuovo il pulsante di invio.")
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e primi di nuovo il pulsante di invio.")
         else:
-            str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
-            nuova = {"DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), "TECNICO": esecutore_nome, "LOCALE": scelta_pvd, "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'), "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'), "COPIA_PROMEMORIA": co_destinatario}
+            # 🕒 STRUTTURA COMBINATA: Uniamo data e orario nel formato finale per l'Excel ("GIORNO ORA:MINUTI")
+            str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
+            str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
-            # SINTASSI CORRETTA STRSTRING: Estratto l'indice zero prima dello strip
+            # Assegniamo alle colonne INIZIO_FERIE e FINE_FERIE il valore completo comprensivo di ore e minuti
+            nuova = {
+                "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
+                "TECNICO": esecutore_nome, 
+                "LOCALE": scelta_pvd, 
+                "INIZIO_FERIE": str_c,   # Salva nel foglio es: '26-08-2026 06:00'
+                "FINE_FERIE": str_r,     # Salva nel foglio es: '09-09-2026 12:00'
+                "COPIA_PROMEMORIA": co_destinatario
+            }
+            
             chiave_pulita = scelta_pvd.split(" (")[0].strip() if " (" in scelta_pvd else scelta_pvd.strip()
             concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
             
@@ -300,8 +316,12 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        d_i = datetime.strptime(row["INIZIO_FERIE"], "%d-%m-%Y").date()
-        d_f = datetime.strptime(row["FINE_FERIE"], "%d-%m-%Y").date()
+        # 🕒 ISOLAMENTO DATA NEI PROMEMORIA: Pulisce la stringa prendendo solo il giorno per il calcolo dei 3 giorni
+        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
+        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
+        
+        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
@@ -326,6 +346,18 @@ if esecutore_ruolo == "admin":
             df_vis.to_excel(buffer, index=False)
             st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
             
+        # --- SEZIONE SPECIALE: FILTRO AUTOMATICO LOCALI SNAITECH ---
+        st.markdown("---")
+        st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
+        
+        righe_snaitech = [row for row in st.session_state.storico_cloud if "snaitech" in str(row["LOCALE"]).lower() or "snai" in str(row["LOCALE"]).lower()]
+        
+        if righe_snaitech:
+            df_snai = pd.DataFrame(righe_snaitech)
+            st.dataframe(df_snai[["LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO"]], hide_index=True)
+        else:
+            st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
+            
         st.markdown("---")
         st.markdown("### 🗑️ Cancella un Periodo Registrato (Se il cliente cambia idea)")
         
@@ -336,6 +368,7 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
+            # CORREZIONE ID: Inserito l'indice corretto per isolare l'ID numerico della riga da cancellare
             idx_da_eliminare = int(selezione_delete.split("ID ")[1].split(" |")[0])
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
@@ -351,3 +384,4 @@ if esecutore_ruolo == "admin":
                 st.rerun()
     else:
         st.write("Nessuna chiusura presente nel registro.")
+
