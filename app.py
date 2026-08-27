@@ -242,7 +242,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# VERSIONE DI PRODUZIONE: SALVA DATA+ORA IN EXCEL ED ESTRAE CORRETTAMENTE IL CONCESSIONARIO
+# COMPLETAMENTE ALLINEATO: RISOLTI I BUG DI CANCELLAZIONE E STRUTTURA DELLE DATE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -256,12 +256,12 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
                 try:
-                    # Estrae solo i primi 10 caratteri per fare la verifica di sovrapposizione sulle date pure
-                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
-                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+                    # Estrae i primi 10 caratteri per evitare crash nel controllo calendario delle sovrapposizioni
+                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
+                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
                     
-                    old_inizio = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
+                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row['TECNICO']})"
@@ -271,24 +271,20 @@ if submit_button:
         if sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e primi di nuovo il pulsante di invio.")
         else:
-            # 🕒 STRUTTURA COMBINATA: Uniamo data e orario nel formato finale per l'Excel ("GIORNO ORA:MINUTI")
+            # Uniamo data e orario nel formato finale per l'Excel ("GIORNO ORA:MINUTI")
             str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
-            # Assegniamo alle colonne INIZIO_FERIE e FINE_FERIE il valore completo comprensivo di ore e minuti
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
                 "TECNICO": esecutore_nome, 
                 "LOCALE": scelta_pvd, 
-                "INIZIO_FERIE": str_c,   # Salva nel foglio es: '27-08-2026 06:00'
-                "FINE_FERIE": str_r,     # Salva nel foglio es: '10-09-2026 12:00'
+                "INIZIO_FERIE": str_c,   
+                "FINE_FERIE": str_r,     
                 "COPIA_PROMEMORIA": co_destinatario
             }
             
-            # 🎯 ESTRAZIONE CONCESSIONARIO: Recuperiamo i dati dalla selezione del menu originale
             concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
-            
-            # Ora puliamo il nome del locale per il testo e l'oggetto della mail
             chiave_pulita = scelta_pvd.split(" (")[0].strip() if " (" in scelta_pvd else scelta_pvd.strip()
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -321,12 +317,11 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        # Pulisce la stringa prendendo solo la parte del giorno per il calcolo delle scadenze
-        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
-        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
+        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
         
-        d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
+        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
@@ -338,9 +333,6 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
-# =====================================================================================
-# PANNELLO AMMINISTRATORE DINAMICO (CONTROLLA SE IL RUOLO NELL'EXCEL È 'ADMIN')
-# =====================================================================================
 if esecutore_ruolo == "admin":
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     if st.session_state.storico_cloud:
@@ -351,7 +343,6 @@ if esecutore_ruolo == "admin":
             df_vis.to_excel(buffer, index=False)
             st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
             
-        # --- SEZIONE SPECIALE: FILTRO AUTOMATICO LOCALI SNAITECH ---
         st.markdown("---")
         st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
         
@@ -370,14 +361,13 @@ if esecutore_ruolo == "admin":
         for idx, row in enumerate(st.session_state.storico_cloud):
             opzioni_cancellazione.append(f"ID {idx} | {row['LOCALE']} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
             
-        # 🛡️ LA VARIABILE CORRETTA: `selezione_delete` con la "o"
+        # FIXED: Sistemata l'estrazione e la variabile corretta `selezione_delete`
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
-            # Isola stabilmente il pezzo numerico dell'ID riga
             parti_stringa = selezione_delete.split("ID ")
-            pezzo_numerico = parti_stringa[1].split(" |")
-            idx_da_eliminare = int(pezzo_numerico[0])
+            pezzo_numerico = parti_stringa[1].split(" |")[0]
+            idx_da_eliminare = int(pezzo_numerico)
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
