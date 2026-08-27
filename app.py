@@ -126,7 +126,7 @@ if "autenticato" not in st.session_state:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
                 
-                # CORREZIONE CHIRURGICA: Estraggo il valore pulito con l'indice [0] per evitare il loop di ricarica
+                # 🛡️ SOLUZIONE DEFINITIVA LOOP: Inserito l'indice [0] su tutti i valori estratti dal DataFrame
                 st.session_state.user_nome = str(utente_valido["NOME"].values[0]).strip()
                 
                 ruolo_estratto = str(utente_valido["RUOLO"].values[0]).strip().lower() if "RUOLO" in utente_valido.columns else "tecnico"
@@ -142,6 +142,7 @@ esecutore_ruolo = st.session_state.get("user_ruolo", "tecnico")
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email}) — Ruolo: {esecutore_ruolo.upper()}</div>", unsafe_allow_html=True)
+
 
 
 # =====================================================================================
