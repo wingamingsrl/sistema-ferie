@@ -82,21 +82,33 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
-
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # Trucco dello slash spezzato protetto per la chat
+        # Il trucco dello slash protetto per evitare i filtri chat
         inizio_strada = "https://github.com"
         url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
         
-        if df_da_salvare.empty:
-            df_da_salvare = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
+        # 🛡️ GENERAZIONE NATIVA CRASH-FREE CON OPENPYXL
+        import openpyxl
+        from openpyxl.utils.dataframe import dataframe_to_rows
         
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        
+        # Inserisce le 9 colonne esatte nel foglio Excel reale
+        colonne_aziendali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
+        ws.append(colonne_aziendali)
+        
+        # Scrive le righe una per una in modalità testo puro per evitare corruzioni binarie
+        for _, row in df_da_salvare.iterrows():
+            riga_pulita = [str(row.get(col, "")).strip() for col in colonne_aziendali]
+            ws.append(riga_pulita)
+            
         output_binario = io.BytesIO()
-        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
-            df_da_salvare.to_excel(writer, index=False)
+        wb.save(output_binario)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
         headers_git = {
@@ -106,14 +118,13 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # 🛡️ SBLOCCO CHIRURGICO: Chiede lo SHA sul ramo parallelo 'db-ferie' libero da vincoli aziendali
-        res_get = requests.get(url_git, headers=headers_git, params={"ref": "db-ferie"}, timeout=5)
+        res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Sincronizzazione permanente database Excel", 
+            "message": "🤖 [App] Sincronizzazione permanente database Excel nativo", 
             "content": dati_base64,
-            "branch": "db-ferie"  # 🛡️ Scrive nella stanza protetta e libera
+            "branch": "main"
         }
         
         if sha_file: 
