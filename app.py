@@ -87,9 +87,10 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # Il tuo trucco dello slash fisso e spezzato per evitare i filtri chat
-        inizio_strada = "https://github.com"
-        url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
+        # 🛡️ SPEZZETTAMENTO PROTETTO: Lo slash "/" e il percorso API sono visibili e non possono sparire!
+        parte1 = "https://github.com"
+        parte2 = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
         
         if df_da_salvare.empty:
             df_da_salvare = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
@@ -121,14 +122,6 @@ def push_excel_su_github(df_da_salvare):
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ IL DISINNESCORO DEFINITIVO DEL BLOCCO 422:
-        # Se GitHub rifiuta con 422 a causa di metadati corrotti del file Excel esistente,
-        # tentiamo all'istante una seconda scrittura pura bypassando lo SHA per forzarlo a sovrascrivere!
-        if risposta_put.status_code == 422:
-            if "sha" in payload_git:
-                del payload_git["sha"] # Rimuove lo SHA che generava il conflitto strutturale
-            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ Excel salvato su GitHub!", icon="💾")
             return True
@@ -138,6 +131,7 @@ def push_excel_su_github(df_da_salvare):
     except Exception as e_err:
         st.error(f"💥 Errore Interno: {str(e_err)}")
         return False
+
 
 
 # =====================================================================================
