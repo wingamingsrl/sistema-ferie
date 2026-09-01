@@ -85,8 +85,9 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ URL FISSO DI SCRITTURA: Definito in modo rigido ed esplicito per evitare fusioni orfane
-        url_scrittura = "https://github.comstorico_ferie.xlsx"
+        # 🛡️ URL FISSO DI SCRITTURA: Ripristinato l'indirizzo API ufficiale corretto
+        url_scrittura = "https://github.com"
+
         
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
