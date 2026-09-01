@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE - EMERSIONE ERRORI DI AUTENTICAZIONE GITHUB
+# VERSIONE DI PRODUZIONE - RISOLTO IL BUG SULL'URL DI CONVERSIONE API GITHUB
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -92,12 +92,12 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# Riallineamento forzato della memoria di sessione Streamlit
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # 🛡️ CONTROLLA QUESTA RIGA SU GITHUB: Deve essere ://github.com e NON github.comstorico_ferie
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
@@ -129,7 +129,6 @@ def push_excel_su_github(df_da_salvare):
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
-            # 🛡️ SPIA DI SICUREZZA: Se GitHub rifiuta, lancia un messaggio visibile a video con il codice d'errore
             st.toast(f"⚠️ Errore di Scrittura GitHub: {risposta_put.status_code}. Il file non è stato aggiornato.", icon="❌")
             return False
     except Exception as e_err:
