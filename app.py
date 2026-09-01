@@ -36,6 +36,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FUNZIONI DI SCRITTURA SU GITHUB
+# VERSIONE DI PRODUZIONE - CORRETTA LA CONCATENAZIONE ORFANA DELLA VARIABILE URL
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -47,7 +48,7 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        url_git = f"https://github.com{nome_file}?t={int(time.time())}"
+        url_lettura = f"https://github.com{nome_file}?t={int(time.time())}"
         
         h = {
             "Authorization": f"Bearer {t_git}", 
@@ -55,7 +56,7 @@ def scarica_file_da_github_se_esiste(nome_file):
             "X-GitHub-Api-Version": "2022-11-28",
             "User-Agent": "WinGaming-Cloud-App"
         }
-        r = requests.get(url_git, headers=h, timeout=5)
+        r = requests.get(url_lettura, headers=h, timeout=5)
         if r.status_code == 200:
             b64_content = r.json().get("content", "")
             return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
@@ -77,14 +78,15 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# Distrugge la vecchia persistenza RAM del server allineandola a GitHub
+# Riallineamento forzato della memoria di sessione Streamlit ad ogni rinfresco
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ UNICO URL DI INSERIMENTO: Rotta corretta ://github.com
-        url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
+        
+        # 🛡️ URL FISSO DI SCRITTURA: Definito in modo rigido ed esplicito per evitare fusioni orfane
+        url_scrittura = "https://github.comstorico_ferie.xlsx"
         
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
@@ -98,7 +100,8 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
+        # Interroga l'indirizzo fisso per estrarre lo SHA corrente sul ramo main
+        res_get = requests.get(url_scrittura, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
@@ -110,7 +113,8 @@ def push_excel_su_github(df_da_salvare):
         if sha_file: 
             payload_git["sha"] = sha_file
             
-        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        # 🛡️ ESECUZIONE PUT BLINDATA: Utilizza la variabile url_scrittura rigida e certificata
+        risposta_put = requests.put(url_scrittura, json=payload_git, headers=headers_git, timeout=5)
         
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
@@ -120,6 +124,7 @@ def push_excel_su_github(df_da_salvare):
     except Exception as e_err:
         st.toast(f"⚠️ Errore di Sistema Interno: {str(e_err)}", icon="❌")
         return False
+
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
 # =====================================================================================
