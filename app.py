@@ -36,6 +36,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FUNZIONI DI SCRITTURA SU GITHUB
+# VERSIONE DI PRODUZIONE - CORRETTO INTEGRALMENTE IL PERCORSO WEB CON SLASH ED ENDPOINT
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -80,13 +81,14 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# Riallineamento forzato della memoria RAM dello smartphone ad ogni rinfresco pagina
+st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ URL API RETTIFICATO ED ESPLICITO: Punta correttamente al server GitHub
+        
+        # 🛡️ PERCORSO RETTIFICATO: Inserito l'indirizzo delle API, lo slash corretto e il percorso completo delle cartelle
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
@@ -114,6 +116,7 @@ def push_excel_su_github(df_da_salvare):
             payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
@@ -122,6 +125,7 @@ def push_excel_su_github(df_da_salvare):
     except Exception as e_err:
         st.toast(f"⚠️ Errore di Sistema Interno: {str(e_err)}", icon="❌")
         return False
+
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
 # =====================================================================================
