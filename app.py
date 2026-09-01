@@ -116,7 +116,8 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code in:
+        # 🛡️ CONTROLLO BLINDATO: Risolve definitivamente il SyntaxError eliminando la parola 'in'
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ Excel salvato su GitHub!", icon="💾")
             return True
         else:
@@ -132,6 +133,7 @@ def push_excel_su_github(df_da_salvare):
         # 🛡️ SPIA DI SICUREZZA 2: Mostra a schermo se il codice Python va in crash
         st.error(f"💥 Errore di Sistema Interno durante il salvataggio: {str(e_err)}")
         return False
+
 
 
 # =====================================================================================
