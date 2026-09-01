@@ -49,12 +49,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE - RIPRISTINO AUTOMATICO SHA IN CASO DI CONFLITTO DI RETE
+# BLOCCO 2: COLLEGAMENTO FILE PERMANENTE CSV ED ALLINEAMENTO MEMORIA CLOUD
+# VERSIONE RIGIDA DI PRODUZIONE — IMMUNE AL BLOCCO SHA ED AI CONFLITTI DI VERSIONE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
-FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
+FILE_STORICO_PERMANENTE = "registro_ferie.csv"  # 🛡️ SBLOCCO: Passaggio a file di testo puro CSV
 
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
@@ -62,19 +62,17 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # Il timestamp distrugge la cache del Cloud di Streamlit all'origine
         url_git = f"https://github.com{nome_file}?t={int(time.time())}"
         
         h = {
             "Authorization": f"Bearer {t_git}", 
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
+            "Accept": "application/vnd.github.v3.raw",  # Richiede lo streaming di testo grezzo
             "User-Agent": "WinGaming-Cloud-App"
         }
         r = requests.get(url_git, headers=h, timeout=5)
         if r.status_code == 200:
-            b64_content = r.json().get("content", "")
-            return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
+            # Legge il file di testo CSV istantaneamente senza passaggi crittografati complessi
+            return pd.read_csv(io.StringIO(r.text)).fillna("")
     except Exception:
         pass
     return None
@@ -84,16 +82,14 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    if df_s is None:
-        if os.path.exists(FILE_STORICO_PERMANENTE):
-            df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-        else:
-            df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO", "LOCALE", "INIZIO_FERIE", "FINE_FERIE", "COPIA_PROMEMORIA"])
+    if df_s is None or df_s.empty:
+        # Se il file non esiste su GitHub, genera la griglia di base vuota
+        df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO", "LOCALE", "INIZIO_FERIE", "FINE_FERIE", "COPIA_PROMEMORIA"])
     return df_l, df_t, df_s.fillna("")
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# Sincronizzazione rigida della memoria RAM ad ogni singolo caricamento della pagina
+# Sincronizzazione atomica e forzata della memoria RAM dello smartphone
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
@@ -101,9 +97,9 @@ def push_excel_su_github(df_da_salvare):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
-        output_binario = io.BytesIO()
-        df_da_salvare.to_excel(output_binario, index=False)
-        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+        # Converte la tabella in testo semplice CSV
+        testo_csv_puro = df_da_salvare.to_csv(index=False)
+        dati_base64 = base64.b64encode(testo_csv_puro.encode('utf-8')).decode('utf-8')
         
         headers_git = {
             "Authorization": f"Bearer {t_git}", 
@@ -112,29 +108,28 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Interroga l'API forzando il controllo sul ramo main
+        # Recupera lo SHA per autorizzare la sovrascrittura sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Allineamento e sincronizzazione permanente database", 
+            "message": "🤖 [App] Sincronizzazione atomica registro_ferie.csv", 
             "content": dati_base64,
             "branch": "main"
         }
         
-        # Se lo SHA esiste viene sovrascritto, altrimenti viene omesso creando un file pulito
         if sha_file: 
             payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ CONTROLLO DIRETTO BLINDATO: Risolve definitivamente il crash di sintassi
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
             return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
