@@ -92,6 +92,10 @@ def push_excel_su_github(df_da_salvare):
         inizio_strada = "https://github.com"
         url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
         
+        # 🛡️ SANIFICAZIONE STRUTTURA EXCEL: Se la tabella inviata è vuota, crea le intestazioni pulite
+        if df_da_salvare.empty:
+            df_da_salvare = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO", "LOCALE", "INIZIO_FERIE", "FINE_FERIE", "COPIA_PROMEMORIA"])
+        
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_da_salvare.to_excel(writer, index=False)
@@ -113,13 +117,16 @@ def push_excel_su_github(df_da_salvare):
             "branch": "main"
         }
         
-        # 🛡️ DISINNESCORO AUTOMATICO CODICE 422: Estrarre lo SHA solo ed esclusivamente se lo stato è 200 OK
+        # 🛡️ DISINNESCORO AUTOMATICO CODICE 422: Controlla lo SHA solo se il file esiste ed è valido (maggiore di 0 byte)
         if res_get.status_code == 200:
             dati_json = res_get.json()
             if isinstance(dati_json, dict) and "sha" in dati_json:
-                sha_file = dati_json.get("sha", "").strip()
-                if sha_file:
-                    payload_git["sha"] = sha_file
+                # Se il file su GitHub è a 0 byte, le API restituiscono una dimensione o un contenuto vuoto.
+                # In tal caso, evitiamo di passare lo SHA vecchio per forzare la riscrittura pulita.
+                if dati_json.get("size", 0) > 0:
+                    sha_file = dati_json.get("sha", "").strip()
+                    if sha_file:
+                        payload_git["sha"] = sha_file
         
         # Invia il modulo di scrittura finale a GitHub
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
@@ -130,7 +137,7 @@ def push_excel_su_github(df_da_salvare):
         else:
             st.error(f"❌ GitHub ha RIFIUTATO il salvataggio. Codice Stato: {risposta_put.status_code}")
             try:
-                st.write(risposta_put.json()) # Stampa a schermo i dettagli tecnici interni del rifiuto
+                st.write(risposta_put.json())
             except Exception: pass
             return False
             
