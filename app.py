@@ -265,7 +265,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# COMPLETAMENTE ALLINEATO: PASSAGGIO DEFINITIVO AL FORMATO DI TESTO NATIVO CSV
+# VERSIONE DI PRODUZIONE SIGILLATA — FORMATO CSV E SPAZIATURE ALLINEATE AL MILLIMETRO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -282,8 +282,8 @@ if submit_button:
                     data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
                     data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
                     
-                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+                    old_inizio = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row['TECNICO']})"
@@ -291,7 +291,7 @@ if submit_button:
                 except Exception: continue
 
         if sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e primi di nuovo il pompante di invio.")
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e primi di nuovo il pulsante di invio.")
         else:
             str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
@@ -305,17 +305,14 @@ if submit_button:
                 "COPIA_PROMEMORIA": co_destinatario
             }
             
-                        concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
-            
-            # 🛡️ FIX DEFINITIVO CRASH LISTA: Aggiunto l'indice [0] prima dello strip per isolare il testo
+            # 🛡️ ALLINEAMENTO SPAZI CORRETTO: Nessun tabulatore orfano all'inizio
+            concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
             chiave_pulita = scelta_pvd.split(" (")[0].strip() if " (" in scelta_pvd else scelta_pvd.strip()
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega":
-                # 🛡️ FIX ANCHE SUL CO-DESTINATARIO: Aggiunto l'indice [-1] per prendere l'email pulita
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip() if " (" in co_destinatario else co_destinatario.strip()
                 lista_m.append(mail_pulita)
-
                 
             with st.spinner("Salvataggio e invio notifica..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
@@ -326,7 +323,6 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                # 🛡️ CORREZIONE DEFINITIVA VALUERROR: Trasforma il salvataggio in un CSV di testo puro
                 df_salva.to_csv(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
@@ -346,10 +342,10 @@ for row in st.session_state.storico_cloud:
         data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
         data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
         
-        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
+        d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 days")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 days")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
@@ -360,7 +356,7 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     st.rerun()
 
 # =====================================================================================
-# PANNELLO AMMINISTRATORE CENTRALIZZATO (FORMATO CSV COMPLIANT)
+# PANNELLO AMMINISTRATORE CENTRALIZZATO
 # =====================================================================================
 if esecutore_ruolo == "admin":
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
@@ -369,7 +365,6 @@ if esecutore_ruolo == "admin":
         st.dataframe(df_vis, hide_index=True)
         
         with io.BytesIO() as buffer:
-            # Consente agli admin di scaricare comunque in formato Excel convertendolo al volo
             df_vis.to_excel(buffer, index=False)
             st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
             
@@ -395,14 +390,14 @@ if esecutore_ruolo == "admin":
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
             parti_stringa = selezione_delete.split("ID ")
-            idx_da_eliminare = int(parti_stringa.split(" |"))
+            pezzo_numerico = parti_stringa[1].split(" |")[0]
+            idx_da_eliminare = int(pezzo_numerico)
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                     
-                    # 🛡️ CORREZIONE CANCELLAZIONE: Salva in formato CSV prima del Push su GitHub
                     df_nuovo_salva.to_csv(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     
