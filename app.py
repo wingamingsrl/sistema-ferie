@@ -88,8 +88,10 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ LA RIGA CORRETTA CON SLASH ED ENDPOINT API: Impedisce le fusioni di testo
-        url_git = f"https://github.com/{FILE_STORICO_PERMANENTE}"
+        # 🛡️ VERSIONE SIGILLATA SENZA PARENTESI: Lo slash è visibile e protetto!
+        inizio_strada = "https://github.com"
+        url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
+
               
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
