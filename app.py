@@ -249,6 +249,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
+# VERSIONE DI PRODUZIONE SIGILLATA — ELIMINATI TUTTI I COPIAINCOLLA ORFANI FINALI
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -262,11 +263,10 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
                 try:
-                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
-                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
-                    
-                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
+                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+                    old_inizio = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row['TECNICO']})"
@@ -305,6 +305,7 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
+                df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
@@ -320,11 +321,10 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
-        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
-        
-        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
+        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+        d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
@@ -371,10 +371,11 @@ if esecutore_ruolo == "admin":
                 with st.spinner("Rimozione e riallineamento database cloud..."):
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
-                    
                 st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
                 time.sleep(2)
                 st.rerun()
     else:
         st.write("Nessuna chiusura presente nel registro.")
+
