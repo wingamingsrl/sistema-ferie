@@ -87,8 +87,6 @@ st.session_state.storico_cloud = df_storico_file.to_dict('records')
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        
-        # 🛡️ PERCORSO RETTIFICATO: Inserito l'indirizzo delle API, lo slash corretto e il percorso completo delle cartelle
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
@@ -103,6 +101,7 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        # Recupera lo SHA aggiornato all'ultimo millisecondo per distruggere i conflitti 409
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
@@ -117,14 +116,23 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+        if risposta_put.status_code in:
+            st.toast("✅ Excel salvato su GitHub!", icon="💾")
             return True
         else:
-            st.toast(f"⚠️ Errore di Scrittura GitHub: {risposta_put.status_code}.", icon="❌")
+            # 🛡️ SPIA DI SICUREZZA 1: Mostra a schermo il codice di rifiuto di GitHub
+            st.error(f"❌ GitHub ha RIFIUTATO il salvataggio. Codice Stato: {risposta_put.status_code}")
+            if risposta_put.status_code == 403:
+                st.warning("👉 Il tuo Token NON ha i permessi di scrittura (write) o il repository è bloccato.")
+            elif risposta_put.status_code == 409:
+                st.warning("👉 Conflitto di modifiche simultanee (SHA non allineato).")
             return False
+            
     except Exception as e_err:
-        st.toast(f"⚠️ Errore di Sistema Interno: {str(e_err)}", icon="❌")
+        # 🛡️ SPIA DI SICUREZZA 2: Mostra a schermo se il codice Python va in crash
+        st.error(f"💥 Errore di Sistema Interno durante il salvataggio: {str(e_err)}")
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
