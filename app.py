@@ -141,6 +141,11 @@ def push_excel_su_github(df_da_salvare):
     except Exception:
         return False
 
+df_locali, df_tecnici, df_storico_file = carica_database_locale()
+
+# 🛡️ CORREZIONE MEMORIA: Forza l'aggiornamento della sessione a ogni avvio della pagina
+# Questo distrugge la persistenza della RAM del server e la riallinea a GitHub
+st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 
 
@@ -277,7 +282,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# VERSIONE INTEGRALE DI PRODUZIONE CORRETTA - RISOLTO IL CONFLITTO DI SCALATORI ID ED SHA
+# VERSIONE DI PRODUZIONE SIGILLATA — RISOLTI I CONFLITTI DI MEMORIA E PERCORSI ID
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -291,7 +296,6 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
                 try:
-                    # Estrae i primi 10 caratteri per evitare crash nel controllo calendario delle sovrapposizioni
                     data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
                     data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
                     
@@ -361,18 +365,18 @@ for row in st.session_state.storico_cloud:
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
+if not alert_c and not alert_r: st.write("✅ Nessun adempimento logistico per i primi 3 giorni di scadenza.")
 
 if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
 # =====================================================================================
-# PANNELLO AMMINISTRATORE CENTRALIZZATO (ALLINEAMENTO STRUTTURATO MEMORIA RAM)
+# PANNELLO AMMINISTRATORE CENTRALIZZATO 
 # =====================================================================================
 if esecutore_ruolo == "admin":
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     if st.session_state.storico_cloud:
-        # Trasformiamo la sessione in DataFrame in tempo reale
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
         
@@ -398,24 +402,22 @@ if esecutore_ruolo == "admin":
         for idx, row in enumerate(st.session_state.storico_cloud):
             opzioni_cancellazione.append(f"ID {idx} | {row['LOCALE']} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
             
+        # 🛡️ LA VARIABILE ALLINEATA: `selezione_delete`
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
-            # 🛡️ FIX CHIRURGICO FLUIDO: Estrae correttamente l'indice numerico senza concatenazioni doppie di split
-            parti_stringa = selezione_delete.split("ID ")
-            pezzo_numerico = parti_stringa[1].split(" |")[0]
-            idx_da_eliminare = int(pezzo_numerico)
+            # 🛡️ FIX CHIRURGICO FLUIDO: Isola in modo matematico l'ID riga evitando crash di split
+            stringa_id = selezione_delete.split("ID ")[1]
+            idx_da_eliminare = int(stringa_id.split(" |")[0])
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
-                    # Rimuove l'elemento dalla sessione cloud principale dei dati
+                    # Rimuove l'elemento dalla sessione cloud di origine dei dati
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     
-                    # Costruisce il dataframe partendo dalla sessione d'origine modificata
+                    # Genera la tabella aggiornata e invia a GitHub
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    
-                    # Invia il comando di sincronizzazione totale forzata su GitHub main branch
                     push_excel_su_github(df_nuovo_salva)
                     
                 st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
