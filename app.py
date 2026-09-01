@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE BLINDATA - FORZATURA SCRITTURA RAMO MAIN DI GITHUB
+# VERSIONE DI PRODUZIONE SIGILLATA — REINTEGRAZIONE SENZA CACHE FORZATA ALL'ULTIMO SECONDO
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -62,17 +62,24 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        url_git = f"https://github.com{nome_file}?t={int(time.time())}"
+        
+        # 🛡️ DISTRUZIONE CACHE CLOUD: Generiamo un parametro temporale unico al millisecondo (timestamp)
+        # Questo costringe il server di Streamlit a ignorare i dati vecchi e a prendere il file reale da GitHub
+        timestamp_live = int(time.time())
+        url_git = f"https://github.com{nome_file}?t={timestamp_live}"
         
         h = {
             "Authorization": f"Bearer {t_git}", 
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "WinGaming-Cloud-App"
+            "User-Agent": f"WinGaming-Cloud-Engine-{timestamp_live}"
         }
-        r = requests.get(url_git, headers=h, timeout=5)
-        if r.status_code == 200:
-            b64_content = r.json().get("content", "")
+        
+        # Effettuiamo la chiamata forzata distruggendo la vecchia memoria
+        risposta = requests.get(url_git, headers=h, timeout=7)
+        if risposta.status_code == 200:
+            b64_content = risposta.json().get("content", "")
+            # Decodifica l'Excel fresco di secondo direttamente in RAM
             return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
     except Exception:
         pass
@@ -90,10 +97,11 @@ def carica_database_locale():
             df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO", "LOCALE", "INIZIO_FERIE", "FINE_FERIE", "COPIA_PROMEMORIA"])
     return df_l, df_t, df_s.fillna("")
 
+# Forza lo scaricamento pulito ad ogni singolo rinfresco della pagina web
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# 🛡️ RE-INIZIALIZZAZIONE DELLA SESSIONE: Sovrascrive la memoria vecchia con il file reale di GitHub
+st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
@@ -115,7 +123,6 @@ def push_excel_su_github(df_da_salvare):
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        # 🛡️ STRUTTURA PAYLOAD BLINDATA: Forziamo la scrittura sul ramo 'main' per evitare rifiuti di sicurezza
         payload_git = {
             "message": "🤖 [App] Sincronizzazione permanente ed allineamento database ferie", 
             "content": dati_base64,
@@ -133,6 +140,7 @@ def push_excel_su_github(df_da_salvare):
             return False
     except Exception:
         return False
+
 
 
 
