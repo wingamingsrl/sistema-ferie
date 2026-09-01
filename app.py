@@ -89,8 +89,9 @@ st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
-        import base64
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        
+        # 🛡️ RIGA CORRETTA: Sostituisci la vecchia riga unita con questo URL API ufficiale
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
