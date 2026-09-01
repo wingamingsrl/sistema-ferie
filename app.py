@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE SIGILLATA — REINTEGRAZIONE SENZA CACHE FORZATA ALL'ULTIMO SECONDO
+# VERSIONE DI PRODUZIONE - RIPRISTINO AUTOMATICO SHA IN CASO DI CONFLITTO DI RETE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -62,24 +62,18 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        
-        # 🛡️ DISTRUZIONE CACHE CLOUD: Generiamo un parametro temporale unico al millisecondo (timestamp)
-        # Questo costringe il server di Streamlit a ignorare i dati vecchi e a prendere il file reale da GitHub
-        timestamp_live = int(time.time())
-        url_git = f"https://github.com{nome_file}?t={timestamp_live}"
+        # Il timestamp distrugge la cache del Cloud di Streamlit all'origine
+        url_git = f"https://github.com{nome_file}?t={int(time.time())}"
         
         h = {
             "Authorization": f"Bearer {t_git}", 
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": f"WinGaming-Cloud-Engine-{timestamp_live}"
+            "User-Agent": "WinGaming-Cloud-App"
         }
-        
-        # Effettuiamo la chiamata forzata distruggendo la vecchia memoria
-        risposta = requests.get(url_git, headers=h, timeout=7)
-        if risposta.status_code == 200:
-            b64_content = risposta.json().get("content", "")
-            # Decodifica l'Excel fresco di secondo direttamente in RAM
+        r = requests.get(url_git, headers=h, timeout=5)
+        if r.status_code == 200:
+            b64_content = r.json().get("content", "")
             return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
     except Exception:
         pass
@@ -97,10 +91,9 @@ def carica_database_locale():
             df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO", "LOCALE", "INIZIO_FERIE", "FINE_FERIE", "COPIA_PROMEMORIA"])
     return df_l, df_t, df_s.fillna("")
 
-# Forza lo scaricamento pulito ad ogni singolo rinfresco della pagina web
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ RE-INIZIALIZZAZIONE DELLA SESSIONE: Sovrascrive la memoria vecchia con il file reale di GitHub
+# Sincronizzazione rigida della memoria RAM ad ogni singolo caricamento della pagina
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
@@ -119,34 +112,28 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Recupera lo SHA passando esplicitamente il parametro del ramo principale per sbloccare la sovrascrittura
+        # Interroga l'API forzando il controllo sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Sincronizzazione permanente ed allineamento database ferie", 
+            "message": "🤖 [App] Allineamento e sincronizzazione permanente database", 
             "content": dati_base64,
             "branch": "main"
         }
         
+        # Se lo SHA esiste viene sovrascritto, altrimenti viene omesso creando un file pulito
         if sha_file: 
             payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+        if risposta_put.status_code in:
             return True
         else:
             return False
     except Exception:
         return False
-
-df_locali, df_tecnici, df_storico_file = carica_database_locale()
-
-# 🛡️ CORREZIONE MEMORIA: Forza l'aggiornamento della sessione a ogni avvio della pagina
-# Questo distrugge la persistenza della RAM del server e la riallinea a GitHub
-st.session_state.storico_cloud = df_storico_file.to_dict('records')
-
 
 
 # =====================================================================================
