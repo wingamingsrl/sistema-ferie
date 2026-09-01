@@ -128,7 +128,8 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code in:
+        # 🛡️ CONTROLLO DIRETTO BLINDATO: Risolve definitivamente il crash di sintassi
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
             return False
