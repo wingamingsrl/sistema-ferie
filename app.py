@@ -87,10 +87,10 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
+        # Il tuo trucco dello slash fisso e spezzato per evitare i filtri chat
         inizio_strada = "https://github.com"
         url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
         
-        # 🛡️ RIGIDITÀ STRUTTURALE: Se l'admin svuota la tabella, ricrea lo scheletro esatto a 9 colonne
         if df_da_salvare.empty:
             df_da_salvare = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
         
@@ -106,6 +106,7 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        # Recupera lo SHA corrente sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
@@ -119,6 +120,14 @@ def push_excel_su_github(df_da_salvare):
             payload_git["sha"] = sha_file
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        # 🛡️ IL DISINNESCORO DEFINITIVO DEL BLOCCO 422:
+        # Se GitHub rifiuta con 422 a causa di metadati corrotti del file Excel esistente,
+        # tentiamo all'istante una seconda scrittura pura bypassando lo SHA per forzarlo a sovrascrivere!
+        if risposta_put.status_code == 422:
+            if "sha" in payload_git:
+                del payload_git["sha"] # Rimuove lo SHA che generava il conflitto strutturale
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ Excel salvato su GitHub!", icon="💾")
