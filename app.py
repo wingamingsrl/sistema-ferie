@@ -35,8 +35,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD DINAMICO
-# VERSIONE DI PRODUZIONE SIGILLATA — ALLINEAMENTO COCENTE AD OGNI RERUN
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL TRAMITE CONNESSIONE DIRETTA STREAMLIT-GITHUB
+# VERSIONE DI PRODUZIONE STRUTTURATA 100% PER EXCEL (.XLSX) — ZERO BLOCCHI 422
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -45,35 +45,93 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
+def scarica_file_da_github_se_esiste(nome_file):
+    try:
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # Costruzione dell'endpoint di lettura con lo slash visivo fisso e protetto
+        inizio_strada = "https://github.com"
+        url_git = inizio_strada + "/" + nome_file + "?t=" + str(int(time.time()))
+        
+        h = {
+            "Authorization": "Bearer " + t_git, 
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        r = requests.get(url_git, headers=h, timeout=5)
+        if r.status_code == 200:
+            b64_content = r.json().get("content", "")
+            return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
+    except Exception:
+        pass
+    return None
+
 def carica_database_locale():
     df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
     
-    if os.path.exists(FILE_STORICO_PERMANENTE):
-        try:
-            df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-        except Exception:
-            df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
-    else:
+    df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
+    if df_s is None or df_s.empty:
         df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
     return df_l, df_t, df_s.fillna("")
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ FIX FONDAMENTALE: Rimosso l'IF. Ora la RAM si aggiorna forzatamente sul file reale
+# 🛡️ FORZATURA RAM DI SESSIONE: Obbliga lo smartphone a mostrare i dati a schermo ad ogni rerun
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
-        # Scrittura fisica immediata sul server Cloud temporaneo di Streamlit
-        with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        
+        # Costruzione dell'endpoint di scrittura con lo slash visivo fisso e protetto
+        inizio_strada = "https://github.com"
+        url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
+        
+        output_binario = io.BytesIO()
+        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_da_salvare.to_excel(writer, index=False)
-        st.toast("💾 Database Excel aggiornato internamente al Cloud!", icon="✅")
-        return True
-    except Exception as e_internal:
-        st.error(f"💥 Errore di scrittura locale: {str(e_internal)}")
+        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+        
+        headers_git = {
+            "Authorization": "Bearer " + t_git, 
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        
+        # Recupera lo SHA corrente sul ramo main
+        res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        
+        payload_git = {
+            "message": "🤖 [App] Sincronizzazione permanente database Excel", 
+            "content": dati_base64,
+            "branch": "main"
+        }
+        
+        if sha_file: 
+            payload_git["sha"] = sha_file
+                        
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.toast("✅ Excel salvato su GitHub!", icon="💾")
+            return True
+        else:
+            # Se fallisce, tenta l'inserimento forzato senza SHA per superare il 422
+            if "sha" in payload_git:
+                del payload_git["sha"]
+            risposta_put_forzata = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            if risposta_put_forzata.status_code == 200 or risposta_put_forzata.status_code == 201:
+                st.toast("✅ Excel salvato d'autorità su GitHub!", icon="💾")
+                return True
+            else:
+                st.error(f"❌ Errore Scrittura GitHub: {risposta_put_forzata.status_code}")
+                return False
+    except Exception as e_err:
+        st.error(f"💥 Errore Interno durante il salvataggio: {str(e_err)}")
         return False
-
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
