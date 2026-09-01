@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE STRUTTURATA 100% PER EXCEL (.XLSX) — ANTI-CACHE LIVE
+# VERSIONE DI PRODUZIONE - EMERSIONE ERRORI DI AUTENTICAZIONE GITHUB
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -62,7 +62,6 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # Il timestamp distrugge la cache del Cloud all'origine costringendo a scaricare il file reale
         url_git = f"https://github.com{nome_file}?t={int(time.time())}"
         
         h = {
@@ -74,7 +73,6 @@ def scarica_file_da_github_se_esiste(nome_file):
         r = requests.get(url_git, headers=h, timeout=5)
         if r.status_code == 200:
             b64_content = r.json().get("content", "")
-            # Ripristinato il lettore binario nativo Excel ExcelWriter compliant
             return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
     except Exception:
         pass
@@ -94,7 +92,7 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ AZZERAMENTO CACHE RAM: Forza Streamlit Cloud ad allinearsi a GitHub ad ogni riavvio/aggiornamento
+# Riallineamento forzato della memoria di sessione Streamlit
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
@@ -114,12 +112,11 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Interroga l'API forzando il controllo di sicurezza sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Allineamento e sincronizzazione permanente database Excel", 
+            "message": "🤖 [App] Allineamento permanente database Excel", 
             "content": dati_base64,
             "branch": "main"
         }
@@ -129,14 +126,15 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # Controllo matematico pulito e definitivo per sbloccare la scrittura senza SyntaxError
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
+            # 🛡️ SPIA DI SICUREZZA: Se GitHub rifiuta, lancia un messaggio visibile a video con il codice d'errore
+            st.toast(f"⚠️ Errore di Scrittura GitHub: {risposta_put.status_code}. Il file non è stato aggiornato.", icon="❌")
             return False
-    except Exception:
+    except Exception as e_err:
+        st.toast(f"⚠️ Errore di Sistema Interno: {str(e_err)}", icon="❌")
         return False
-
 
 
 # =====================================================================================
