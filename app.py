@@ -49,12 +49,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE PERMANENTE CSV ED ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE RIGIDA DI PRODUZIONE — IMMUNE AL BLOCCO SHA ED AI CONFLITTI DI VERSIONE
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
+# VERSIONE DI PRODUZIONE STRUTTURATA 100% PER EXCEL (.XLSX) — ANTI-CACHE LIVE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
-FILE_STORICO_PERMANENTE = "registro_ferie.csv"  # 🛡️ SBLOCCO: Passaggio a file di testo puro CSV
+FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
@@ -62,17 +62,20 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # Il timestamp distrugge la cache del Cloud all'origine costringendo a scaricare il file reale
         url_git = f"https://github.com{nome_file}?t={int(time.time())}"
         
         h = {
             "Authorization": f"Bearer {t_git}", 
-            "Accept": "application/vnd.github.v3.raw",  # Richiede lo streaming di testo grezzo
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
             "User-Agent": "WinGaming-Cloud-App"
         }
         r = requests.get(url_git, headers=h, timeout=5)
         if r.status_code == 200:
-            # Legge il file di testo CSV istantaneamente senza passaggi crittografati complessi
-            return pd.read_csv(io.StringIO(r.text)).fillna("")
+            b64_content = r.json().get("content", "")
+            # Ripristinato il lettore binario nativo Excel ExcelWriter compliant
+            return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
     except Exception:
         pass
     return None
@@ -82,14 +85,16 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    if df_s is None or df_s.empty:
-        # Se il file non esiste su GitHub, genera la griglia di base vuota
-        df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO", "LOCALE", "INIZIO_FERIE", "FINE_FERIE", "COPIA_PROMEMORIA"])
+    if df_s is None:
+        if os.path.exists(FILE_STORICO_PERMANENTE):
+            df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+        else:
+            df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO", "LOCALE", "INIZIO_FERIE", "FINE_FERIE", "COPIA_PROMEMORIA"])
     return df_l, df_t, df_s.fillna("")
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# Sincronizzazione atomica e forzata della memoria RAM dello smartphone
+# 🛡️ AZZERAMENTO CACHE RAM: Forza Streamlit Cloud ad allinearsi a GitHub ad ogni riavvio/aggiornamento
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
@@ -97,9 +102,10 @@ def push_excel_su_github(df_da_salvare):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
-        # Converte la tabella in testo semplice CSV
-        testo_csv_puro = df_da_salvare.to_csv(index=False)
-        dati_base64 = base64.b64encode(testo_csv_puro.encode('utf-8')).decode('utf-8')
+        output_binario = io.BytesIO()
+        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
+            df_da_salvare.to_excel(writer, index=False)
+        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
         headers_git = {
             "Authorization": f"Bearer {t_git}", 
@@ -108,12 +114,12 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Recupera lo SHA per autorizzare la sovrascrittura sul ramo main
+        # Interroga l'API forzando il controllo di sicurezza sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Sincronizzazione atomica registro_ferie.csv", 
+            "message": "🤖 [App] Allineamento e sincronizzazione permanente database Excel", 
             "content": dati_base64,
             "branch": "main"
         }
@@ -123,6 +129,7 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
+        # Controllo matematico pulito e definitivo per sbloccare la scrittura senza SyntaxError
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
@@ -265,7 +272,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# VERSIONE DI PRODUZIONE SIGILLATA — FORMATO CSV E SPAZIATURE ALLINEATE AL MILLIMETRO
+# VERSIONE DI PRODUZIONE RIPRISTINATA — SOLUZIONE DEFINITIVA ERRORI DI SPLIT
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -279,11 +286,12 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row["LOCALE"]).strip() == str(scelta_pvd).strip():
                 try:
-                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
-                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+                    # 🕒 ISOLAMENTO DATA: Prende solo il primo elemento dello split per evitare il crash del calendario
+                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
+                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
                     
-                    old_inizio = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
+                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row['TECNICO']})"
@@ -293,6 +301,7 @@ if submit_button:
         if sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe desideri modificare o aggiornare questo periodo con le nuove date, spunta la casella di conferma in fondo al modulo e primi di nuovo il pulsante di invio.")
         else:
+            # Formattazione corretta delle stringhe temporali complete per l'Excel
             str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
@@ -305,9 +314,9 @@ if submit_button:
                 "COPIA_PROMEMORIA": co_destinatario
             }
             
-            # 🛡️ ALLINEAMENTO SPAZI CORRETTO: Nessun tabulatore orfano all'inizio
+            # 🎯 CORREZIONE CHIRURGICA ESTRAZIONE CONCESSIONARIO
             concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
-            chiave_pulita = scelta_pvd.split(" (")[0].strip() if " (" in scelta_pvd else scelta_pvd.strip()
+            chiave_pulita = scelta_pvd.split(" - ")[0].strip() if " - " in scelta_pvd else scelta_pvd.strip()
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega":
@@ -323,7 +332,7 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                df_salva.to_csv(FILE_STORICO_PERMANENTE, index=False)
+                df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
@@ -339,13 +348,13 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
-        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
+        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
         
-        d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 days")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 days")
+        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
@@ -389,19 +398,17 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         
         if selezione_delete != "- Seleziona la riga da eliminare -":
-            parti_stringa = selezione_delete.split("ID ")
-            pezzo_numerico = parti_stringa[1].split(" |")[0]
-            idx_da_eliminare = int(pezzo_numerico)
+            # 🛡️ FIX CHIRURGICO ESTRAZIONE ID DI CANCELLAZIONE
+            idx_da_eliminare = int(selezione_delete.split("ID ")[1].split(" |")[0])
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    
-                    df_nuovo_salva.to_csv(FILE_STORICO_PERMANENTE, index=False)
+                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     
-                st.success("🗑️ Chiusura eliminata con successo! Il database è stato aggiornato permanentemente.")
+                st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
                 time.sleep(2)
                 st.rerun()
     else:
