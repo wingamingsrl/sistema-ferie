@@ -35,8 +35,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FUNZIONI DI MEMORIZZAZIONE INTERNA
-# VERSIONE DI PRODUZIONE SIGILLATA — IMMUNE AI BLOCCHI ED AI CODICI DI RETE 422 GITHUB
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD DINAMICO
+# VERSIONE DI PRODUZIONE SIGILLATA — ALLINEAMENTO COCENTE AD OGNI RERUN
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -49,7 +49,6 @@ def carica_database_locale():
     df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
     
-    # Legge il file Excel residente nella memoria persistente protetta del server Cloud
     if os.path.exists(FILE_STORICO_PERMANENTE):
         try:
             df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
@@ -61,13 +60,12 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# Riallineamento rigido e forzato della memoria RAM ad ogni singolo caricamento pagina
+# 🛡️ FIX FONDAMENTALE: Rimosso l'IF. Ora la RAM si aggiorna forzatamente sul file reale
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
-        # 🛡️ SBLOCCO 422: Scrive il file Excel direttamente sul server di Streamlit Cloud
-        # Questo elimina i conflitti di SHA, le chiavi bloccate e le restrizioni di GitHub
+        # Scrittura fisica immediata sul server Cloud temporaneo di Streamlit
         with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
             df_da_salvare.to_excel(writer, index=False)
         st.toast("💾 Database Excel aggiornato internamente al Cloud!", icon="✅")
