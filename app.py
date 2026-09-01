@@ -88,7 +88,7 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ IL TUO TRUCCO DELLO SLASH PROTETTO: Visibile, fisso e geometrico!
+        # Sbarra di separazione isolata e protetta
         inizio_strada = "https://github.com"
         url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
         
@@ -104,8 +104,8 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        # Interroga GitHub sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
-        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
             "message": "🤖 [App] Sincronizzazione permanente database Excel", 
@@ -113,10 +113,15 @@ def push_excel_su_github(df_da_salvare):
             "branch": "main"
         }
         
-        # 🛡️ AZZERAMENTO ERRORE 422: Passa lo SHA solo se il file esiste davvero su GitHub
-        if sha_file and str(sha_file).strip() != "": 
-            payload_git["sha"] = sha_file
-            
+        # 🛡️ DISINNESCORO AUTOMATICO CODICE 422: Estrarre lo SHA solo ed esclusivamente se lo stato è 200 OK
+        if res_get.status_code == 200:
+            dati_json = res_get.json()
+            if isinstance(dati_json, dict) and "sha" in dati_json:
+                sha_file = dati_json.get("sha", "").strip()
+                if sha_file:
+                    payload_git["sha"] = sha_file
+        
+        # Invia il modulo di scrittura finale a GitHub
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
@@ -124,11 +129,15 @@ def push_excel_su_github(df_da_salvare):
             return True
         else:
             st.error(f"❌ GitHub ha RIFIUTATO il salvataggio. Codice Stato: {risposta_put.status_code}")
+            try:
+                st.write(risposta_put.json()) # Stampa a schermo i dettagli tecnici interni del rifiuto
+            except Exception: pass
             return False
             
     except Exception as e_err:
         st.error(f"💥 Errore di Sistema Interno durante il salvataggio: {str(e_err)}")
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
