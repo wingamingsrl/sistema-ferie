@@ -87,11 +87,12 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ SPEZZETTAMENTO PROTETTO: Lo slash "/" e il percorso API sono visibili e non possono sparire!
+        # Spezzettamento protetto visibile per lo slash chirurgico
         parte1 = "https://github.com"
         parte2 = "repos/wingamingsrl/sistema-ferie/contents"
         url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
         
+        # Sanificazione iniziale: se la griglia è vuota, genera le 9 colonne aziendali corrette
         if df_da_salvare.empty:
             df_da_salvare = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
         
@@ -107,7 +108,6 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Recupera lo SHA corrente sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
@@ -122,6 +122,14 @@ def push_excel_su_github(df_da_salvare):
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
+        # 🛡️ BYPASS LIVE CRASH 422: Se il file esistente su GitHub è corrotto o a 0 byte,
+        # eliminiamo all'istante lo SHA dal payload e forziamo la riscrittura d'autorità
+        if risposta_put.status_code == 422:
+            if "sha" in payload_git:
+                del payload_git["sha"]
+            # Secondo tentativo di sfondamento puro
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ Excel salvato su GitHub!", icon="💾")
             return True
@@ -131,7 +139,6 @@ def push_excel_su_github(df_da_salvare):
     except Exception as e_err:
         st.error(f"💥 Errore Interno: {str(e_err)}")
         return False
-
 
 
 # =====================================================================================
