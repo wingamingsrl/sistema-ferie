@@ -305,13 +305,17 @@ if submit_button:
                 "COPIA_PROMEMORIA": co_destinatario
             }
             
-            concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
-            chiave_pulita = scelta_pvd.split(" (").strip() if " (" in scelta_pvd else scelta_pvd.strip()
+                        concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
+            
+            # 🛡️ FIX DEFINITIVO CRASH LISTA: Aggiunto l'indice [0] prima dello strip per isolare il testo
+            chiave_pulita = scelta_pvd.split(" (")[0].strip() if " (" in scelta_pvd else scelta_pvd.strip()
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega":
+                # 🛡️ FIX ANCHE SUL CO-DESTINATARIO: Aggiunto l'indice [-1] per prendere l'email pulita
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip() if " (" in co_destinatario else co_destinatario.strip()
                 lista_m.append(mail_pulita)
+
                 
             with st.spinner("Salvataggio e invio notifica..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
