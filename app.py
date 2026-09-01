@@ -1,4 +1,5 @@
 # =====================================================================================
+# SW GENERALE DI INSERIMENTO FERIE GESTORI WIN GAMING — PRODUZIONE INTEGRALE FINALE
 # BLOCCO 1: STRUTTURA DI BASE, LIBRERIE E PERSONALIZZAZIONE INTERFACCIA UTENTE
 # =====================================================================================
 import os
@@ -26,17 +27,15 @@ st.markdown("""
         visibility: hidden !important; display: none !important;
     }
     .stApp { background-color: #f8fafc !important; color: #1e293b !important; font-family: 'Segoe UI', sans-serif; }
-    <h1> { color: #115e59 !important; font-size: 28px !important; text-align: center; font-weight: 800 !important; margin-bottom: 25px; }
+    h1 { color: #115e59 !important; font-size: 28px !important; text-align: center; font-weight: 800 !important; margin-bottom: 25px; }
     .stMarkdown h3, label, p, [data-testid="stWidgetLabel"] p, .stSelectbox label { color: #1e293b !important; font-weight: 800 !important; font-size: 16px !important; opacity: 1 !important; }
     div[data-testid="stForm"] { background-color: #ffffff !important; border: 2px solid #94a3b8 !important; border-radius: 14px !important; padding: 25px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     .stButton>button { background: linear-gradient(135deg, #0f766e 0%, #115e59 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 17px !important; width: 100%; border-radius: 10px !important; height: 54px !important; border: none !important; box-shadow: 0 4px 14px rgba(17, 94, 89, 0.3); }
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
-
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FUNZIONI DI SCRITTURA SU GITHUB
-# VERSIONE DI PRODUZIONE - RISOLTO IL CRASH NAMEERROR CON IMPORTAZIONE BASE64 IN RAM
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -47,11 +46,8 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
 def scarica_file_da_github_se_esiste(nome_file):
     try:
-        # Importazione di sicurezza interna per prevenire qualsiasi NameError o crash orfano
-        import base64
-        
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        url_git = f"https://github.com{nome_file}?t={int(time.time())}"
+        url_lettura = f"https://github.com{nome_file}?t={int(time.time())}"
         
         h = {
             "Authorization": f"Bearer {t_git}", 
@@ -59,7 +55,7 @@ def scarica_file_da_github_se_esiste(nome_file):
             "X-GitHub-Api-Version": "2022-11-28",
             "User-Agent": "WinGaming-Cloud-App"
         }
-        r = requests.get(url_git, headers=h, timeout=5)
+        r = requests.get(url_lettura, headers=h, timeout=5)
         if r.status_code == 200:
             b64_content = r.json().get("content", "")
             return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
@@ -84,14 +80,13 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# Allineamento forzato della memoria RAM dello smartphone ad ogni singolo rinfresco pagina
-st.session_state.storico_cloud = df_storico_file.to_dict('records')
+if "storico_cloud" not in st.session_state:
+    st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        
-        # 🛡️ RIGA CORRETTA: Sostituisci la vecchia riga unita con questo URL API ufficiale
+        # 🛡️ URL API RETTIFICATO ED ESPLICITO: Punta correttamente al server GitHub
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
@@ -119,7 +114,6 @@ def push_excel_su_github(df_da_salvare):
             payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             return True
         else:
@@ -128,8 +122,6 @@ def push_excel_su_github(df_da_salvare):
     except Exception as e_err:
         st.toast(f"⚠️ Errore di Sistema Interno: {str(e_err)}", icon="❌")
         return False
-
-
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
 # =====================================================================================
@@ -144,9 +136,8 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                st.session_state.user_nome = str(utente_valido["NOME"].values[0]).strip()
-                
-                ruolo_estratto = str(utente_valido["RUOLO"].values[0]).strip().lower() if "RUOLO" in utente_valido.columns else "tecnico"
+                st.session_state.user_nome = str(utente_valido["NOME"].values).strip()
+                ruolo_estratto = str(utente_valido["RUOLO"].values).strip().lower() if "RUOLO" in utente_valido.columns else "tecnico"
                 st.session_state.user_ruolo = ruolo_estratto
                 st.rerun()
             else:
@@ -160,12 +151,11 @@ esecutore_ruolo = st.session_state.get("user_ruolo", "tecnico")
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email}) — Ruolo: {esecutore_ruolo.upper()}</div>", unsafe_allow_html=True)
 # =====================================================================================
-# BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON ELENCO CONCESSIONARI INCOLONNATO
+# BLOCCO 4: NOTIFICA EMAIL SMTP GOOGLE CON ELENCO CONCESSIONARI INCOLONNATO
 # =====================================================================================
 def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, riapertura, esecutore):
     try:
         pass_gmail = str(st.secrets["gmail"]["password_applicativa"]).strip()
-        
         msg = MIMEMultipart()
         msg['From'] = EMAIL_MITTENTE_GMAIL
         msg['To'] = ", ".join(lista_m)
@@ -173,7 +163,6 @@ def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, ria
         
         linee_concessionari = ""
         elenco_conc = [c.strip() for c in concessionario_testo.split(",") if c.strip()]
-        
         if len(elenco_conc) > 1:
             linee_concessionari = "\n" + "\n".join([f"                     • {c}" for c in elenco_conc])
         else:
@@ -191,7 +180,6 @@ Dettagli dell'inserimento:
 --------------------------------------------------
 
 WINGAMING SRL"""
-        
         msg.attach(MIMEText(corpo, 'plain'))
         server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
         server.login(EMAIL_MITTENTE_GMAIL, pass_gmail)
@@ -208,20 +196,17 @@ if "form_id" not in st.session_state:
 
 with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     st.markdown("### 📝 Registra Chiusura Ferie")
-    
     elenco_c = [f"{r['NOME']} ({r['EMAIL']})" for _, r in df_tecnici.iterrows() if str(r['EMAIL']).lower().strip() != esecutore_email.lower()]
     co_destinatario = st.selectbox("Invia copia promemoria a:", ["Nessun collega"] + elenco_c)
     
     st.markdown("---")
     locali_raggruppati = {}
     mappa_concessionari = {}
-    
     for _, r in df_locali.iterrows():
         cod_loc = str(r['CODICE_LOCALE']).strip()
         nome_loc = str(r['NOME_LOCALE']).strip()
         conc_loc = str(r['CONCESSIONARIO']).strip()
         chiave_chiave = f"{cod_loc} - {nome_loc}"
-        
         if chiave_chiave not in locali_raggruppati:
             locali_raggruppati[chiave_chiave] = []
         if conc_loc and conc_loc not in locali_raggruppati[chiave_chiave]:
@@ -249,7 +234,6 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# VERSIONE DI PRODUZIONE SIGILLATA — ELIMINATI TUTTI I COPIAINCOLLA ORFANI FINALI
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -325,8 +309,8 @@ for row in st.session_state.storico_cloud:
         data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
         d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
         d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
+        if d_i - endgame == timedelta(days=3): alert_c.append(f"⚠️ **{row['LOCALE']}** chiude tra 3 giorni")
+        if d_f - endgame == timedelta(days=3): alert_r.append(f"🚚 **{row['LOCALE']}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
@@ -378,4 +362,5 @@ if esecutore_ruolo == "admin":
                 st.rerun()
     else:
         st.write("Nessuna chiusura presente nel registro.")
+
 
