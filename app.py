@@ -88,11 +88,10 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ VERSIONE SIGILLATA SENZA PARENTESI: Lo slash è visibile e protetto!
+        # 🛡️ IL TUO TRUCCO DELLO SLASH PROTETTO: Visibile, fisso e geometrico!
         inizio_strada = "https://github.com"
         url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
-
-              
+        
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_da_salvare.to_excel(writer, index=False)
@@ -105,7 +104,6 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Recupera lo SHA aggiornato all'ultimo millisecondo per distruggere i conflitti 409
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
@@ -115,7 +113,8 @@ def push_excel_su_github(df_da_salvare):
             "branch": "main"
         }
         
-        if sha_file: 
+        # 🛡️ AZZERAMENTO ERRORE 422: Passa lo SHA solo se il file esiste davvero su GitHub
+        if sha_file and str(sha_file).strip() != "": 
             payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
@@ -124,21 +123,12 @@ def push_excel_su_github(df_da_salvare):
             st.toast("✅ Excel salvato su GitHub!", icon="💾")
             return True
         else:
-            # SPIA DI SICUREZZA 1: Mostra a schermo il codice di rifiuto di GitHub
             st.error(f"❌ GitHub ha RIFIUTATO il salvataggio. Codice Stato: {risposta_put.status_code}")
-            if risposta_put.status_code == 403:
-                st.warning("👉 Il tuo Token NON ha i permessi di scrittura (write) o il repository è bloccato.")
-            elif risposta_put.status_code == 409:
-                st.warning("👉 Conflitto di modifiche simultanee (SHA non allineato).")
             return False
             
     except Exception as e_err:
-        # SPIA DI SICUREZZA 2: Mostra a schermo se il codice Python va in crash
         st.error(f"💥 Errore di Sistema Interno durante il salvataggio: {str(e_err)}")
         return False
-
-
-
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
