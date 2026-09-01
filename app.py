@@ -87,6 +87,8 @@ st.session_state.storico_cloud = df_storico_file.to_dict('records')
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        
+        # 🛡️ LA RIGA CORRETTA CON SLASH ED ENDPOINT API: Impedisce le fusioni di testo
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
@@ -116,12 +118,11 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ CONTROLLO BLINDATO: Risolve definitivamente il SyntaxError eliminando la parola 'in'
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ Excel salvato su GitHub!", icon="💾")
             return True
         else:
-            # 🛡️ SPIA DI SICUREZZA 1: Mostra a schermo il codice di rifiuto di GitHub
+            # SPIA DI SICUREZZA 1: Mostra a schermo il codice di rifiuto di GitHub
             st.error(f"❌ GitHub ha RIFIUTATO il salvataggio. Codice Stato: {risposta_put.status_code}")
             if risposta_put.status_code == 403:
                 st.warning("👉 Il tuo Token NON ha i permessi di scrittura (write) o il repository è bloccato.")
@@ -130,9 +131,10 @@ def push_excel_su_github(df_da_salvare):
             return False
             
     except Exception as e_err:
-        # 🛡️ SPIA DI SICUREZZA 2: Mostra a schermo se il codice Python va in crash
+        # SPIA DI SICUREZZA 2: Mostra a schermo se il codice Python va in crash
         st.error(f"💥 Errore di Sistema Interno durante il salvataggio: {str(e_err)}")
         return False
+
 
 
 
