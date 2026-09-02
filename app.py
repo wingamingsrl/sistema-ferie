@@ -114,25 +114,20 @@ def push_excel_su_github(lista_records_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
+        # 🛡️ SBLOCCO CHIRURGICO: Interroga lo SHA sulla stanza 'db-ferie' libera da vincoli
+        res_get = requests.get(url_git, headers=headers_git, params={"ref": "db-ferie"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Sincronizzazione database Excel", 
+            "message": "🤖 [App] Sincronizzazione permanente database Excel", 
             "content": dati_base64,
-            "branch": "main"
+            "branch": "db-ferie"  # 🛡️ Scrive nella stanza parallela non protetta
         }
         if sha_file: 
             payload_git["sha"] = sha_file
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 422 and sha_file:
-            payload_delete = {"message": "🧹 Rimozione conflitto per sblocco 422", "sha": sha_file, "branch": "main"}
-            requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
-            if "sha" in payload_git: del payload_git["sha"]
-            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ File Excel aggiornato stabilmente su GitHub!", icon="💾")
             return True
