@@ -140,7 +140,8 @@ WINGAMING SRL"""
     except Exception as e:
         return False, str(e)
 # =====================================================================================
-# BLOCCO 5: MASCHERA FORM DI ACQUISIZIONE INSERIMENTI PER I TECNICI
+# BLOCCO 5: MASCHERA DI INSERIMENTO DATI (FORM ACQUISIZIONE SMARTPHONE)
+# VERSIONE DI PRODUZIONE CORRETTA — ELIMINATO ERRORE DI BATTITURA SULLA VARIABILE LOCALO
 # =====================================================================================
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
@@ -158,7 +159,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
         nome_loc = str(r['NOME_LOCALE']).strip()
         conc_loc = str(r['CONCESSIONARIO']).strip()
         chiave_chiave = f"{cod_loc} - {nome_loc}"
-        if chiave_chiave not in locales_raggruppati:
+        if chiave_chiave not in locali_raggruppati:
             locali_raggruppati[chiave_chiave] = []
         if conc_loc and conc_loc not in locali_raggruppati[chiave_chiave]:
             locali_raggruppati[chiave_chiave].append(conc_loc)
@@ -183,6 +184,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
+
 # =====================================================================================
 # BLOCCO 6: VERIFICA CRONOLOGIA SOVRAPPOSIZIONI E CRUSCOTTO AMMINISTRATORE LIVE
 # VERSIONE DI PRODUZIONE CON FUNZIONE DI CARICAMENTO EXCEL DALL'UFFICIO
