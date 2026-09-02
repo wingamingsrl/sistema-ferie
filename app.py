@@ -168,8 +168,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE INSERIMENTO, SCHERMATA ADMIN E CARICATORE EXCEL NATIVO (.XLSX)
-# VERSIONE DI PRODUZIONE COMPLETA ED INTEGRA SU MEMORIA RAM CLOUD PERSISTENTE
+# BLOCCO 6: ELABORAZIONE INSERIMENTO, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE
+# VERSIONE DI PRODUZIONE DEFINITIVA — ESTRAZIONE INDICI CORRETTA SENZA CRASH STRIP
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -181,13 +181,27 @@ if submit_button:
         str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         
         testo_pvd = str(scelta_pvd)
-        codice_estratto = testo_pvd.split(" - ").strip() if " - " in testo_pvd else testo_pvd.strip()
-        resto_testo = testo_pvd.split(" - ") if " - " in testo_pvd else testo_pvd
-        nome_puro_locale = resto_testo.split(" (").strip() if " (" in resto_testo else resto_testo.strip()
         
-        concessionario_estratto = ""
-        if " (" in testo_pvd:
-            concessionario_estratto = testo_pvd.split(" (")[-1].replace(")", "").strip()
+        # 🛡️ FIX CHIRURGICO: Isola gli elementi della lista prima di applicare il comando .strip()
+        if " - " in testo_pvd:
+            parti_trattino = testo_pvd.split(" - ")
+            codice_estratto = parti_trattino[0].strip()
+            resto_testo = parti_trattino[1].strip()
+        else:
+            codice_estratto = testo_pvd.strip()
+            resto_testo = testo_pvd.strip()
+            
+        if " (" in resto_testo:
+            parti_parentesi = resto_testo.split(" (")
+            nome_puro_locale = parti_parentesi[0].strip()
+            concessionario_estratto = parti_parentesi[1].replace(")", "").strip()
+        else:
+            nome_puro_locale = resto_testo
+            concessionario_estratto = ""
+        
+        # Se la scomposizione non ha isolato il concessionario, usa la mappa dei locali
+        if not concessionario_estratto:
+            concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
         
         nuova = {
             "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
@@ -220,6 +234,7 @@ if esecutore_ruolo == "admin":
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
     
+    # Filtro ultra-elastico basato sul concessionario estratto correttamente
     righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()]
     if righe_snaitech:
         st.dataframe(pd.DataFrame(righe_snaitech)[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
@@ -235,7 +250,8 @@ if esecutore_ruolo == "admin":
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
     if selezione_delete != "- Seleziona la riga da eliminare -":
         try:
-            idx_da_eliminare = int(selezione_delete.split("ID ").split(" |"))
+            parti_str = selezione_delete.split("ID ")
+            idx_da_eliminare = int(parti_str[1].split(" |")[0])
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 st.success("🗑️ Chiusura rimossa con successo!")
