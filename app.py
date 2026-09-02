@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import streamlit as st
 import pandas as pd
+import openpyxl  # 🛡️ FIX CHIRURGICO: Caricato correttamente il motore Excel in cima al file
 from datetime import datetime, timedelta, time as dtime
 
 st.set_page_config(
@@ -34,9 +35,10 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
+
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO ED INVIO RETE SU GITHUB MAIN (RIPRISTINATO)
-# VERSIONE DI PRODUZIONE ALLINEATA CON SLASH SPEZZATO ANTI-FILTRO CHAT
+# VERSIONE DI PRODUZIONE ALLINEATA CON TRACCIAMENTO OPENPYXL PROTETTO
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -83,13 +85,11 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(lista_records_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        
-        # Percorso API ufficiale spezzettato con i "+" per proteggere lo slash dai filtri
         parte1 = "https://github.com"
         parte2 = "repos/wingamingsrl/sistema-ferie/contents"
         url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
         
-        # Costruzione del file Excel reale riga per riga tramite openpyxl
+        # 🛡️ Generazione nativa strutturata con openpyxl (Ora importato correttamente)
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Sheet1"
@@ -111,7 +111,6 @@ def push_excel_su_github(lista_records_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Recupera lo SHA corrente sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
@@ -125,19 +124,11 @@ def push_excel_su_github(lista_records_da_salvare):
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ DISINNESCO TOTALE ERRORE 422: Se GitHub fa ostruzione e rifiuta la sovrascrittura dello SHA,
-        # eliminiamo il file vecchio e lo ricreiamo da zero in un millisecondo sul ramo main!
+        # 🛡️ BYPASS AUTOMATICO ERRORE 422: Se c'è un conflitto di SHA, pialla il file e lo rigenera nuovo da zero
         if risposta_put.status_code == 422 and sha_file:
-            payload_delete = {
-                "message": "🧹 [Reset] Rimozione file per sblocco errore 422",
-                "sha": sha_file,
-                "branch": "main"
-            }
-            # 1. Rimuove l'Excel bloccato che generava il conflitto
+            payload_delete = {"message": "🧹 Rimozione conflitto per sblocco 422", "sha": sha_file, "branch": "main"}
             requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
-            # 2. Ricrea all'istante il file Excel sano, pulito e aggiornato a 9 colonne
-            if "sha" in payload_git: 
-                del payload_git["sha"]
+            if "sha" in payload_git: del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
@@ -149,6 +140,7 @@ def push_excel_su_github(lista_records_da_salvare):
     except Exception as e_err:
         st.error(f"💥 Errore Interno durante il salvataggio: {str(e_err)}")
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL
