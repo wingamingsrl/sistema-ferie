@@ -173,8 +173,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE RIGHE, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE
-# VERSIONE DI PRODUZIONE RISOLUTIVA — COMPLETA DI ESTRAZIONE PULITA E-MAIL CO-DESTINATARIO
+# BLOCCO 6: ELABORAZIONE INSERIMENTO, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE
+# VERSIONE DI PRODUZIONE SIGILLATA — PROTEZIONE TOTALE CONTRO TABELLE TRASPOSTE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -187,26 +187,30 @@ if submit_button:
         
         testo_pvd = str(scelta_pvd)
         
+        # Estrattore geometrico sicuro senza comandi concatenati su liste
+        codice_estratto = ""
+        nome_puro_locale = ""
+        concessionario_estratto = ""
+        
         if " - " in testo_pvd:
             parti_trattino = testo_pvd.split(" - ")
-            codice_estratto = str(parti_trattino[0]).strip()
-            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
+            if len(parti_trattino) > 0: codice_estratto = str(parti_trattino[0]).strip()
+            if len(parti_trattino) > 1: resto_testo = str(parti_trattino[1]).strip()
+            else: resto_testo = testo_pvd
             
             if " (" in resto_testo:
                 parti_parentesi = resto_testo.split(" (")
-                nome_puro_locale = str(parti_parentesi[0]).strip()
-                concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
+                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
+                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
             else:
                 nome_puro_locale = resto_testo
-                concessionario_estratto = ""
         else:
             if " (" in testo_pvd:
                 parti_parentesi = testo_pvd.split(" (")
-                nome_puro_locale = str(parti_parentesi[0]).strip()
-                concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
+                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
+                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
             else:
                 nome_puro_locale = testo_pvd.strip()
-                concessionario_estratto = ""
 
         if not concessionario_estratto:
             concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
@@ -223,22 +227,29 @@ if submit_button:
             "STATO_INVIO": "In attesa"
         }
         
-        # 🛡️ FIX CHIRURGICO E-MAIL: Estrazione sicura del testo tra parentesi tonda
+        # Filtro e-mail destinatari protetto
         lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
         if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
             try:
                 stringa_collega = str(co_destinatario)
                 mail_isolata = stringa_collega.split(" (")[-1].replace(")", "").strip()
                 lista_m.append(mail_isolata)
-            except Exception:
-                pass
+            except Exception: pass
                 
         with st.spinner("Invio notifica in corso..."):
             invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
         
         nuova["STATO_INVIO"] = "Inviato OK" if invio_ok else f"Errore Mail: {risposta_server}"
         
+        # 🛡️ PULIZIA MEMORIA DI EMERGENZA: Forza st.session_state a contenere solo dizionari validi
+        lista_pulita = []
+        for r in st.session_state.storico_cloud:
+            if isinstance(r, dict) and "NOME_LOCALE" in r:
+                lista_pulita.append(r)
+        
+        st.session_state.storico_cloud = lista_pulita
         st.session_state.storico_cloud.append(nuova)
+        
         df_salva = pd.DataFrame(st.session_state.storico_cloud)
         push_excel_su_github(df_salva)
         
@@ -247,9 +258,23 @@ if submit_button:
         time.sleep(1)
         st.rerun()
 
+# AREA GESTIONE AMMINISTRATORE VISIVA DINAMICA
 if "admin" in str(esecutore_ruolo).lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
-    df_vis = pd.DataFrame(st.session_state.storico_cloud) if st.session_state.storico_cloud else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
+    
+    # 🛡️ PULIZIA DELLA GRIGLIA ADMIN: Filtra solo i record a 9 colonne reali
+    record_validi = []
+    if isinstance(st.session_state.storico_cloud, list):
+        for r in st.session_state.storico_cloud:
+            if isinstance(r, dict) and "NOME_LOCALE" in r:
+                record_validi.append(r)
+                
+    df_vis = pd.DataFrame(record_validi) if record_validi else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
+    
+    # Se per qualche motivo Pandas inverte le colonne, forziamo il riallineamento corretto orizzontale
+    colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
+    df_vis = df_vis.reindex(columns=colonne_reali).fillna("")
+    
     st.dataframe(df_vis, hide_index=True)
     
     with io.BytesIO() as buffer:
@@ -258,16 +283,24 @@ if "admin" in str(esecutore_ruolo).lower():
         
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-    righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()]
+    
+    righe_snaitech = []
+    for row in record_validi:
+        testo_conc = str(row.get("CONCESSIONARIO", "")).lower()
+        testo_loc = str(row.get("NOME_LOCALE", "")).lower()
+        if "snai" in testo_conc or "snai" in testo_loc:
+            righe_snaitech.append(row)
+            
     if righe_snaitech:
-        st.dataframe(pd.DataFrame(righe_snaitech)[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
+        df_snai = pd.DataFrame(righe_snaitech).reindex(columns=colonne_reali).fillna("")
+        st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
     else:
-        st.write("✅ Nessuna chiusura attiva per locales Snaitech.")
+        st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
         
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-    for idx, row in enumerate(st.session_state.storico_cloud):
+    for idx, row in enumerate(record_validi):
         opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
         
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
@@ -283,7 +316,7 @@ if "admin" in str(esecutore_ruolo).lower():
                 st.success("🗑️ Chiusura rimossa con successo!")
                 time.sleep(1)
                 st.rerun()
-        except Exception: pass
+        except Exception: st.error("Seleziona una riga valida dal menu.")
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
@@ -297,4 +330,7 @@ if "admin" in str(esecutore_ruolo).lower():
                     st.success("✅ Database popolato con successo!")
                     time.sleep(1)
                     st.rerun()
+            else:
+                st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
