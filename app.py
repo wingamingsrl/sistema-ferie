@@ -249,7 +249,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# VERSIONE DI PRODUZIONE RISOLUTIVA — CORREZIONE CHIRURGICA INDICI LISTE E STRIP
+# COMPLETAMENTE ALLINEATO AL FORMATO DI TESTO E CONVERSIONE LIVE EXCEL (.XLSX)
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -280,12 +280,13 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
             testo_pvd = str(scelta_pvd)
+            # 🛡️ FIX CHIRURGICO EXTRA: Estrazione sicura degli indici per evitare AttributeError sulle liste
+            parti_pvd = testo_pvd.split(" - ")
+            codice_estratto = parti_pvd[0].strip() if len(parti_pvd) > 0 else testo_pvd.strip()
             
-            # 🛡️ FIX CHIRURGICO: Prende il primo elemento [0] e l'ultimo elemento [-1] prima di fare lo strip
-            codice_estratto = testo_pvd.split(" - ")[0].strip() if " - " in testo_pvd else testo_pvd.strip()
-            
-            nome_rimanente = testo_pvd.split(" - ")[1] if " - " in testo_pvd else testo_pvd
-            nome_puro_locale = nome_rimanente.split(" (")[0].strip() if " (" in nome_rimanente else nome_rimanente.strip()
+            nome_rimanente = parti_pvd[1] if len(parti_pvd) > 1 else testo_pvd
+            parti_nome = nome_rimanente.split(" (")
+            nome_puro_locale = parti_nome[0].strip() if len(parti_nome) > 0 else nome_rimanente.strip()
             
             concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
             
@@ -317,12 +318,9 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
-                    df_salva.to_excel(writer, index=False)
-                    
                 push_excel_su_github(df_salva)
                 
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato e e-mail inviata.")
                 st.session_state.form_id += 1
                 time.sleep(2)
                 st.rerun()
@@ -349,14 +347,18 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
-if esecutore_ruolo == "admin":
+# =====================================================================================
+# PANNELLO AMMINISTRATORE CENTRALIZZATO WITH LIVE EXCEL GENERATOR (.XLSX)
+# =====================================================================================
+if "admin" in str(esecutore_ruolo).lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
         st.dataframe(df_vis, hide_index=True)
         
+        # 🛡️ LA SVOLTA DI COMODITÀ: Converte il file di testo in un vero Excel (.xlsx) per il tuo computer dell'ufficio
         with io.BytesIO() as buffer:
-            df_vis.to_excel(buffer, index=False)
+            df_vis.to_excel(buffer, index=False, engine='openpyxl')
             st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
             
         st.markdown("---")
@@ -377,17 +379,15 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         if selezione_delete != "- Seleziona la riga da eliminare -":
             parti_stringa = selezione_delete.split("ID ")
-            pezzo_numerico = parti_stringa[1].split(" |")[0]
-            idx_da_eliminare = int(pezzo_numerico)
+            pezzo_numerico = parti_stringa[1].split(" |") if len(parti_stringa) > 1 else ["0"]
+            idx_da_eliminare = int(pezzo_numerico[0])
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
-                        df_nuovo_salva.to_excel(writer, index=False)
                     push_excel_su_github(df_nuovo_salva)
-                st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
+                st.success("🗑️ Chiusura eliminata con successo! Il database è stato aggiornato permanentemente.")
                 time.sleep(2)
                 st.rerun()
     else:
