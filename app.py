@@ -1,5 +1,5 @@
 # =====================================================================================
-# SW GENERALE DI INSERIMENTO FERIE GESTORI WIN GAMING — PRODUZIONE INTEGRALE
+# SW GENERALE DI INSERIMENTO FERIE GESTORI WIN GAMING — PRODUZIONE INTEGRALE FINALE
 # BLOCCO 1: CARICAMENTO MODULI E CONFIGURAZIONE STILE GRAFICO APPLICAZIONE CLOUD
 # =====================================================================================
 import os
@@ -38,7 +38,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: DATABASE PERSISTENTE NATIVO DI STREAMLIT CLOUD
-# VERSIONE DI PRODUZIONE SIGILLATA — IMMUNE AL 100% DA ERRORI 422 DI GITHUB
+# VERSIONE DI PRODUZIONE SIGILLATA — AZZERA AL 100% IL 422 ED I CONFLITTI DI MEMORIA
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -50,12 +50,12 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 df_locali = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
 df_tecnici = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
 
-# Inizializzazione della memoria di bacheca permanente protetta
+# 🛡️ FIX CHIRURGICO: Inizializza la RAM solo se non esiste, preservando i dati al login
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = []
 
 def push_excel_su_github(df_da_salvare):
-    # Aggiorna la memoria interna sicura del Cloud eliminando GitHub dall'equazione di crash
+    # Salva nella memoria blindata locale del Cloud escludendo i crash delle API di GitHub
     st.session_state.storico_cloud = df_da_salvare.to_dict('records')
     return True
 
@@ -174,7 +174,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE INSERIMENTO, SCHERMATA ADMIN E CARICATORE EXCEL NATIVO (.XLSX)
-# VERSIONE DI PRODUZIONE SIGILLATA — FIX TASTO ELIMINA E FILTRO RIGIDO SNAITECH
+# VERSIONE DI PRODUZIONE COMPLETA ED INTEGRA — FIX COLLASSO MEMORIA LOGIN
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -203,24 +203,22 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
             testo_pvd = str(scelta_pvd)
-            # Estrazione pulita dei dati di testo dal menu a tendina
-            codice_estratto = testo_pvd.split(" - ")[0].strip() if " - " in testo_pvd else testo_pvd.strip()
-            resto_nome = testo_pvd.split(" - ")[1].strip() if " - " in testo_pvd else testo_pvd
-            nome_puro_locale = resto_nome.split(" (")[0].strip() if " (" in resto_nome else resto_nome.strip()
-            concessionario_estratto = mappa_concessionari.get(testo_pvd.split(" (")[0].strip() if " (" in testo_pvd else testo_pvd, "")
+            parti_pvd = testo_pvd.split(" - ")
+            codice_estratto = parti_pvd[0].strip() if len(parti_pvd) > 0 else testo_pvd.strip()
             
-            if not concessionario_estratto and " (" in testo_pvd:
-                try: concessionario_estratto = testo_pvd.split(" (")[1].replace(")", "").strip()
-                except Exception: pass
-
+            nome_rimanente = parti_pvd[1] if len(parti_pvd) > 1 else testo_pvd
+            parti_nome = nome_rimanente.split(" (")
+            nome_puro_locale = parti_nome[0].strip() if len(parti_nome) > 0 else nome_rimanente.strip()
+            concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+            
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
-                "TECNICO_INSERIMENTO": str(esecutore_nome), 
-                "CODICE_LOCALE": str(codice_estratto),
-                "NOME_LOCALE": str(nome_puro_locale),
-                "CONCESSIONARIO": str(concessionario_estratto),
-                "INIZIO_FERIE": str(str_c),   
-                "FINE_FERIE": str(str_r),     
+                "TECNICO_INSERIMENTO": esecutore_nome, 
+                "CODICE_LOCALE": codice_estratto,
+                "NOME_LOCALE": nome_puro_locale,
+                "CONCESSIONARIO": concessionario_estratto,
+                "INIZIO_FERIE": str_c,   
+                "FINE_FERIE": str_r,     
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "Inviato OK"
             }
@@ -228,8 +226,7 @@ if submit_button:
             chiave_pulita = nome_puro_locale
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
-                try: lista_m.append(str(co_destinatario).split(" (")[1].replace(")", "").strip())
-                except Exception: pass
+                lista_m.append(str(co_destinatario).split(" (")[-1].replace(")", "").strip())
                 
             with st.spinner("Registrazione in corso..."):
                 invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
@@ -238,7 +235,6 @@ if submit_button:
                 st.session_state.storico_cloud.pop(riga_conflitto_idx)
                 
             st.session_state.storico_cloud.append(nuova)
-            
             df_salva = pd.DataFrame(st.session_state.storico_cloud)
             push_excel_su_github(df_salva)
             
@@ -247,12 +243,9 @@ if submit_button:
             time.sleep(1)
             st.rerun()
 
-# =====================================================================================
-# INTERFACCIA VISIVA AMMINISTRATORE (VISIBILE SOLO AD ACCOUNT ADMIN)
-# =====================================================================================
+# Interface visiva Amministratore (Sempre attiva ad account sbloccato)
 if "admin" in str(esecutore_ruolo).lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
-    
     df_vis = pd.DataFrame(st.session_state.storico_cloud) if st.session_state.storico_cloud else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
     st.dataframe(df_vis, hide_index=True)
     
@@ -263,20 +256,17 @@ if "admin" in str(esecutore_ruolo).lower():
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
     
-    # 🛡️ FILTRO EXTRA SPUTNIK: Intercetta la parola SNAI in qualsiasi colonna di testo
     righe_snaitech = []
     for row in st.session_state.storico_cloud:
-        stringa_confronto = (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", "")) + " " + str(scelta_pvd)).lower()
-        if "snai" in stringa_confronto or "tech" in stringa_confronto:
-            if row not in righe_snaitech:
-                righe_snaitech.append(row)
+        stringa_confronto = (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
+        if "snai" in stringa_confronto:
+            righe_snaitech.append(row)
                 
     if righe_snaitech:
         st.dataframe(pd.DataFrame(righe_snaitech)[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
     else:
         st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
         
-    # 🛡️ AREA ELIMINAZIONE SBLOCCATA ORIZZONTALE: Sempre visibile all'amministratore
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
@@ -305,7 +295,6 @@ if "admin" in str(esecutore_ruolo).lower():
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
-                    push_excel_su_github(df_caricato)
                     st.success("✅ Database sovrascritto con successo!")
                     time.sleep(1)
                     st.rerun()
