@@ -254,8 +254,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE RIGHE, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE
-# VERSIONE DI PRODUZIONE RISOLUTIVA — CORREZIONE GEOMETRICA ESTRATTORI TESTO
+# BLOCCO 6: ELABORAZIONE INSERIMENTO, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE
+# VERSIONE DI PRODUZIONE RISOLUTIVA — CORREZIONE GEOMETRICA DEFINITIVA DEGLI SPLIT
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -268,23 +268,31 @@ if submit_button:
         
         testo_pvd = str(scelta_pvd)
         
-        # 🛡️ SOLUZIONE GEOMETRICA: Isola il nome puro escludendo crash sulle liste di split
+        # 🛡️ FIX CHIRURGICO: Estrazione sicura del nome locale senza concatenare split su liste
+        codice_estratto = ""
+        nome_puro_locale = ""
+        concessionario_estratto = ""
+        
         if " - " in testo_pvd:
-            parti_totali = testo_pvd.split(" - ")
-            codice_estratto = str(parti_totali[0]).strip()
-            resto_stringa = str(parti_totali[1])
-        else:
-            codice_estratto = testo_pvd.strip()
-            resto_stringa = testo_pvd
+            parti_trattino = testo_pvd.split(" - ")
+            codice_estratto = str(parti_trattino[0]).strip()
+            resto_testo = str(parti_trattino[1]).strip()
             
-        if " (" in resto_stringa:
-            parti_nome = resto_stringa.split(" (")
-            nome_puro_locale = str(parti_nome[0]).strip()
-            concessionario_estratto = str(parti_nome[1]).replace(")", "").strip()
+            if " (" in resto_testo:
+                parti_parentesi = resto_testo.split(" (")
+                nome_puro_locale = str(parti_parentesi[0]).strip()
+                concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
+            else:
+                nome_puro_locale = resto_testo
         else:
-            nome_puro_locale = resto_stringa.strip()
-            concessionario_estratto = mappa_concessionari.get(testo_pvd.split(" (")[0].strip() if " (" in testo_pvd else testo_pvd, "")
+            if " (" in testo_pvd:
+                parti_parentesi = testo_pvd.split(" (")
+                nome_puro_locale = str(parti_parentesi[0]).strip()
+                concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
+            else:
+                nome_puro_locale = testo_pvd.strip()
 
+        # Verifica sovrapposizioni basata sul nome pulito del locale
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LOCALE", "")).strip() == nome_puro_locale:
                 try:
@@ -304,21 +312,28 @@ if submit_button:
             str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
+            # Se la scomposizione non ha trovato il concessionario, lo recupera dalla mappa iniziale
+            if not concessionario_estratto:
+                concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+            
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
-                "TECNICO_INSERIMENTO": esecutore_nome, 
-                "CODICE_LOCALE": codice_estratto,
-                "NOME_LOCALE": nome_puro_locale,
-                "CONCESSIONARIO": concessionario_estratto,
-                "INIZIO_FERIE": str_c,   
-                "FINE_FERIE": str_r,     
+                "TECNICO_INSERIMENTO": str(esecutore_nome), 
+                "CODICE_LOCALE": str(codice_estratto),
+                "NOME_LOCALE": str(nome_puro_locale),
+                "CONCESSIONARIO": str(concessionario_estratto),
+                "INIZIO_FERIE": str(str_c),   
+                "FINE_FERIE": str(str_r),     
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "In attesa"
             }
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
-                lista_m.append(str(co_destinatario).split(" (")[-1].replace(")", "").strip())
+                try:
+                    parti_mail = str(co_destinatario).split(" (")
+                    lista_m.append(str(parti_mail[1]).replace(")", "").strip())
+                except Exception: pass
                 
             with st.spinner("Salvataggio e invio notifica..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
@@ -330,7 +345,7 @@ if submit_button:
                 
             st.session_state.storico_cloud.append(nuova)
             
-            df_salva = pd.DataFrame(st.session_state.storico_cloud)
+            # Salva l'Excel geometricamente perfetto su GitHub
             if push_excel_su_github(st.session_state.storico_cloud):
                 st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e notifica mail inviata.")
                 st.session_state.form_id += 1
@@ -393,7 +408,6 @@ if "admin" in str(esecutore_ruolo).lower():
                         st.session_state.storico_cloud.pop(idx_da_eliminare)
                         push_excel_su_github(st.session_state.storico_cloud)
                     st.success("🗑️ Chiusura eliminata con successo!")
-                    time.sleep(1)
+                    time.sleep(1.5)
                     st.rerun()
             except Exception: pass
-
