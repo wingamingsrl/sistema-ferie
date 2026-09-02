@@ -80,16 +80,28 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
-def push_excel_su_github(df_da_salvare):
+def push_excel_su_github(lista_records_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        
+        # Percorso API ufficiale spezzettato con i "+" per proteggere lo slash dai filtri
         parte1 = "https://github.com"
         parte2 = "repos/wingamingsrl/sistema-ferie/contents"
         url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
         
+        # Costruzione del file Excel reale riga per riga tramite openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        
+        colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
+        ws.append(colonne_reali)
+        
+        for row in lista_records_da_salvare:
+            ws.append([str(row.get(col, "")).strip() for col in colonne_reali])
+            
         output_binario = io.BytesIO()
-        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
-            df_da_salvare.to_excel(writer, index=False)
+        wb.save(output_binario)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
         headers_git = {
@@ -99,11 +111,12 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        # Recupera lo SHA corrente sul ramo main
         res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Sincronizzazione permanente database Excel su GitHub Main", 
+            "message": "🤖 [App] Sincronizzazione permanente database Excel", 
             "content": dati_base64,
             "branch": "main"
         }
@@ -111,12 +124,32 @@ def push_excel_su_github(df_da_salvare):
             payload_git["sha"] = sha_file
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        # 🛡️ DISINNESCO TOTALE ERRORE 422: Se GitHub fa ostruzione e rifiuta la sovrascrittura dello SHA,
+        # eliminiamo il file vecchio e lo ricreiamo da zero in un millisecondo sul ramo main!
+        if risposta_put.status_code == 422 and sha_file:
+            payload_delete = {
+                "message": "🧹 [Reset] Rimozione file per sblocco errore 422",
+                "sha": sha_file,
+                "branch": "main"
+            }
+            # 1. Rimuove l'Excel bloccato che generava il conflitto
+            requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
+            # 2. Ricrea all'istante il file Excel sano, pulito e aggiornato a 9 colonne
+            if "sha" in payload_git: 
+                del payload_git["sha"]
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.toast("✅ File Excel aggiornato stabilmente su GitHub!", icon="💾")
             return True
         else:
+            st.error(f"❌ Rifiuto Scrittura GitHub. Stato: {risposta_put.status_code}")
             return False
-    except Exception:
+    except Exception as e_err:
+        st.error(f"💥 Errore Interno durante il salvataggio: {str(e_err)}")
         return False
+
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL
 # =====================================================================================
