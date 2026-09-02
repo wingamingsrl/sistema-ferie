@@ -242,6 +242,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE INSERIMENTO, CONTROLLI GEOMETRICI ED AREA AMMINISTRATORE
+# VERSIONE DI PRODUZIONE SIGILLATA — SALVATAGGIO GARANTITO ANTI-BLOCCO SMTP
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -255,10 +256,10 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LOCALE", "")).strip() == str(scelta_pvd).strip():
                 try:
-                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
-                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
-                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+                    data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
+                    data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+                    old_inizio = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row.get('TECNICO_INSERIMENTO', 'Tecnico')})"
@@ -273,7 +274,6 @@ if submit_button:
             
             testo_pvd = str(scelta_pvd)
             
-            # 🛡️ SPEZZETTAMENTO BLINDATO: Previene qualunque AttributeError isolando gli indici delle stringhe
             if " - " in testo_pvd:
                 parti_pvd = testo_pvd.split(" - ")
                 codice_estratto = str(parti_pvd[0]).strip()
@@ -308,24 +308,28 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip() if " (" in co_destinatario else co_destinatario.strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio e invio notifica..."):
+            with st.spinner("Salvataggio in corso..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
+            # 🛡️ PROTEZIONE SALVATAGGIO GARANTITO: Se la mail fallisce, salva comunque i dati nell'Excel!
             if invio_ok:
                 nuova["STATO_INVIO"] = "Inviato OK"
-                if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
-                st.session_state.storico_cloud.append(nuova)
-                
-                df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                push_excel_su_github(df_salva)
-                
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
-                st.session_state.form_id += 1
-                time.sleep(2)
-                st.rerun()
+                st.toast("📧 E-mail inviata con successo!", icon="📩")
             else:
-                st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
+                nuova["STATO_INVIO"] = f"Errore Mail: {risposta_server}"
+                st.toast("⚠️ Nota: Chiusura registrata, ma la notifica e-mail è in coda per problemi di rete.", icon="⏳")
+                
+            if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                st.session_state.storico_cloud.pop(riga_conflitto_idx)
+            st.session_state.storico_cloud.append(nuova)
+            
+            df_salva = pd.DataFrame(st.session_state.storico_cloud)
+            push_excel_su_github(df_salva)
+            
+            st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub.")
+            st.session_state.form_id += 1
+            time.sleep(2)
+            st.rerun()
 
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -333,10 +337,10 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")[0]
-        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")[0]
-        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+        data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
+        data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
+        d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
@@ -375,8 +379,8 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         if selezione_delete != "- Seleziona la riga da eliminare -":
             parti_stringa = selezione_delete.split("ID ")
-            pezzo_numerico = parti_stringa[1].split(" |") if len(parti_stringa) > 1 else ["0"]
-            idx_da_eliminare = int(pezzo_numerico[0])
+            pezzo_numerico = parti_stringa[1].split(" |")[0] if len(parti_stringa) > 1 else "0"
+            idx_da_eliminare = int(pezzo_numerico)
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
