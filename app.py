@@ -34,9 +34,10 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
+
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO ED ARCHIVIAZIONE HARD DISK INTERNO CLOUD (AUTO-PROTETTO)
-# AZZERA AL 100% L'ERRORE 422 POICHÉ ESCLUDE LE CHIAMATE DI RETE VERSO GITHUB
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FUNZIONI DI SCRITTURA INTERNA CLOUD
+# VERSIONE DI PRODUZIONE INTEGRALE — ESCLUSIONE BLOCCHI DI RETE DI GITHUB
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -74,6 +75,7 @@ def push_excel_su_github(df_da_salvare):
     except Exception as e_internal:
         st.error(f"💥 Errore di scrittura interna: {str(e_internal)}")
         return False
+
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE UTENTI ED ESTRAZIONE VALORI PULITI DA EXCEL
 # =====================================================================================
@@ -186,8 +188,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: VERIFICA CRONOLOGIA SOVRAPPOSIZIONI E CRUSCOTTO AMMINISTRATORE LIVE
-# VERSIONE DI PRODUZIONE CON FUNZIONE DI CARICAMENTO EXCEL DALL'UFFICIO
+# BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO REALE 9 COLONNE E INTERFACCIA ADMIN VISIVA
+# VERSIONE DI PRODUZIONE APERTA — CON FILTRO SNAITECH RESTRITTIVO RETROCOMPATIBILE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -253,7 +255,7 @@ if submit_button:
                 mail_pulita = co_destinatario.split(" (")[-1].replace(")", "").strip() if " (" in co_destinatario else co_destinatario.strip()
                 lista_m.append(mail_pulita)
                 
-            with st.spinner("Salvataggio e invio notifica..."):
+            with st.spinner("Salvataggio..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, chiave_pulita, concessionario_estratto, str_c, str_r, esecutore_nome)
             
             if invio_ok:
@@ -267,9 +269,9 @@ if submit_button:
             
             df_salva = pd.DataFrame(st.session_state.storico_cloud)
             if push_excel_su_github(df_salva):
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato con successo.")
+                st.success("✅ OPERAZIONE COMPLETATA!\n\nRegistro aggiornato correttamente.")
                 st.session_state.form_id += 1
-                time.sleep(1.5)
+                time.sleep(1)
                 st.rerun()
 
 st.markdown("---")
@@ -292,9 +294,6 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
-# =====================================================================================
-# PANNELLO AMMINISTRATORE CENTRALIZZATO
-# =====================================================================================
 if esecutore_ruolo == "admin":
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     if st.session_state.storico_cloud:
@@ -307,7 +306,13 @@ if esecutore_ruolo == "admin":
             
         st.markdown("---")
         st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-        righe_snaitech = [row for row in st.session_state.storico_cloud if "snaitech" in str(row.get("CONCESSIONARIO", "")).lower() or "snai" in str(row.get("CONCESSIONARIO", "")).lower()]
+        # 🛡️ FILTRO ESTENDED: Cerca la parola sia nella colonna CONCESSIONARIO che in LOCALE o NOME_LOCALE
+        righe_snaitech = []
+        for row in st.session_state.storico_cloud:
+            testo_confronto = (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
+            if "snaitech" in testo_confronto or "snai" in testo_confronto:
+                righe_snaitech.append(row)
+                
         if righe_snaitech:
             df_snai = pd.DataFrame(righe_snaitech)
             st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
@@ -324,8 +329,8 @@ if esecutore_ruolo == "admin":
         if selezione_delete != "- Seleziona la riga da eliminare -":
             try:
                 parti_stringa = selezione_delete.split("ID ")
-                pezzo_numerico = parti_stringa[1].split(" |")
-                idx_da_eliminare = int(pezzo_numerico[0])
+                pezzo_numerico = parti_stringa[1].split(" |")[0]
+                idx_da_eliminare = int(pezzo_numerico)
                 
                 if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                     with st.spinner("Rimozione..."):
@@ -337,23 +342,21 @@ if esecutore_ruolo == "admin":
                     st.rerun()
             except Exception: pass
             
-        # 🛡️ 📤 INTERFACCIA DI CARICAMENTO EXCEL DIRETTA PER L'UFFICIO
         st.markdown("---")
         st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
         file_caricato = st.file_uploader("Trascina qui il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
         if file_caricato is not None:
             try:
                 df_caricato = pd.read_excel(file_caricato).fillna("")
-                # Verifica minima di conformità delle colonne per evitare caricamenti errati
                 if "CODICE_LOCALE" in df_caricato.columns and "INIZIO_FERIE" in df_caricato.columns:
                     if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                         st.session_state.storico_cloud = df_caricato.to_dict('records')
                         push_excel_su_github(df_caricato)
-                        st.success("✅ Database sovrascritto con successo con il tuo file dell'ufficio!")
+                        st.success("✅ Database sovrascritto con successo!")
                         time.sleep(1.5)
                         st.rerun()
                 else:
-                    st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano corretti.")
+                    st.error("❌ Struttura file non valida. Controlla i nomi delle colonne.")
             except Exception as e_load:
                 st.error(f"❌ Errore durante la lettura del file: {str(e_load)}")
     else:
