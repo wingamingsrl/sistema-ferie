@@ -85,6 +85,8 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(lista_records_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        
+        # Sbarra di separazione protetta contro i filtri della chat
         inizio_strada = "https://github.com"
         url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
         
@@ -95,12 +97,16 @@ def push_excel_su_github(lista_records_da_salvare):
         colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
         ws.append(colonne_reali)
         
+        # Scrittura controllata per impedire stringhe orfane nel Base64
         for row in lista_records_da_salvare:
-            # 🛡️ FIX CHIRURGICO: Se la riga è già un dizionario usa .get(), altrimenti la legge come testo puro
             if isinstance(row, dict):
                 ws.append([str(row.get(col, "")).strip() for col in colonne_reali])
             else:
-                ws.append([str(row).strip()])
+                # Forza il recupero dei dati se la sessione Cloud è memorizzata come serie
+                try:
+                    ws.append([str(getattr(row, col, "")).strip() for col in colonne_reali])
+                except Exception:
+                    ws.append([str(row).strip()])
             
         output_binario = io.BytesIO()
         wb.save(output_binario)
@@ -121,15 +127,21 @@ def push_excel_su_github(lista_records_da_salvare):
             "content": dati_base64,
             "branch": "main"
         }
-        if sha_file: 
-            payload_git["sha"] = sha_file
+        
+        # 🛡️ DISINNESCORO AUTOMATICO BLOCCO 422: Se il file è vuoto o disallineato,
+        # forziamo la PUT pulita escludendo lo SHA vecchio per piallare i metadati corrotti
+        if res_get.status_code == 200:
+            dati_json = res_get.json()
+            if isinstance(dati_json, dict) and dati_json.get("size", 0) > 0:
+                if sha_file:
+                    payload_git["sha"] = sha_file
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 422 and sha_file:
-            payload_delete = {"message": "🧹 Rimozione conflitto per sblocco 422", "sha": sha_file, "branch": "main"}
-            requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
-            if "sha" in payload_git: del payload_git["sha"]
+        # Secondo tentativo d'emergenza in caso di ostruzionismo residuo 422
+        if risposta_put.status_code == 422:
+            if "sha" in payload_git: 
+                del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
