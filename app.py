@@ -37,8 +37,8 @@ st.markdown("""
 
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO ED ARCHIVIAZIONE HARD DISK INTERNO CLOUD (AUTO-PROTETTO)
-# DISINNESCA AL 100% L'ERRORE 422 POICHÉ ESCLUDE LE CHIAMATE API VERSO GITHUB
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FUNZIONI DI SCRITTURA SU GITHUB
+# VERSIONE DI PRODUZIONE STRUTTURATA 100% PER EXCEL (.XLSX) — ANTICRASH LIVE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -47,17 +47,94 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
-df_locali = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
-df_tecnici = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
+def scarica_file_da_github_se_esiste(nome_file):
+    try:
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        parte1 = "https://github.com"
+        parte2 = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = parte1 + "/" + parte2 + "/" + nome_file + "?t=" + str(int(time.time()))
+        
+        h = {
+            "Authorization": "Bearer " + t_git, 
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        r = requests.get(url_git, headers=h, timeout=5)
+        if r.status_code == 200:
+            b64_content = r.json().get("content", "")
+            return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
+    except Exception:
+        pass
+    return None
 
-# Inizializzazione della memoria di bacheca permanente protetta dello smartphone
+def carica_database_locale():
+    df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
+    df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
+    
+    df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
+    if df_s is None or df_s.empty:
+        df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
+    return df_l, df_t, df_s.fillna("")
+
+df_locali, df_tecnici, df_storico_file = carica_database_locale()
+
 if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = []
+    st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
-def push_excel_su_github(df_da_salvare):
-    # Memorizza stabilmente i dati nella RAM del server escludendo i crash di GitHub
-    st.session_state.storico_cloud = df_da_salvare.to_dict('records')
-    return True
+def push_excel_su_github(lista_records_da_salvare):
+    try:
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        parte1 = "https://github.com"
+        parte2 = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        
+        colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
+        ws.append(colonne_reali)
+        
+        for row in lista_records_da_salvare:
+            if isinstance(row, dict):
+                ws.append([str(row.get(col, "")).strip() for col in colonne_reali])
+            else:
+                try: ws.append([str(getattr(row, col, "")).strip() for col in colonne_reali])
+                except Exception: ws.append([str(row).strip()])
+            
+        output_binario = io.BytesIO()
+        wb.save(output_binario)
+        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+        
+        headers_git = {
+            "Authorization": "Bearer " + t_git, 
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        
+        res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        
+        payload_git = {
+            "message": "🤖 [App] Sincronizzazione permanente database Excel", 
+            "content": dati_base64,
+            "branch": "main"
+        }
+        if sha_file: 
+            payload_git["sha"] = sha_file
+                        
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.toast("✅ File Excel aggiornato stabilmente su GitHub!", icon="💾")
+            return True
+        else:
+            return False
+    except Exception:
+        return False
+
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE UTENTI ED ESTRAZIONE VALORI PULITI DA EXCEL
