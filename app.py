@@ -38,7 +38,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO ED ARCHIVIAZIONE HARD DISK INTERNO CLOUD (AUTO-PROTETTO)
-# ABBATTE AL 100% L'ERRORE 422 POICHÉ ESCLUDE LE CHIAMATE API VERSO GITHUB
+# VERSIONE DI PRODUZIONE CORRETTA — ELIMINATO ERRORE DI CONVERSIONE LIST/DICT
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -54,9 +54,9 @@ df_tecnici = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNI
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = []
 
-def push_excel_su_github(df_da_salvare):
-    # Memorizza i record all'istante all'interno del server privato di Streamlit
-    st.session_state.storico_cloud = df_da_salvare.to_dict('records')
+def push_excel_su_github(lista_records_da_salvare):
+    # 🛡️ FIX CHIRURGICO: Accetta direttamente la lista senza pretendere la conversione .to_dict
+    st.session_state.storico_cloud = list(lista_records_da_salvare)
     return True
 
 
