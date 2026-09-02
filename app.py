@@ -245,7 +245,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# COMPLETAMENTE STRUTTURATO PER LE 9 COLONNE REALI AZIENDALI
+# VERSIONE DI PRODUZIONE STRUTTURATA 100% PER EXCEL (.XLSX) — ENGINE FIXED
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -257,13 +257,12 @@ if submit_button:
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
         
         for idx, row in enumerate(st.session_state.storico_cloud):
-            # Adattamento controllo sulla vecchia colonna NOME_LOCALE per retrocompatibilità
             if str(row.get("NOME_LOCALE", "")).strip() == str(scelta_pvd).strip():
                 try:
                     data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
                     data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
-                    old_inizio = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
+                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row.get('TECNICO_INSERIMENTO', 'Tecnico')})"
@@ -276,17 +275,14 @@ if submit_button:
             str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
-            # Scomposizione chirurgica del campo "Locale" nelle tre sottovoci aziendali richieste
-            # PVD esempio: "12345 - Bar Sport (SNAITECH)"
             testo_pvd = str(scelta_pvd)
-            codice_estratto = testo_pvd.split(" - ")[0].strip() if " - " in testo_pvd else testo_pvd.strip()
+            codice_estratto = testo_pvd.split(" - ").strip() if " - " in testo_pvd else testo_pvd.strip()
             
-            nome_rimanente = testo_pvd.split(" - ")[1] if " - " in testo_pvd else testo_pvd
-            nome_puro_locale = nome_rimanente.split(" (")[0].strip() if " (" in nome_rimanente else nome_rimanente.strip()
+            nome_rimanente = testo_pvd.split(" - ") if " - " in testo_pvd else testo_pvd
+            nome_puro_locale = nome_rimanente.split(" (").strip() if " (" in nome_rimanente else nome_rimanente.strip()
             
             concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
             
-            # 🛡️ COSTRUZIONE DELLA NUOVA RIGA ALLINEATA AL 100% ALL'IMMAGINE
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
                 "TECNICO_INSERIMENTO": esecutore_nome, 
@@ -315,7 +311,11 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                
+                # 🛡️ FIX CHIRURGICO: Forzatura motore openpyxl per evitare file corrotti locali a 0 byte
+                with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
+                    df_salva.to_excel(writer, index=False)
+                    
                 push_excel_su_github(df_salva)
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
@@ -333,8 +333,8 @@ for row in st.session_state.storico_cloud:
     try:
         data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
         data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
-        d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
+        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
@@ -345,9 +345,6 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
-# =====================================================================================
-# PANNELLO AMMINISTRATORE CENTRALIZZATO
-# =====================================================================================
 if esecutore_ruolo == "admin":
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     if st.session_state.storico_cloud:
@@ -376,21 +373,21 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         if selezione_delete != "- Seleziona la riga da eliminare -":
             parti_stringa = selezione_delete.split("ID ")
-            pezzo_numerico = parti_stringa[1].split(" |")[0]
+            pezzo_numerico = parti_stringa.split(" |")
             idx_da_eliminare = int(pezzo_numerico)
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    
+                    # 🛡️ FIX CHIRURGICO ANCHE PER L'ELIMINAZIONE: Motore openpyxl obbligatorio
+                    with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
+                        df_nuovo_salva.to_excel(writer, index=False)
+                        
                     push_excel_su_github(df_nuovo_salva)
                 st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
                 time.sleep(2)
                 st.rerun()
     else:
         st.write("Nessuna chiusura presente nel registro.")
-
-
-
-
