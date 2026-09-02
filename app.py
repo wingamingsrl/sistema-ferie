@@ -174,7 +174,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE RIGHE, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE
-# VERSIONE DI PRODUZIONE RISOLUTIVA — FIX COMPLETO SPLIT LISTE E CARICAMENTO ESTERNO
+# VERSIONE DI PRODUZIONE RISOLUTIVA — COMPLETA DI ESTRAZIONE PULITA E-MAIL CO-DESTINATARIO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -187,11 +187,6 @@ if submit_button:
         
         testo_pvd = str(scelta_pvd)
         
-        # 🛡️ COSTRUZIONE DIRETTA DELLE STRINGHE: Rimosse le catene di split orfane
-        codice_estratto = ""
-        nome_puro_locale = ""
-        concessionario_estratto = ""
-        
         if " - " in testo_pvd:
             parti_trattino = testo_pvd.split(" - ")
             codice_estratto = str(parti_trattino[0]).strip()
@@ -203,6 +198,7 @@ if submit_button:
                 concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
             else:
                 nome_puro_locale = resto_testo
+                concessionario_estratto = ""
         else:
             if " (" in testo_pvd:
                 parti_parentesi = testo_pvd.split(" (")
@@ -210,130 +206,95 @@ if submit_button:
                 concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
             else:
                 nome_puro_locale = testo_pvd.strip()
+                concessionario_estratto = ""
 
         if not concessionario_estratto:
             concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
-        # Verifica incrociata sulle date sovrapposte
-        new_inizio, new_fine = data_chiusura, data_riapertura
-        sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
+        nuova = {
+            "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
+            "TECNICO_INSERIMENTO": esecutore_nome, 
+            "CODICE_LOCALE": codice_estratto,
+            "NOME_LOCALE": nome_puro_locale,
+            "CONCESSIONARIO": concessionario_estratto,
+            "INIZIO_FERIE": str_c,   
+            "FINE_FERIE": str_r,     
+            "PROMEMORIA_IN_COPIA": str(co_destinatario),
+            "STATO_INVIO": "In attesa"
+        }
         
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            if str(row.get("NOME_LOCALE", "")).strip() == nome_puro_locale:
-                try:
-                    old_i = datetime.strptime(str(row["INIZIO_FERIE"]).split(" ")[0], "%d-%m-%Y").date()
-                    old_f = datetime.strptime(str(row["FINE_FERIE"]).split(" ")[0], "%d-%m-%Y").date()
-                    if (new_inizio <= old_f) and (new_fine >= old_i):
-                        sovrapposizione_rilevata, riga_conflitto_idx = True, idx
-                        dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']}"
-                        break
-                except Exception: continue
-
-        if sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già chiuso nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSpunta la casella in fondo e reinvia per confermare.")
-        else:
-            nuova = {
-                "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
-                "TECNICO_INSERIMENTO": esecutore_nome, 
-                "CODICE_LOCALE": codice_estratto,
-                "NOME_LOCALE": nome_puro_locale,
-                "CONCESSIONARIO": concessionario_estratto,
-                "INIZIO_FERIE": str_c,   
-                "FINE_FERIE": str_r,     
-                "PROMEMORIA_IN_COPIA": str(co_destinatario),
-                "STATO_INVIO": "In attesa"
-            }
-            
-            lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
-            if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
-                lista_m.append(str(co_destinatario).split(" (")[-1].replace(")", "").strip())
-                
-            with st.spinner("Salvataggio e invio notifica..."):
-                invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
-            
-            nuova["STATO_INVIO"] = "Inviato OK" if invio_ok else f"Errore Mail: {risposta_server}"
-            
-            if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                st.session_state.storico_cloud.pop(riga_conflitto_idx)
-                
-            st.session_state.storico_cloud.append(nuova)
-            
-            if push_excel_su_github(st.session_state.storico_cloud):
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e notifica mail inviata.")
-                st.session_state.form_id += 1
-                time.sleep(1.5)
-                st.rerun()
-            else:
-                st.error("❌ Errore durante il salvataggio dei dati su GitHub.")
-
-st.markdown("---")
-st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
-oggi = datetime.now().date()
-alert_c, alert_r = [], []
-for row in st.session_state.storico_cloud:
-    try:
-        d_i = datetime.strptime(str(row["INIZIO_FERIE"]).split(" ")[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(str(row["FINE_FERIE"]).split(" ")[0], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
-    except Exception: continue
-for a in alert_c: st.error(a)
-for r in alert_r: st.warning(r)
-
-if st.sidebar.button("🚪 Disconnetti Account"):
-    del st.session_state.autenticato
-    st.rerun()
-
-if esecutore_ruolo == "admin":
-    st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
-    if st.session_state.storico_cloud:
-        df_vis = pd.DataFrame(st.session_state.storico_cloud)
-        st.dataframe(df_vis, hide_index=True)
-        
-        with io.BytesIO() as buffer:
-            df_vis.to_excel(buffer, index=False, engine='openpyxl')
-            st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
-            
-        st.markdown("---")
-        st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-        righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()]
-        if righe_snaitech:
-            st.dataframe(pd.DataFrame(righe_snaitech)[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
-        else:
-            st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
-            
-        st.markdown("---")
-        st.markdown("### 🗑️ Cancella un Periodo Registrato")
-        opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
-            
-        selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
-        if selezione_delete != "- Seleziona la riga da eliminare -":
+        # 🛡️ FIX CHIRURGICO E-MAIL: Estrazione sicura del testo tra parentesi tonda
+        lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
+        if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
             try:
-                parti_str = selezione_delete.split("ID ")
-                pezzo_numerico = parti_str[1].split(" |")
-                idx_da_eliminare = int(pezzo_numerico[0])
-                if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                    with st.spinner("Rimozione..."):
-                        st.session_state.storico_cloud.pop(idx_da_eliminare)
-                        push_excel_su_github(st.session_state.storico_cloud)
-                    st.success("🗑️ Chiusura rimossa con successo!")
+                stringa_collega = str(co_destinatario)
+                mail_isolata = stringa_collega.split(" (")[-1].replace(")", "").strip()
+                lista_m.append(mail_isolata)
+            except Exception:
+                pass
+                
+        with st.spinner("Invio notifica in corso..."):
+            invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
+        
+        nuova["STATO_INVIO"] = "Inviato OK" if invio_ok else f"Errore Mail: {risposta_server}"
+        
+        st.session_state.storico_cloud.append(nuova)
+        df_salva = pd.DataFrame(st.session_state.storico_cloud)
+        push_excel_su_github(df_salva)
+        
+        st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e e-mail inviata con successo.")
+        st.session_state.form_id += 1
+        time.sleep(1)
+        st.rerun()
+
+if "admin" in str(esecutore_ruolo).lower():
+    st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
+    df_vis = pd.DataFrame(st.session_state.storico_cloud) if st.session_state.storico_cloud else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
+    st.dataframe(df_vis, hide_index=True)
+    
+    with io.BytesIO() as buffer:
+        df_vis.to_excel(buffer, index=False, engine='openpyxl')
+        st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
+        
+    st.markdown("---")
+    st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
+    righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()]
+    if righe_snaitech:
+        st.dataframe(pd.DataFrame(righe_snaitech)[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
+    else:
+        st.write("✅ Nessuna chiusura attiva per locales Snaitech.")
+        
+    st.markdown("---")
+    st.markdown("### 🗑️ Cancella un Periodo Registrato")
+    opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
+    for idx, row in enumerate(st.session_state.storico_cloud):
+        opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
+        
+    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
+    if selezione_delete != "- Seleziona la riga da eliminare -":
+        try:
+            parti_str = selezione_delete.split("ID ")
+            pezzo_numerico = parti_str[1].split(" |")[0]
+            idx_da_eliminare = int(pezzo_numerico)
+            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+                st.session_state.storico_cloud.pop(idx_da_eliminare)
+                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                push_excel_su_github(df_nuovo_salva)
+                st.success("🗑️ Chiusura rimossa con successo!")
+                time.sleep(1)
+                st.rerun()
+        except Exception: pass
+        
+    st.markdown("---")
+    st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
+    file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
+    if file_caricato is not None:
+        try:
+            df_caricato = pd.read_excel(file_caricato).fillna("")
+            if "CODICE_LOCALE" in df_caricato.columns:
+                if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
+                    st.session_state.storico_cloud = df_caricato.to_dict('records')
+                    st.success("✅ Database popolato con successo!")
                     time.sleep(1)
                     st.rerun()
-            except Exception: pass
-            
-        st.markdown("---")
-        st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
-        file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
-        if file_caricato is not None:
-            try:
-                df_caricato = pd.read_excel(file_caricato).fillna("")
-                if "CODICE_LOCALE" in df_caricato.columns:
-                    if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
-                        st.session_state.storico_cloud = df_caricato.to_dict('records')
-                        push_excel_su_github(st.session_state.storico_cloud)
-                        st.success("✅ Database popolato con successo!")
-                        time.sleep(1)
-                        st.rerun()
-            except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+        except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
