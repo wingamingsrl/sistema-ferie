@@ -135,6 +135,7 @@ def push_excel_su_github(df_da_salvare):
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL (RUOLI)
+# VERSIONE DI PRODUZIONE CORRETTA — ESTRAZIONE VALORI PULITI DA PANDAS SERIES
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
@@ -147,8 +148,10 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                st.session_state.user_nome = str(utente_valido["NOME"].values).strip()
-                ruolo_estratto = str(utente_valido["RUOLO"].values).strip().lower() if "RUOLO" in utente_valido.columns else "tecnico"
+                # 🛡️ FIX CHIRURGICO: Prende il primo valore pulito per eliminare le parentesi e la scritta dtype/length
+                st.session_state.user_nome = str(utente_valido["NOME"].values[0]).strip()
+                
+                ruolo_estratto = str(utente_valido["RUOLO"].values[0]).strip().lower() if "RUOLO" in utente_valido.columns else "tecnico"
                 st.session_state.user_ruolo = ruolo_estratto
                 st.rerun()
             else:
@@ -161,6 +164,7 @@ esecutore_ruolo = st.session_state.get("user_ruolo", "tecnico")
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email}) — Ruolo: {esecutore_ruolo.upper()}</div>", unsafe_allow_html=True)
+
 # =====================================================================================
 # BLOCCO 4: NOTIFICA EMAIL SMTP GOOGLE CON ELENCO CONCESSIONARI INCOLONNATO
 # =====================================================================================
@@ -245,7 +249,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 # =====================================================================================
 # BLOCCO 6: VERIFICA SOVRAPPOSIZIONI, CARICAMENTO SU GITHUB E AREA AMMINISTRATORE DINAMICA
-# VERSIONE DI PRODUZIONE STRUTTURATA 100% PER EXCEL (.XLSX) — ENGINE FIXED
+# VERSIONE DI PRODUZIONE RISOLUTIVA — CORREZIONE CHIRURGICA INDICI LISTE E STRIP
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -261,8 +265,8 @@ if submit_button:
                 try:
                     data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
                     data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
-                    old_inizio = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-                    old_fine = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+                    old_inizio = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+                    old_fine = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
                     if (new_inizio <= old_fine) and (new_fine >= old_inizio):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']} (Inserito da: {row.get('TECNICO_INSERIMENTO', 'Tecnico')})"
@@ -276,10 +280,12 @@ if submit_button:
             str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
             
             testo_pvd = str(scelta_pvd)
-            codice_estratto = testo_pvd.split(" - ").strip() if " - " in testo_pvd else testo_pvd.strip()
             
-            nome_rimanente = testo_pvd.split(" - ") if " - " in testo_pvd else testo_pvd
-            nome_puro_locale = nome_rimanente.split(" (").strip() if " (" in nome_rimanente else nome_rimanente.strip()
+            # 🛡️ FIX CHIRURGICO: Prende il primo elemento [0] e l'ultimo elemento [-1] prima di fare lo strip
+            codice_estratto = testo_pvd.split(" - ")[0].strip() if " - " in testo_pvd else testo_pvd.strip()
+            
+            nome_rimanente = testo_pvd.split(" - ")[1] if " - " in testo_pvd else testo_pvd
+            nome_puro_locale = nome_rimanente.split(" (")[0].strip() if " (" in nome_rimanente else nome_rimanente.strip()
             
             concessionario_estratto = mappa_concessionari.get(scelta_pvd, "")
             
@@ -311,8 +317,6 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                
-                # 🛡️ FIX CHIRURGICO: Forzatura motore openpyxl per evitare file corrotti locali a 0 byte
                 with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
                     df_salva.to_excel(writer, index=False)
                     
@@ -333,8 +337,8 @@ for row in st.session_state.storico_cloud:
     try:
         data_inizio_estratta = str(row["INIZIO_FERIE"]).split(" ")
         data_fine_estratta = str(row["FINE_FERIE"]).split(" ")
-        d_i = datetime.strptime(data_inizio_estratta, "%d-%m-%Y").date()
-        d_f = datetime.strptime(data_fine_estratta, "%d-%m-%Y").date()
+        d_i = datetime.strptime(data_inizio_estratta[0], "%d-%m-%Y").date()
+        d_f = datetime.strptime(data_fine_estratta[0], "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
@@ -373,18 +377,15 @@ if esecutore_ruolo == "admin":
         selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
         if selezione_delete != "- Seleziona la riga da eliminare -":
             parti_stringa = selezione_delete.split("ID ")
-            pezzo_numerico = parti_stringa.split(" |")
+            pezzo_numerico = parti_stringa[1].split(" |")[0]
             idx_da_eliminare = int(pezzo_numerico)
             
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 with st.spinner("Rimozione e riallineamento database cloud..."):
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    
-                    # 🛡️ FIX CHIRURGICO ANCHE PER L'ELIMINAZIONE: Motore openpyxl obbligatorio
                     with pd.ExcelWriter(FILE_STORICO_PERMANENTE, engine='openpyxl') as writer:
                         df_nuovo_salva.to_excel(writer, index=False)
-                        
                     push_excel_su_github(df_nuovo_salva)
                 st.success("🗑️ Chiusura eliminata con successo! Il database Excel su GitHub è stato aggiornato.")
                 time.sleep(2)
