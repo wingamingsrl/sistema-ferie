@@ -89,11 +89,8 @@ def push_excel_su_github(df_da_salvare):
             df_da_salvare = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
         
         output_binario = io.BytesIO()
-        # 🛡️ FIX CHIRURGICO ASSOLUTO: Il blocco 'with' deve chiudersi del tutto PRIMA di leggere il valore binario
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_da_salvare.to_excel(writer, index=False)
-            
-        # Ora il file Excel è chiuso, integro, sigillato e pronto per la conversione Base64
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
         headers_git = {
@@ -107,7 +104,7 @@ def push_excel_su_github(df_da_salvare):
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [App] Allineamento e scrittura nativa database Excel", 
+            "message": "🤖 [App] Scrittura database Excel", 
             "content": dati_base64,
             "branch": "main"
         }
@@ -116,6 +113,20 @@ def push_excel_su_github(df_da_salvare):
             payload_git["sha"] = sha_file
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        # 🛡️ DISINNESCORO TOTALE ERRORE 422: Se GitHub fa ostruzionismo e rifiuta la sovrascrittura,
+        # applichiamo la forza bruta: eliminiamo il file vecchio e lo ricreiamo da zero in un millisecondo!
+        if risposta_put.status_code == 422 and sha_file:
+            payload_delete = {
+                "message": "🧹 [Reset] Rimozione file per sblocco errore 422",
+                "sha": sha_file,
+                "branch": "main"
+            }
+            # 1. Rimuove il file bloccato
+            requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
+            # 2. Ricrea istantaneamente il file Excel sano, pulito e aggiornato
+            if "sha" in payload_git: del payload_git["sha"]
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ Excel salvato su GitHub!", icon="💾")
@@ -126,6 +137,7 @@ def push_excel_su_github(df_da_salvare):
     except Exception as e_err:
         st.error(f"💥 Errore Interno: {str(e_err)}")
         return False
+
 
 
 # =====================================================================================
