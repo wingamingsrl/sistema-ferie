@@ -85,11 +85,9 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(lista_records_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        parte1 = "https://github.com"
-        parte2 = "repos/wingamingsrl/sistema-ferie/contents"
-        url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
+        inizio_strada = "https://github.com"
+        url_git = inizio_strada + "/" + FILE_STORICO_PERMANENTE
         
-        # 🛡️ Generazione nativa strutturata con openpyxl (Ora importato correttamente)
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Sheet1"
@@ -98,7 +96,11 @@ def push_excel_su_github(lista_records_da_salvare):
         ws.append(colonne_reali)
         
         for row in lista_records_da_salvare:
-            ws.append([str(row.get(col, "")).strip() for col in colonne_reali])
+            # 🛡️ FIX CHIRURGICO: Se la riga è già un dizionario usa .get(), altrimenti la legge come testo puro
+            if isinstance(row, dict):
+                ws.append([str(row.get(col, "")).strip() for col in colonne_reali])
+            else:
+                ws.append([str(row).strip()])
             
         output_binario = io.BytesIO()
         wb.save(output_binario)
@@ -124,7 +126,6 @@ def push_excel_su_github(lista_records_da_salvare):
                         
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ BYPASS AUTOMATICO ERRORE 422: Se c'è un conflitto di SHA, pialla il file e lo rigenera nuovo da zero
         if risposta_put.status_code == 422 and sha_file:
             payload_delete = {"message": "🧹 Rimozione conflitto per sblocco 422", "sha": sha_file, "branch": "main"}
             requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
@@ -140,7 +141,6 @@ def push_excel_su_github(lista_records_da_salvare):
     except Exception as e_err:
         st.error(f"💥 Errore Interno durante il salvataggio: {str(e_err)}")
         return False
-
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DINAMICHE DA EXCEL
