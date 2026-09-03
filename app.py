@@ -436,7 +436,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         except Exception as e_del:
             st.error(f"Errore lettura riga: {str(e_del)}")
         
-    st.markdown("---")
+       st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
     if file_caricato is not None:
@@ -454,8 +454,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
 
-# TASTO LOGOUT IN CODA CHE ACCETTA E RESETTA I PARAMETRI NELL'URL
+# TASTO LOGOUT IN CODA AL MARGINE ZERO
 if st.sidebar.button("🚪 Disconnetti Account"):
     st.query_params.clear()
     st.session_state.autenticato = False
     st.rerun()
+
