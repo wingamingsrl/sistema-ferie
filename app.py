@@ -247,6 +247,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
+# VERSIONE DI PRODUZIONE ALLINEATA AL MARGINE ZERO — INDIPENDENTE DALLA FORM SMARTPHONE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -257,27 +258,10 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
-        # Estrattore geometrico sicuro senza concatenazioni di liste
-        if " - " in testo_pvd:
-            parti_trattino = testo_pvd.split(" - ")
-            codice_estratto = str(parti_trattino[0]).strip()
-            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
-        else:
-            codice_estratto = ""
-            resto_testo = testo_pvd.strip()
-            
-        if " (" in resto_testo:
-            parti_parentesi = resto_testo.split(" (")
-            nome_puro_locale = str(parti_parentesi[0]).strip()
-            concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
-        else:
-            nome_puro_locale = resto_testo
-            concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
-
         # 🛡️ CONTROLLO ANTIDOPPIONE RESTRITTIVO BASATO SUL CODICE LOCALE E LE DATE
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
         for idx, row in enumerate(st.session_state.storico_cloud):
-            if str(row.get("NOME_LO", "")).strip() == nome_puro_locale:
+            if str(row.get("NOME_LO", "")).strip() in testo_pvd:
                 try:
                     old_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" ")[0], "%d-%m-%Y").date()
                     old_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" ")[0], "%d-%m-%Y").date()
@@ -287,10 +271,18 @@ if submit_button:
                         break
                 except Exception: continue
 
-        if sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSpunta la casella in fondo e reinvia.")
+        if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
+            st.error("Rilevato elemento non conforme nella stringa di testo del locale.")
+        elif sovrapposizione_rilevata and not forza_sovrascrittura:
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica o di una sostituzione di date, spunta la casella in fondo e invia di nuovo.")
         else:
-            # 🛡️ ALLINEAMENTO RIGIDO ALLE 9 INTESTAZIONI ESATTE DELLA FOTO INVIATA
+            parti_trattino = testo_pvd.split(" - ") if " - " in testo_pvd else [testo_pvd]
+            codice_estratto = str(parti_trattino[0]).strip()
+            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
+            parti_parentesi = resto_testo.split(" (") if " (" in resto_testo else [resto_testo]
+            nome_puro_locale = str(parti_parentesi[0]).strip()
+            concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else mappa_concessionari.get(testo_pvd, "")
+
             nuova = {
                 "DATA_INS": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                 "TECNICO_": esecutore_nome,
@@ -321,7 +313,7 @@ if submit_button:
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro memorizzato e notifica e-mail inviata con successo.")
                 st.session_state.form_id += 1
                 time.sleep(1.5)
                 st.rerun()
@@ -334,10 +326,10 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        d_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" ")[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" ")[0], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LO', 'Locale')}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LO', 'Locale')}** riapre tra 3 giorni")
+        d_i = datetime.strptime(str(row["INIZIO_FE"]).split(" ")[0], "%d-%m-%Y").date()
+        d_f = datetime.strptime(str(row["FINE_FERI"]).split(" ")[0], "%d-%m-%Y").date()
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['NOME_LO']}** chiude tra 3 giorni")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['NOME_LO']}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
@@ -346,7 +338,7 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
-# --- PANNELLO AMMINISTRATORE CENTRALIZZATO (ESCLUSIVO PER MANUELA) ---
+# --- PLANCCIA AMMINISTRATORE SEMPRE VISIBILE AL MARGINE ZERO ---
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     colonne_foto = ["DATA_INS", "TECNICO_", "CODICE_L", "NOME_LO", "CONCESSI", "INIZIO_FE", "FINE_FERI", "PROMEMO", "STATO_IN"]
@@ -364,7 +356,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-    righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSI", "")) + " " + str(row.get("NOME_LO", ""))).lower()] if st.session_state.storico_cloud else []
+    righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in str(row.get("CONCESSI", "")).lower() or "snai" in str(row.get("NOME_LO", "")).lower()] if st.session_state.storico_cloud else []
     if righe_snaitech:
         df_snai = pd.DataFrame(righe_snaitech).reindex(columns=colonne_foto).fillna("")
         st.dataframe(df_snai[["CODICE_L", "NOME_LO", "INIZIO_FE", "FINE_FERI", "TECNICO_"]], hide_index=True)
@@ -382,8 +374,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
             parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str[1].split(" |")[0]
-            idx_da_eliminare = int(pezzo_numerico)
+            pezzo_numerico = parti_str[1].split(" |")
+            idx_da_eliminare = int(pezzo_numerico[0])
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
@@ -409,3 +401,4 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 time.sleep(1.5)
                 st.rerun()
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
