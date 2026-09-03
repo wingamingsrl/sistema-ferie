@@ -247,7 +247,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
-# VERSIONE DI PRODUZIONE ALLINEATA AL MARGINE ZERO — INDIPENDENTE DALLA FORM SMARTPHONE
+# VERSIONE DI PRODUZIONE TOTALMENTE FLESSIBILE CONTRO MAIUSCOLE/MINUSCOLE NELL'EXCEL
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -258,13 +258,12 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
-        # 🛡️ CONTROLLO ANTIDOPPIONE RESTRITTIVO BASATO SUL CODICE LOCALE E LE DATE
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LO", "")).strip() in testo_pvd:
                 try:
-                    old_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" ")[0], "%d-%m-%Y").date()
-                    old_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" ")[0], "%d-%m-%Y").date()
+                    old_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" "), "%d-%m-%Y").date()
+                    old_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" "), "%d-%m-%Y").date()
                     if (data_chiusura <= old_f) and (data_riapertura >= old_i):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row.get('INIZIO_FE','')} al {row.get('FINE_FERI','')}"
@@ -326,8 +325,8 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        d_i = datetime.strptime(str(row["INIZIO_FE"]).split(" ")[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(str(row["FINE_FERI"]).split(" ")[0], "%d-%m-%Y").date()
+        d_i = datetime.strptime(str(row["INIZIO_FE"]).split(" "), "%d-%m-%Y").date()
+        d_f = datetime.strptime(str(row["FINE_FERI"]).split(" "), "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row['NOME_LO']}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row['NOME_LO']}** riapre tra 3 giorni")
     except Exception: continue
@@ -338,14 +337,27 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
-# --- PLANCCIA AMMINISTRATORE SEMPRE VISIBILE AL MARGINE ZERO ---
+# --- PLANCCIA AMMINISTRATORE APERTA CON ELASTICITÀ DI LETTURA COLONNE ---
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     colonne_foto = ["DATA_INS", "TECNICO_", "CODICE_L", "NOME_LO", "CONCESSI", "INIZIO_FE", "FINE_FERI", "PROMEMO", "STATO_IN"]
     
     if st.session_state.storico_cloud:
         df_vis = pd.DataFrame(st.session_state.storico_cloud)
+        
+        # 🛡️ FIX CHIRURGICO: Uniforma in maiuscolo e pulisce da spazi i titoli dell'Excel ricaricato per farli combaciare al 100%
+        df_vis.columns = [str(c).strip().upper() for c in df_vis.columns]
+        
+        # Gestisce i micro-troncamenti delle scritte brevi della foto
+        mappa_corrispondenze = {
+            "DATA_INSERIMENTO": "DATA_INS", "TECNICO_INSERIMENTO": "TECNICO_", 
+            "CODICE_LOCALE": "CODICE_L", "NOME_LOCALE": "NOME_LO", 
+            "CONCESSIONARIO": "CONCESSI", "INIZIO_FERIE": "INIZIO_FE", 
+            "FINE_FERIE": "FINE_FERI", "PROMEMORIA_IN_COPIA": "PROMEMO", "STATO_INVIO": "STATO_IN"
+        }
+        df_vis = df_vis.rename(columns=mappa_corrispondenze)
         df_vis = df_vis.reindex(columns=colonne_foto).fillna("")
+        
         st.dataframe(df_vis, hide_index=True)
         
         with io.BytesIO() as buffer:
@@ -356,9 +368,20 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-    righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in str(row.get("CONCESSI", "")).lower() or "snai" in str(row.get("NOME_LO", "")).lower()] if st.session_state.storico_cloud else []
+    
+    righe_snaitech = []
+    if st.session_state.storico_cloud:
+        for row in st.session_state.storico_cloud:
+            # Rende elastica l'intercettazione dei locali Snai leggendo chiavi vecchie o nuove indifferenti
+            v_conc = str(row.get("CONCESSI", row.get("CONCESSIONARIO", ""))).lower()
+            v_nome = str(row.get("NOME_LO", row.get("NOME_LOCALE", row.get("LOCALE", "")))).lower()
+            if "snai" in v_conc or "snai" in v_nome:
+                righe_snaitech.append(row)
+                
     if righe_snaitech:
-        df_snai = pd.DataFrame(righe_snaitech).reindex(columns=colonne_foto).fillna("")
+        df_snai = pd.DataFrame(righe_snaitech)
+        df_snai.columns = [str(c).strip().upper() for c in df_snai.columns]
+        df_snai = df_snai.reindex(columns=colonne_foto).fillna("")
         st.dataframe(df_snai[["CODICE_L", "NOME_LO", "INIZIO_FE", "FINE_FERI", "TECNICO_"]], hide_index=True)
     else:
         st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
@@ -368,14 +391,18 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
     if st.session_state.storico_cloud:
         for idx, row in enumerate(st.session_state.storico_cloud):
-            opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_L', '')} - {row.get('NOME_LO', '')} (Dal {row.get('INIZIO_FE', '')} al {row.get('FINE_FERI', '')})")
+            v_cod = row.get("CODICE_L", row.get("CODICE_LOCALE", ""))
+            v_loc = row.get("NOME_LO", row.get("NOME_LOCALE", row.get("LOCALE", "")))
+            v_inf = row.get("INIZIO_FE", row.get("INIZIO_FERIE", ""))
+            v_fin = row.get("FINE_FERI", row.get("FINE_FERIE", ""))
+            opzioni_cancellazione.append(f"ID {idx} | {v_cod} - {v_loc} (Dal {v_inf} al {v_fin})")
             
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
             parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str[1].split(" |")
-            idx_da_eliminare = int(pezzo_numerico[0])
+            pezzo_numerico = parti_str[1].split(" |")[0]
+            idx_da_eliminare = int(pezzo_numerico)
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
@@ -389,6 +416,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
+
     if file_caricato is not None:
         try:
             df_caricato = pd.read_excel(file_caricato).fillna("")
