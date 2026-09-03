@@ -440,3 +440,13 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+# --- PULSANTE LOGOUT UFFICIALE VISIBILE SULLO SCHERMO SMARTPHONE ---
+st.markdown("<br>", unsafe_allow_html=True)
+col_out1, col_out2, col_out3 = st.columns([1, 2, 1])
+with col_out2:
+    if st.button("🚪 DISCONNETTI ACCOUNT / LOGOUT"):
+        st.query_params.clear()
+        st.session_state.autenticato = False
+        st.success("Uscita effettuata con successo!")
+        time.sleep(0.5)
+        st.rerun()
