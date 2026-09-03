@@ -140,8 +140,19 @@ def push_excel_su_github(df_da_salvare):
         return False
 
 # =====================================================================================
-# BLOCCO 3: ACCESSO SICUREZZA CON PULIZIA RIGIDA DEL BUG DTYPE/LENGTH (SANATO)
+# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE DELLA SESSIONE ANTI-F5 (VALIDITÀ 2 ORE)
 # =====================================================================================
+# Inizializzazione dei timer di sicurezza per evitare il relogin continuo
+if "ora_login" not in st.session_state:
+    st.session_state.ora_login = None
+
+# Se l'utente preme F5, controlla se il login precedente è avvenuto meno di 120 minuti fa
+if st.session_state.ora_login is not None:
+    tempo_trascorso = time.time() - st.session_state.ora_login
+    if tempo_trascorso > 7200:  # 7200 secondi = 120 minuti (2 ore)
+        del st.session_state.autenticato
+        st.session_state.ora_login = None
+
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
     with st.container(border=True):
@@ -152,29 +163,23 @@ if "autenticato" not in st.session_state:
             utente_valido = df_tecnici[(df_tecnici["EMAIL"].astype(str).str.strip().str.lower() == input_email) & (df_tecnici["PASSWORD"].astype(str).str.strip() == input_password)]
             if not utente_valido.empty:
                 st.session_state.autenticato = True
+                st.session_state.ora_login = time.time()  # Fissa il marcatore temporale di avvio
                 st.session_state.user_email = input_email
                 
-                # 🛡️ ESTRAZIONE PULITA AD ELEMENTO SINGOLO DELLA STRINGA
-                nome_el = utente_valido["NOME"].values[0] if len(utente_valido["NOME"].values) > 0 else "Tecnico"
-                nome_pulito = str(nome_el).replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
-                
+                nome_grezzo = str(utente_valido["NOME"].values) if len(utente_valido["NOME"].values) > 0 else "Tecnico"
+                nome_pulito = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
                 st.session_state.user_nome = nome_pulito
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
     st.stop()
 
-# 🛡️ REFRESH DI SICUREZZA PER UTENTI LOGGATI (EVITA CRASH SPLIT LISTA)
-if "user_nome" in st.session_state:
-    nome_attuale = str(st.session_state.user_nome)
-    if "dtype" in nome_attuale or "Length" in nome_attuale or "[" in nome_attuale:
-        st.session_state.user_nome = nome_attuale.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
-
 esecutore_nome = st.session_state.user_nome
 esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
+
 
 
 
@@ -254,8 +259,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE INSERIMENTI, CONTROLLO DOPPIONI E PARSAMENTO INTEGRALE STRINGHE
-# VERSIONE DI PRODUZIONE SIGILLATA — FIX TOTALE CONTENUTO CELLE REALE SENZA APICI
+# BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
+# VERSIONE DI PRODUZIONE SIGILLATA — FIX COMPLETO TASTO CANCELLAZIONE SBLOCCATO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -266,7 +271,6 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
-        # 🛡️ CONTROLLO ANTIDOPPIONE E SOVRAPPOSIZIONE PERIODI RIGIDO SULLA STRUTTURA ESTESA
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LOCALE", "")).strip() in testo_pvd or testo_pvd.strip() in str(row.get("NOME_LOCALE", "")):
@@ -282,29 +286,28 @@ if submit_button:
         if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
             st.error("Rilevato elemento non conforme nella stringa di testo del locale.")
         elif sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si trata di una modifica spunta la casella in fondo e reinvia.")
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
         else:
-            # 🛡️ ESTRAZIONE CHIRURGICA DEL TESTO — NO LISTE, NO PARENTESI QUADRE NELLE CELLE
             codice_estratto = ""
             nome_puro_locale = ""
             concessionario_estratto = ""
             
-            # 1. Isola il codice (tutto ciò che c'è prima di " - ")
             if " - " in testo_pvd:
-                codice_estratto = testo_pvd.split(" - ")[0].strip()
-                resto_stringa = testo_pvd.split(" - ")[1].strip()
+                parti_trattino = testo_pvd.split(" - ")
+                if len(parti_trattino) > 0: codice_estratto = str(parti_trattino).strip()
+                if len(parti_trattino) > 1: resto_testo = str(parti_trattino).strip()
+                else: resto_testo = testo_pvd.strip()
             else:
-                resto_stringa = testo_pvd.strip()
-            
-            # 2. Isola il nome del locale ed il concessionario
-            if " (" in resto_stringa:
-                nome_puro_locale = resto_stringa.split(" (")[0].strip()
-                concessionario_estratto = resto_stringa.split(" (")[1].replace(")", "").strip()
+                resto_testo = testo_pvd.strip()
+                
+            if " (" in resto_testo:
+                parti_parentesi = resto_testo.split(" (")
+                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi).strip()
+                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi).replace(")", "").strip()
             else:
-                nome_puro_locale = resto_stringa.strip()
+                nome_puro_locale = resto_testo
                 concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
-            # Creazione rigida del record con stringhe di testo pulite
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -356,8 +359,10 @@ for row in st.session_state.storico_cloud:
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
 
+# TASTO LOGOUT MANUALE IN SIDEBAR: Cancella istantaneamente la sessione forzando l'uscita
 if st.sidebar.button("🚪 Disconnetti Account"):
-    del st.session_state.autenticato
+    st.session_state.ora_login = None
+    if "autenticato" in st.session_state: del st.session_state.autenticato
     st.rerun()
 
 # --- INTERFACCIA AMMINISTRATORE INDIPENDENTE COLONNE ESTESE ---
@@ -392,19 +397,22 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         for idx, row in enumerate(st.session_state.storico_cloud):
             opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})")
             
+    # 🛡️ FIX CHIRURGICO ACCESSO TASTO: Estrazione testuale lineare isolata dell'ID senza split distruttivi
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str.split(" |")
-            idx_da_eliminare = int(pezzo_numerico)
+            stringa_pulita = str(selezione_delete)
+            id_isolato = stringa_pulita.split("ID ")
+            idx_da_eliminare = int(id_isolato)
+            
+            # Appare immediatamente sullo schermo il pulsante rosso ufficiale di distruzione riga
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                 df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_nuovo_salva)
                 st.success("🗑️ Chiusura rimossa con successo!")
-                time.sleep(1)
+                time.sleep(0.5)
                 st.rerun()
         except Exception: pass
         
