@@ -50,23 +50,26 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ FIX CHIRURGICO: Utilizza l'indirizzo API ufficiale per scaricare l'Excel binario nativo
         parte1 = "https://github.com"
         parte2 = "repos/wingamingsrl/sistema-ferie/contents"
-        url_git = parte1 + "/" + parte2 + "/" + nome_file + "?t=" + str(int(time.time()))
+        
+        # 🛡️ BYPASS TOTALE CACHE GITHUB: Inietta un codice orario univoco per costringere il server a leggere l'Excel reale
+        codice_orario_univoco = str(int(time.time() * 1000))
+        url_git = f"{parte1}/{parte2}/{nome_file}?_nonce={codice_orario_univoco}"
         
         h = {
             "Authorization": f"token {t_git}", 
-            "Accept": "application/vnd.github.v3+json",
+            "Accept": "application/vnd.github.v3.raw",  # Forzatura estrazione contenuto grezzo nativo
             "User-Agent": "WinGaming-Cloud-App"
         }
         r = requests.get(url_git, headers=h, timeout=5)
         if r.status_code == 200:
-            b64_content = r.json().get("content", "")
-            return pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
+            # Legge direttamente il flusso binario protetto scaricato dal server di GitHub
+            return pd.read_excel(io.BytesIO(r.content))
     except Exception:
         pass
     return None
+
 
 
 def carica_database_locale():
