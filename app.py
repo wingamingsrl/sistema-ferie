@@ -141,7 +141,7 @@ def push_excel_su_github(df_da_salvare):
 
 
 # =====================================================================================
-# BLOCCO 3: ACCESSO UTENTI CON DECONTRATTURAZIONE RIGIDA DEL BUG DTYPE/LENGTH PANDAS
+# BLOCCO 3: ACCESSO SICUREZZA CON PULIZIA RIGIDA DEL BUG DTYPE/LENGTH (DECONTRATTO)
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
@@ -155,21 +155,28 @@ if "autenticato" not in st.session_state:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
                 
-                # 🛡️ PULIZIA STRUTTURALE ALL'ORIGINE: Estrae solo la stringa ed elimina metadati di griglia
-                nome_grezzo_wg = str(utente_valido["NOME"].values[0]) if len(utente_valido["NOME"].values) > 0 else "Tecnico WG"
-                nome_sigillato = nome_grezzo_wg.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
+                # 🛡️ PULIZIA TOTALE: Converte in stringa ed elimina chirurgicamente parentesi, dtype e scorie Pandas
+                nome_grezzo = str(utente_valido["NOME"].values) if len(utente_valido["NOME"].values) > 0 else "Tecnico"
+                nome_pulito = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
                 
-                st.session_state.user_nome = nome_sigillato
+                st.session_state.user_nome = nome_pulito
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
     st.stop()
+
+# 🛡️ CONTROLLO DI SICUREZZA AGGIUNTIVO PER GLI UTENTI GIÀ LOGGATI
+if "user_nome" in st.session_state:
+    nome_grezzo_esistente = str(st.session_state.user_nome)
+    if "dtype" in nome_grezzo_esistente or "Length" in nome_grezzo_esistente or "[" in nome_grezzo_esistente:
+        st.session_state.user_nome = nome_grezzo_esistente.split("Name:").replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
 
 esecutore_nome = st.session_state.user_nome
 esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
+
 
 # =====================================================================================
 # BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON CONVERSIONE ROTTA IP RIGIDA
@@ -247,8 +254,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE INSERIMENTI, VERIFICA DOPPIONI E PARSAMENTO RIGIDO STRINGHE
-# VERSIONE DI PRODUZIONE SIGILLATA — FIX DEFINITIVO CONTENUTO CELLE MANUALE (NO LISTE)
+# BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
+# VERSIONE DI PRODUZIONE SIGILLATA — FIX FINALE CONTENUTO CELLE MANUALE (NO LISTE)
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -277,28 +284,23 @@ if submit_button:
         elif sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
         else:
-            # 🛡️ FIX CHIRURGICO: Estrazione posizionale dell'indice [0] per ripulire le celle dalle parentesi della lista
+            # 🛡️ ESTRAZIONE PULITA ED ESENTE DA APICI O ARRAY
             codice_estratto = ""
             nome_puro_locale = ""
             concessionario_estratto = ""
             
             if " - " in testo_pvd:
                 parti_trattino = testo_pvd.split(" - ")
-                if len(parti_trattino) > 0: 
-                    codice_estratto = str(parti_trattino[0]).strip()
-                if len(parti_trattino) > 1: 
-                    resto_testo = str(parti_trattino[1]).strip()
-                else: 
-                    resto_testo = testo_pvd.strip()
+                if len(parti_trattino) > 0: codice_estratto = str(parti_trattino[0]).strip()
+                if len(parti_trattino) > 1: resto_testo = str(parti_trattino[1]).strip()
+                else: resto_testo = testo_pvd.strip()
             else:
                 resto_testo = testo_pvd.strip()
                 
             if " (" in resto_testo:
                 parti_parentesi = resto_testo.split(" (")
-                if len(parti_parentesi) > 0: 
-                    nome_puro_locale = str(parti_parentesi[0]).strip()
-                if len(parti_parentesi) > 1: 
-                    concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
+                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
+                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
             else:
                 nome_puro_locale = resto_testo
                 concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
@@ -349,7 +351,7 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" "), "%d-%m-%Y").date()
         d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" "), "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
+        if d_i - Battery - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
@@ -416,8 +418,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
-                df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                push_excel_su_github(df_caricato)
+                    df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_caricato)
                 st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
                 time.sleep(1.5)
                 st.rerun()
