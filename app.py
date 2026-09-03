@@ -140,21 +140,30 @@ def push_excel_su_github(df_da_salvare):
         return False
 
 # =====================================================================================
-# BLOCCO 3: ACCESSO SICUREZZA CON MEMORIZZAZIONE DELLA SESSIONE (VALIDITÀ 2 ORE)
+# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE COOKIE DI SESSIONE (VALIDITÀ 2 ORE)
 # =====================================================================================
-# Inizializzazione dei marcatore temporale per evitare il relogin continuo ad ogni F5
-if "ora_login" not in st.session_state:
-    st.session_state.ora_login = None
-
-# Se l'utente fa F5, controlla se il login precedente è avvenuto meno di 2 ore fa (7200 secondi)
-if st.session_state.ora_login is not None:
-    tempo_trascorso = time.time() - st.session_state.ora_login
-    if tempo_trascorso > 7200:
-        if "autenticato" in st.session_state: 
-            del st.session_state.autenticato
-        st.session_state.ora_login = None
-
 if "autenticato" not in st.session_state:
+    st.session_state.autenticato = False
+
+# Sistema di controllo cookie nativo per Streamlit
+if "token_sessione" in st.query_params:
+    token_salvato = st.query_params["token_sessione"]
+    if "_" in token_salvato:
+        try:
+            ora_token = float(token_salvato.split("_")[1])
+            if time.time() - ora_token < 7200:  # Validità 2 ore
+                st.session_state.autenticato = True
+                if "user_email" not in st.session_state:
+                    st.session_state.user_email = token_salvato.split("_")[0]
+                if "user_nome" not in st.session_state:
+                    # Cerca il nome corrispondente all'email
+                    ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == st.session_state.user_email]
+                    if not ut.empty:
+                        st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
+        except Exception:
+            pass
+
+if not st.session_state.autenticato:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
     with st.container(border=True):
         st.write("🔒 Autenticazione Richiesta")
@@ -164,12 +173,12 @@ if "autenticato" not in st.session_state:
             utente_valido = df_tecnici[(df_tecnici["EMAIL"].astype(str).str.strip().str.lower() == input_email) & (df_tecnici["PASSWORD"].astype(str).str.strip() == input_password)]
             if not utente_valido.empty:
                 st.session_state.autenticato = True
-                st.session_state.ora_login = time.time()  # Fissa l'orario di accesso
                 st.session_state.user_email = input_email
+                nome_grezzo = str(utente_valido["NOME"].values[0]).strip()
+                st.session_state.user_nome = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
                 
-                # Estrazione pulita testuale del nome utente
-                nome_arr = utente_valido["NOME"].values if len(utente_valido["NOME"].values) > 0 else "Tecnico"
-                st.session_state.user_nome = str(nome_arr).replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
+                # Inietta il token temporaneo nell'URL del browser per resistere all'F5
+                st.query_params["token_sessione"] = f"{input_email}_{int(time.time())}"
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -180,6 +189,7 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
+
 
 # =====================================================================================
 # BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON CONVERSIONE ROTTA IP RIGIDA
@@ -395,24 +405,25 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     else:
         st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
         
-    st.markdown("---")
+       st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
     if st.session_state.storico_cloud:
         for idx, row in enumerate(st.session_state.storico_cloud):
-            opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})")
+            lbl = row.get("NOME_LOCALE", row.get("LOCALE", "Locale"))
+            inf = row.get("INIZIO_FERIE", row.get("INIZIO_FE", ""))
+            opzioni_cancellazione.append(f"ID {idx} | {lbl} (Dal {inf})")
             
-    # 🛡️ FIX CHIRURGICO ACCESSO TASTO: Estrazione testuale lineare isolata dell'ID senza split distruttivi
-        selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
+    # 🛡️ ORDINE CORRETTO: Prima viene generata la selectbox, poi viene letta
+    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
+    
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            # 🛡️ SBLOCCO TASTO ROSSO: Isola l'ID numerico puro della riga senza andare in crash
             stringa_selezionata = str(selezione_delete)
             parti_id = stringa_selezionata.split("ID ")
             riga_pezzo = parti_id[1].split(" |")
             idx_da_eliminare = int(riga_pezzo[0])
             
-            # Mostra immediatamente a video il tasto rosso di cancellazione definitiva
             st.warning(f"Sei sicuro di voler eliminare la riga con ID {idx_da_eliminare}?")
             if st.button("❌ CONFERMA ELIMINAZIONE DEFINITIVA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
@@ -424,7 +435,6 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 st.rerun()
         except Exception as e_del:
             st.error(f"Errore lettura riga: {str(e_del)}")
-
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
@@ -432,14 +442,20 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if file_caricato is not None:
         try:
             df_caricato = pd.read_excel(file_caricato).fillna("")
-            if "CODICE_LOCALE" in df_caricato.columns:
+            if "CODICE_LOCALE" in df_caricato.columns or "CODICE_L" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
                     st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
                     time.sleep(1.5)
-                st.rerun()
-            else:    
+                    st.rerun()
+            else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
+# TASTO LOGOUT IN CODA CHE ACCETTA E RESETTA I PARAMETRI NELL'URL
+if st.sidebar.button("🚪 Disconnetti Account"):
+    st.query_params.clear()
+    st.session_state.autenticato = False
+    st.rerun()
