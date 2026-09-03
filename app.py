@@ -128,13 +128,14 @@ def push_excel_su_github(df_da_salvare):
             if "sha" in payload_git: del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
-        # 🛡️ FIX CHIRURGICO: Inseriti i codici di stato corretti per sbloccare la sintassi
-        if risposta_put.status_code in:
+        # 🛡️ FIX CHIRURGICO STRIP: Sintassi blindata con operatore standard senza parentesi quadre risiziose
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
             return True
         return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
