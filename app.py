@@ -246,7 +246,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE RIGHE, GESTIONE EXCEL AZIENDALE ORIZZONTALE ED AREA ADMIN
-# VERSIONE DI PRODUZIONE 100% UNIFICATA SULLE COLONNE REALI DELL'UFFICIO RICHIESTE
+# VERSIONE DI PRODUZIONE 100% UNIFICATA — FIX PERSISTENZA INSERIMENTO MANUALE (ANTI-F5)
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -257,59 +257,81 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
-        # 🛡️ ESTRAZIONE GEOMETRICA SICURA SENZA CONCATENAZIONI DI LISTE (SBLOCCA L'INSERIMENTO A MANO)
-        codice_estratto = ""
-        nome_puro_locale = ""
-        concessionario_estratto = ""
-        
-        if " - " in testo_pvd:
-            parti_trattino = testo_pvd.split(" - ")
-            if len(parti_trattino) > 0: codice_estratto = str(parti_trattino[0]).strip()
-            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
-        else:
-            resto_testo = testo_pvd.strip()
-            
-        if " (" in resto_testo:
-            parti_parentesi = resto_testo.split(" (")
-            if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
-            if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
-        else:
-            nome_puro_locale = resto_testo
-            concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+        # 🛡️ CONTROLLO ANTIDOPPIONE E SOVRAPPOSIZIONE PERIODI RIGIDO
+        sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
+        for idx, row in enumerate(st.session_state.storico_cloud):
+            if str(row.get("NOME_LOCALE", row.get("LOCALE", ""))).strip() in testo_pvd or testo_pvd.strip() in str(row.get("LOCALE", "")):
+                try:
+                    old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" "), "%d-%m-%Y").date()
+                    old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" "), "%d-%m-%Y").date()
+                    if (data_chiusura <= old_f) and (data_riapertura >= old_i):
+                        sovrapposizione_rilevata, riga_conflitto_idx = True, idx
+                        dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
+                        break
+                except Exception: continue
 
-        nuova = {
-            "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-            "TECNICO_INSERIMENTO": str(esecutore_nome),
-            "CODICE_LOCALE": str(codice_estratto),
-            "NOME_LOCALE": str(nome_puro_locale),
-            "CONCESSIONARIO": str(concessionario_estratto),
-            "INIZIO_FERIE": str(str_c),
-            "FINE_FERIE": str(str_r),
-            "PROMEMORIA_IN_COPIA": str(co_destinatario),
-            "STATO_INVIO": "In attesa"
-        }
-        
-        lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
-        if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
-            try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
-            except Exception: pass
-                
-        with st.spinner("Salvataggio e invio notifica..."):
-            invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
-        
-        if invio_ok:
-            nuova["STATO_INVIO"] = "Inviato OK"
-            st.session_state.storico_cloud.append(nuova)
-            
-            df_salva = pd.DataFrame(st.session_state.storico_cloud)
-            push_excel_su_github(df_salva)
-            
-            st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
-            st.session_state.form_id += 1
-            time.sleep(1.5)
-            st.rerun()
+        if sovrapposizione_rilevata and not forza_sovrascrittura:
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
         else:
-            st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
+            # 🛡️ Estrattore geometrico puro anti-crash
+            codice_estratto = ""
+            nome_puro_locale = ""
+            concessionario_estratto = ""
+            
+            if " - " in testo_pvd:
+                parti_trattino = testo_pvd.split(" - ")
+                if len(parti_trattino) > 0: codice_estratto = str(parti_trattino).strip()
+                resto_testo = str(parti_trattino).strip() if len(parti_trattino) > 1 else testo_pvd
+            else:
+                resto_testo = testo_pvd.strip()
+                
+            if " (" in resto_testo:
+                parti_parentesi = resto_testo.split(" (")
+                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi).strip()
+                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi).replace(")", "").strip()
+            else:
+                nome_puro_locale = resto_testo
+                concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+
+            nuova = {
+                "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                "TECNICO_INSERIMENTO": str(esecutore_nome),
+                "CODICE_LOCALE": str(codice_estratto),
+                "NOME_LOCALE": str(nome_puro_locale),
+                "CONCESSIONARIO": str(concessionario_estratto),
+                "INIZIO_FERIE": str(str_c),
+                "FINE_FERIE": str(str_r),
+                "PROMEMORIA_IN_COPIA": str(co_destinatario),
+                "STATO_INVIO": "In attesa"
+            }
+            
+            lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
+            if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
+                try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
+                except Exception: pass
+                    
+            with st.spinner("Salvataggio e invio notifica..."):
+                invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
+            
+            if invio_ok:
+                nuova["STATO_INVIO"] = "Inviato OK"
+                if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                
+                # 🛡️ BLINDATURA F5: Aggiorna la memoria RAM locale prima di inviare a GitHub
+                st.session_state.storico_cloud.append(nuova)
+                df_salva = pd.DataFrame(st.session_state.storico_cloud)
+                df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                
+                # Sincronizzazione remota su GitHub
+                push_excel_su_github(df_salva)
+                
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato e notifica e-mail inviata.")
+                st.session_state.form_id += 1
+                time.sleep(0.5)
+                st.rerun()
+            else:
+                st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -365,8 +387,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
             parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str[1].split(" |")
-            idx_da_eliminare = int(pezzo_numerico[0])
+            pezzo_numerico = parti_str.split(" |")
+            idx_da_eliminare = int(pezzo_numerico)
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
@@ -391,6 +413,6 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
                     time.sleep(1.5)
                     st.rerun()
-            else:
+
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
