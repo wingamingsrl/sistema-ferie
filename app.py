@@ -50,7 +50,8 @@ st.markdown("""
 
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO ED INIZIALIZZAZIONE STRUTTURA AD 9 COLONNE INTEGRALI EXCEL
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
+# VERSIONE DI PRODUZIONE SIGILLATA — FIX TOTALE SCRITTURA MANUALE SU GITHUB (ANTI-F5)
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -58,6 +59,8 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
+
+COLONNE_FOTO_AZIENDALE = ["DATA_INS", "TECNICO_", "CODICE_L", "NOME_LO", "CONCESSI", "INIZIO_FE", "FINE_FERI", "PROMEMO", "STATO_IN"]
 
 def scarica_file_da_github_se_esiste(nome_file):
     try:
@@ -81,16 +84,14 @@ def carica_database_locale():
     df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
-    colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    
     if df_s is None or df_s.empty:
         if os.path.exists(FILE_STORICO_PERMANENTE):
             df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
         else:
-            df_s = pd.DataFrame(columns=colonne_reali_ufficio)
+            df_s = pd.DataFrame(columns=COLONNE_FOTO_AZIENDALE)
             
-    df_s = df_s.reindex(columns=colonne_reali_ufficio).fillna("")
+    df_s = df_s.reindex(columns=COLONNE_FOTO_AZIENDALE).fillna("")
     return df_l, df_t, df_s
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
@@ -103,9 +104,13 @@ def push_excel_su_github(df_da_salvare):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
+        # 🛡️ UNIFICAZIONE STRUTTURALE: Converte forzatamente qualsiasi input in DataFrame pulito a 9 colonne
+        df_pulito = pd.DataFrame(df_da_salvare)
+        df_pulito = df_pulito.reindex(columns=COLONNE_FOTO_AZIENDALE).fillna("")
+        
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
-            df_da_salvare.to_excel(writer, index=False)
+            df_pulito.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
         headers_git = {
@@ -117,11 +122,17 @@ def push_excel_su_github(df_da_salvare):
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
-        if sha_file: payload_git["sha"] = sha_file
+        payload_git = {
+            "message": "🤖 [App] Aggiornamento Registro Ferie", 
+            "content": dati_base64, 
+            "branch": "main"
+        }
+        if sha_file: 
+            payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
+        # 🛡️ DISINNESCORO ERRORI 422 SU FILE BINARI
         if risposta_put.status_code == 422 and sha_file:
             p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
             requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
@@ -129,11 +140,12 @@ def push_excel_su_github(df_da_salvare):
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
+            st.toast("💾 Registro salvato stabilmente su GitHub!", icon="✅")
             return True
         return False
     except Exception:
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO SICUREZZA CON PULIZIA RIGIDA DEL BUG DTYPE/LENGTH (DECONTRATTO)
