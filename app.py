@@ -247,8 +247,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE UNIFICATA
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO CORRETTO COLONNE ESTESE
+# BLOCCO 6: ELABORAZIONE INSERIMENTI, VERIFICA DOPPIONI E PARSAMENTO RIGIDO STRINGHE
+# VERSIONE DI PRODUZIONE SIGILLATA — FIX DEFINITIVO CONTENUTO CELLE MANUALE (NO LISTE)
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -272,30 +272,38 @@ if submit_button:
                         break
                 except Exception: continue
 
-        if sovrapposizione_rilevata and not forza_sovrascrittura:
+        if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
+            st.error("Rilevato elemento non conforme nella stringa di testo del locale.")
+        elif sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
         else:
-            # Scomposizione stringa sicura ed esente da quadratini bianchi
+            # 🛡️ FIX CHIRURGICO: Estrazione posizionale dell'indice [0] per ripulire le celle dalle parentesi della lista
             codice_estratto = ""
             nome_puro_locale = ""
             concessionario_estratto = ""
             
             if " - " in testo_pvd:
                 parti_trattino = testo_pvd.split(" - ")
-                if len(parti_trattino) > 0: codice_estratto = str(parti_trattino[0]).strip()
-                resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
+                if len(parti_trattino) > 0: 
+                    codice_estratto = str(parti_trattino[0]).strip()
+                if len(parti_trattino) > 1: 
+                    resto_testo = str(parti_trattino[1]).strip()
+                else: 
+                    resto_testo = testo_pvd.strip()
             else:
                 resto_testo = testo_pvd.strip()
                 
             if " (" in resto_testo:
                 parti_parentesi = resto_testo.split(" (")
-                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
-                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
+                if len(parti_parentesi) > 0: 
+                    nome_puro_locale = str(parti_parentesi[0]).strip()
+                if len(parti_parentesi) > 1: 
+                    concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
             else:
                 nome_puro_locale = resto_testo
                 concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
-            # Compilazione rigida con le colonne estese aziendali dell'ufficio per i moduli manuali
+            # Compilazione rigida con elementi testuali puri privi di scorie o array
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -387,7 +395,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
             parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str[1].split(" |")[0]
+            pezzo_numerico = parti_str.split(" |")
             idx_da_eliminare = int(pezzo_numerico)
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
@@ -405,12 +413,14 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if file_caricato is not None:
         try:
             df_caricato = pd.read_excel(file_caricato).fillna("")
-            df_caricato = df_caricato.reindex(columns=colonne_reali_ufficio).fillna("")
-            if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
-                st.session_state.storico_cloud = df_caricato.to_dict('records')
+            if "CODICE_LOCALE" in df_caricato.columns:
+                if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
+                    st.session_state.storico_cloud = df_caricato.to_dict('records')
                 df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_caricato)
                 st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
                 time.sleep(1.5)
                 st.rerun()
+            else:    
+                st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
