@@ -435,8 +435,37 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 st.rerun()
         except Exception as e_del:
             st.error(f"Errore lettura riga: {str(e_del)}")
+    st.markdown("---")
+    st.markdown("### 🗑️ Cancella un Periodo Registrato")
+    opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
+    if st.session_state.storico_cloud:
+        for idx, row in enumerate(st.session_state.storico_cloud):
+            lbl = row.get("NOME_LOCALE", row.get("LOCALE", "Locale"))
+            inf = row.get("INIZIO_FERIE", row.get("INIZIO_FE", ""))
+            opzioni_cancellazione.append(f"ID {idx} | {lbl} (Dal {inf})")
+            
+    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
+    
+    if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
+        try:
+            stringa_selezionata = str(selezione_delete)
+            parti_id = stringa_selezionata.split("ID ")
+            riga_pezzo = parti_id[1].split(" |")[0]
+            idx_da_eliminare = int(riga_pezzo)
+            
+            st.warning(f"Sei sicuro di voler eliminare la riga con ID {idx_da_eliminare}?")
+            if st.button("❌ CONFERMA ELIMINAZIONE DEFINITIVA"):
+                st.session_state.storico_cloud.pop(idx_da_eliminare)
+                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                push_excel_su_github(df_nuovo_salva)
+                st.success("🗑️ Chiusura rimossa con successo!")
+                time.sleep(0.5)
+                st.rerun()
+        except Exception as e_del:
+            st.error(f"Errore lettura riga: {str(e_del)}")
         
-       st.markdown("---")
+    st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
     if file_caricato is not None:
@@ -454,9 +483,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
 
-# TASTO LOGOUT IN CODA AL MARGINE ZERO
+# TASTO LOGOUT ESTERNO AL MARGINE ZERO
 if st.sidebar.button("🚪 Disconnetti Account"):
     st.query_params.clear()
     st.session_state.autenticato = False
     st.rerun()
-
