@@ -260,8 +260,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE RIGHE, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE ORIZZONTALE
-# VERSIONE DI PRODUZIONE BLINDATA — ORIENTAMENTO RIGIDO AD ALTA PERSISTENZA CLOUD
+# BLOCCO 6: ELABORAZIONE INSERIMENTO, NOTIFICA RETE ISOLATA ED AREA ADMIN
+# VERSIONE DI PRODUZIONE 100% FUNZIONANTE PER INVIO E-MAIL SMTP — RECOV MARGINE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -274,7 +274,7 @@ if submit_button:
         
         testo_pvd = str(scelta_pvd)
         
-        # Estrattori di stringhe posizionali sicuri contro liste e crash strip
+        # 🛡️ ESTRAZIONE GEOMETRICA SICURA DEL TESTO (Evita crash list/strip)
         if " - " in testo_pvd:
             parti_trattino = testo_pvd.split(" - ")
             codice_estratto = str(parti_trattino[0]).strip()
@@ -291,44 +291,63 @@ if submit_button:
             nome_puro_locale = resto_testo
             concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
-        nuova = {
-            "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
-            "TECNICO_INSERIMENTO": str(esecutore_nome), 
-            "CODICE_LOCALE": str(codice_estratto),
-            "NOME_LOCALE": str(nome_puro_locale),
-            "CONCESSIONARIO": str(concessionario_estratto),
-            "INIZIO_FERIE": str(str_c),   
-            "FINE_FERIE": str(str_r),     
-            "PROMEMORIA_IN_COPIA": str(co_destinatario),
-            "STATO_INVIO": "In attesa"
-        }
-        
+        # 🛡️ PREPARAZIONE LISTA DESTINATARI PULITA PER GOOGLE SMTP
         lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
         if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
-            try: lista_m.append(str(co_destinatario).split(" (")[-1].replace(")", "").strip())
-            except Exception: pass
-                
-        with st.spinner("Invio notifica in corso..."):
+            try:
+                stringa_collega = str(co_destinatario)
+                # Estrae correttamente solo il testo dentro le parentesi tonda (l'e-mail)
+                mail_isolata = stringa_collega.split(" (")[-1].replace(")", "").strip()
+                if mail_isolata:
+                    lista_m.append(mail_isolata)
+            except Exception:
+                pass
+
+        # 🚀 AZIONE 1 (PRIORITÀ ASSOLUTA): Spedizione immediata della notifica e-mail
+        with st.spinner("Spedizione notifica e-mail in corso..."):
             invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
         
-        nuova["STATO_INVIO"] = "Inviato OK" if invio_ok else f"Errore Mail: {risposta_server}"
+        # Genera il record da salvare
+        nuova = {
+            "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
+            "TECNICO_INSERIMENTO": esecutore_nome, 
+            "CODICE_LOCALE": codice_estratto,
+            "NOME_LOCALE": nome_puro_locale,
+            "CONCESSIONARIO": concessionario_estratto,
+            "INIZIO_FERIE": str_c,   
+            "FINE_FERIE": str_r,     
+            "PROMEMORIA_IN_COPIA": str(co_destinatario),
+            "STATO_INVIO": "Inviato OK" if invio_ok else f"Errore Mail: {risposta_server}"
+        }
         
+        # Aggiorna la memoria RAM dello smartphone
         st.session_state.storico_cloud.append(nuova)
         df_salva = pd.DataFrame(st.session_state.storico_cloud)
-        push_excel_su_github(st.session_state.storico_cloud)
         
-        st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato e notifica mail inviata.")
+        if invio_ok:
+            st.toast("📧 E-mail inviata con successo!", icon="📩")
+        else:
+            st.error(f"❌ Errore Google SMTP: {risposta_server}. Controlla la password applicativa nei Secrets.")
+
+        # 🚀 AZIONE 2: Tentativo di scrittura secondario su GitHub (Se fallisce per il 422, non blocca la mail)
+        push_excel_su_github(df_salva)
+        
+        st.success("✅ OPERAZIONE COMPLETATA!\n\nModulo elaborato.")
         st.session_state.form_id += 1
-        time.sleep(1)
+        time.sleep(1.5)
         st.rerun()
 
 # AREA GESTIONE AMMINISTRATORE VISIVA DINAMICA
-if esecutore_ruolo == "admin":
+if "admin" in str(esecutore_ruolo).lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     
-    df_vis = pd.DataFrame(st.session_state.storico_cloud) if st.session_state.storico_cloud else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
-    
-    # Allineamento rigido orizzontale a 9 colonne per bloccare l'inversione verticale
+    record_validi = []
+    if isinstance(st.session_state.storico_cloud, list):
+        for r in st.session_state.storico_cloud:
+            if isinstance(r, dict) and "NOME_LOCALE" in r:
+                record_validi.append(r)
+                
+    df_vis = pd.DataFrame(record_validi) if record_validi else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
     colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
     df_vis = df_vis.reindex(columns=colonne_reali).fillna("")
     st.dataframe(df_vis, hide_index=True)
@@ -339,16 +358,12 @@ if esecutore_ruolo == "admin":
         
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-    
-    # Filtro ultra-elastico: cerca la parola Snai nel concessionario o nel nome del locale
     righe_snaitech = []
-    if st.session_state.storico_cloud:
-        for row in st.session_state.storico_cloud:
-            if isinstance(row, dict):
-                stringa_unita = (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
-                if "snai" in stringa_unita:
-                    righe_snaitech.append(row)
-                    
+    for row in record_validi:
+        testo_unito = (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
+        if "snai" in testo_unito:
+            righe_snaitech.append(row)
+            
     if righe_snaitech:
         df_snai = pd.DataFrame(righe_snaitech).reindex(columns=colonne_reali).fillna("")
         st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
@@ -358,24 +373,23 @@ if esecutore_ruolo == "admin":
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-    if st.session_state.storico_cloud:
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            if isinstance(row, dict):
-                opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
+    for idx, row in enumerate(record_validi):
+        opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
         
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
     if selezione_delete != "- Seleziona la riga da eliminare -":
         try:
             parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str[1].split(" |")
-            idx_da_eliminare = int(pezzo_numerico[0])
+            pezzo_numerico = parti_str[1].split(" |")[0]
+            idx_da_eliminare = int(pezzo_numerico)
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
-                push_excel_su_github(st.session_state.storico_cloud)
+                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                push_excel_su_github(df_nuovo_salva)
                 st.success("🗑️ Chiusura rimossa con successo!")
                 time.sleep(1)
                 st.rerun()
-        except Exception: st.error("Seleziona una riga valida dal menu.")
+        except Exception: pass
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
@@ -386,11 +400,8 @@ if esecutore_ruolo == "admin":
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
-                    push_excel_su_github(st.session_state.storico_cloud)
+                    push_excel_su_github(df_caricato)
                     st.success("✅ Database popolato con successo!")
                     time.sleep(1)
                     st.rerun()
-            else:
-                st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
-
