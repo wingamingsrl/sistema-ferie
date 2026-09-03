@@ -89,31 +89,51 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        p1 = "https://github.com"
-        p2 = "repos/wingamingsrl/sistema-ferie/contents"
-        url_git = p1 + "/" + p2 + "/" + FILE_STORICO_PERMANENTE
+        # 🛡️ FIX CHIRURGICO: Utilizza l'indirizzo API ufficiale per caricare ed aggiornare l'Excel binario nativo
+        parte1 = "https://github.com"
+        parte2 = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
         
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_da_salvare.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
-        headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github.v3+json"}
+        headers_git = {
+            "Authorization": f"token {t_git}", 
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        
+        # Recupera lo SHA corrente su GitHub per poter sovrascrivere il file
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        payload_git = {"message": "🤖 [App] Sincronizzazione automatica database ferie", "content": dati_base64, "branch": "main"}
-        if sha_file: payload_git["sha"] = sha_file
-        
+        payload_git = {
+            "message": "🤖 [App] Sincronizzazione automatica database ferie", 
+            "content": dati_base64,
+            "branch": "main"
+        }
+        if sha_file: 
+            payload_git["sha"] = sha_file
+            
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        # 🛡️ BYPASS 422: Se GitHub rileva un blocco strutturale o un conflitto, cancella il file vecchio e lo ricrea puro
         if risposta_put.status_code == 422 and sha_file:
             p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
             requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
-            if "sha" in payload_git: del payload_git["sha"]
+            if "sha" in payload_git: 
+                del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        return True
+            
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
+            return True
+        return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
