@@ -136,7 +136,7 @@ def push_excel_su_github(df_da_salvare):
         return False
 
 # =====================================================================================
-# BLOCCO 3: ACCESSO SICUREZZA CON RIMOZIONE RIGIDA DEL BUG DTYPE/LENGTH VALORI
+# BLOCCO 3: ACCESSO SICUREZZA CON PULIZIA RIGIDA DEL BUG DTYPE/LENGTH (DECONTRATTO)
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
@@ -150,18 +150,29 @@ if "autenticato" not in st.session_state:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
                 
-                # 🛡️ FIX CHIRURGICO ASSOLUTO: .iloc[0] estrae la stringa pura escludendo il dtype Pandas
-                st.session_state.user_nome = str(utente_valido["NOME"].iloc[0]).strip()
+                # 🛡️ PULIZIA TOTALE: Converte in stringa ed elimina chirurgicamente parentesi, dtype e scorie Pandas
+                nome_grezzo = str(utente_valido["NOME"].values[0]) if len(utente_valido["NOME"].values) > 0 else "Tecnico"
+                nome_pulito = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
+                
+                st.session_state.user_nome = nome_pulito
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
     st.stop()
+
+# 🛡️ CONTROLLO DI SICUREZZA AGGIUNTIVO PER GLI UTENTI GIÀ LOGGATI
+if "user_nome" in st.session_state:
+    nome_grezzo_esistente = str(st.session_state.user_nome)
+    # Se il nome memorizzato contiene ancora le vecchie scorie del dtype, lo bonifica all'istante
+    if "dtype" in nome_grezzo_esistente or "Length" in nome_grezzo_esistente or "[" in nome_grezzo_esistente:
+        st.session_state.user_nome = nome_grezzo_esistente.split("Name:")[0].replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
 
 esecutore_nome = st.session_state.user_nome
 esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
+
 
 
 
