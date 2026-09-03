@@ -268,7 +268,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
-# VERSIONE DI PRODUZIONE SIGILLATA — FIX COMPLETO TASTO CANCELLAZIONE SBLOCCATO
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO CORRETTO COLONNE ESTESE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -292,34 +292,29 @@ if submit_button:
                 except Exception: continue
 
         if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
-            st.error("Rilevato elemento non conforme nella stringa di testo del locale.")
+            st.error("Rilevato elemento non conforme nella stringa di testo.")
         elif sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
         else:
-                        # 🛡️ FIX CHIRURGICO: Estrazione a stringa singola pulita (No liste, No parentesi quadre nelle celle)
             codice_estratto = ""
             nome_puro_locale = ""
             concessionario_estratto = ""
             
-            # Converte forzatamente l'oggetto in testo puro prima di fare qualsiasi operazione
-            testo_puro_pvd = str(testo_pvd).strip()
-            
-            if " - " in testo_puro_pvd:
-                parti_trattino = testo_puro_pvd.split(" - ")
-                codice_estratto = str(parti_trattino[0]).strip()
-                resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_puro_pvd
+            if " - " in testo_pvd:
+                parti_t = testo_pvd.split(" - ")
+                codice_estratto = str(parti_t[0]).strip()
+                resto_s = str(parti_t[1]).strip() if len(parti_t) > 1 else testo_pvd
             else:
-                resto_testo = testo_puro_pvd
+                resto_s = testo_pvd.strip()
                 
-            if " (" in resto_testo:
-                parti_parentesi = resto_testo.split(" (")
-                nome_puro_locale = str(parti_parentesi[0]).strip()
-                concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
+            if " (" in resto_s:
+                parti_p = resto_s.split(" (")
+                nome_puro_locale = str(parti_p[0]).strip()
+                concessionario_estratto = str(parti_p[1]).replace(")", "").strip() if len(parti_p) > 1 else ""
             else:
-                nome_puro_locale = resto_testo
-                concessionario_estratto = mappa_concessionari.get(testo_puro_pvd, "")
+                nome_puro_locale = resto_s
+                concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
-            # Compilazione rigida con elementi testuali puri privi di scorie
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -331,7 +326,6 @@ if submit_button:
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "In attesa"
             }
-
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
@@ -372,15 +366,12 @@ for row in st.session_state.storico_cloud:
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
 
-# TASTO LOGOUT GENERALE AD ACCESSO RAPIDO SMARTPHONE
-col_log1, col_log2 = st.columns([3, 1])
-with col_log2:
-    if st.button("🚪 Esci"):
-        st.session_state.ora_login = None
-        if "autenticato" in st.session_state: del st.session_state.autenticato
-        st.rerun()
+if st.sidebar.button("🚪 Disconnetti Account"):
+    st.query_params.clear()
+    st.session_state.autenticato = False
+    st.rerun()
 
-# --- INTERFACCIA AMMINISTRATORE INDIPENDENTE COLONNE ESTESE ---
+# --- PANNELLO AMMINISTRATORE ---
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
@@ -405,53 +396,23 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     else:
         st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
         
-       st.markdown("---")
-    st.markdown("### 🗑️ Cancella un Periodo Registrato")
-    opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-    if st.session_state.storico_cloud:
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            lbl = row.get("NOME_LOCALE", row.get("LOCALE", "Locale"))
-            inf = row.get("INIZIO_FERIE", row.get("INIZIO_FE", ""))
-            opzioni_cancellazione.append(f"ID {idx} | {lbl} (Dal {inf})")
-            
-    # 🛡️ ORDINE CORRETTO: Prima viene generata la selectbox, poi viene letta
-       selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
-    if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
-        try:
-            # 🛡️ FIX CHIRURGICO: Estrae il numero dell'ID isolando il testo prima del carattere "|"
-            testo_id = selezione_delete.split("ID ")[1].split(" |")[0]
-            idx_da_eliminare = int(testo_id)
-            
-            # Mostra immediatamente a video il tasto rosso di cancellazione
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                st.session_state.storico_cloud.pop(idx_da_eliminare)
-                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                push_excel_su_github(df_nuovo_salva)
-                st.success("🗑️ Chiusura rimossa con successo!")
-                time.sleep(0.5)
-                st.rerun()
-        except Exception: pass
-            st.error(f"Errore lettura riga: {str(e_del)}")
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
     if st.session_state.storico_cloud:
         for idx, row in enumerate(st.session_state.storico_cloud):
-            lbl = row.get("NOME_LOCALE", row.get("LOCALE", "Locale"))
-            inf = row.get("INIZIO_FERIE", row.get("INIZIO_FE", ""))
-            opzioni_cancellazione.append(f"ID {idx} | {lbl} (Dal {inf})")
+            opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})")
             
-        selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
+    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            # 🛡️ FIX CHIRURGICO ACCESS TASTO: Estrae l'indice posizionale corretto [1] dalla lista generata dallo split
+            # 🛡️ FIX CHIRURGICO: Estrazione nativa posizionale senza conflitti di tipo lista
             parti_s = selezione_delete.split("ID ")
             if len(parti_s) > 1:
-                pezzo_n = parti_s[1].split(" |")
-                idx_da_eliminare = int(pezzo_n[0])
+                sub_stringa = parti_s[1]
+                idx_iscolato_str = sub_stringa.split(" |")[0]
+                idx_da_eliminare = int(idx_iscolato_str)
                 
-                # Mostra immediatamente a video il tasto rosso di cancellazione definitiva
                 if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
@@ -461,15 +422,14 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     time.sleep(0.5)
                     st.rerun()
         except Exception: pass
-
-       
+        
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
     if file_caricato is not None:
         try:
             df_caricato = pd.read_excel(file_caricato).fillna("")
-            if "CODICE_LOCALE" in df_caricato.columns or "CODICE_L" in df_caricato.columns:
+            if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
@@ -480,9 +440,3 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
-
-# TASTO LOGOUT ESTERNO AL MARGINE ZERO
-if st.sidebar.button("🚪 Disconnetti Account"):
-    st.query_params.clear()
-    st.session_state.autenticato = False
-    st.rerun()
