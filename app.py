@@ -247,7 +247,6 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
-# VERSIONE DI PRODUZIONE SIGILLATA — CORRISPONDENZA INTEGRALE ALLE 9 COLONNE DELLA FOTO
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -258,19 +257,19 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
-        # 🛡️ ESTRAZIONE PULITA E GEOMETRICA (NIENTE CONCATENAZIONI O STRIP SU LISTE)
+        # Estrattore geometrico sicuro senza concatenazioni di liste
         if " - " in testo_pvd:
             parti_trattino = testo_pvd.split(" - ")
-            codice_estratto = str(parti_trattino).strip()
-            resto_testo = str(parti_trattino).strip() if len(parti_trattino) > 1 else testo_pvd
+            codice_estratto = str(parti_trattino[0]).strip()
+            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
         else:
             codice_estratto = ""
             resto_testo = testo_pvd.strip()
             
         if " (" in resto_testo:
             parti_parentesi = resto_testo.split(" (")
-            nome_puro_locale = str(parti_parentesi).strip()
-            concessionario_estratto = str(parti_parentesi).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
+            nome_puro_locale = str(parti_parentesi[0]).strip()
+            concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
         else:
             nome_puro_locale = resto_testo
             concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
@@ -280,16 +279,16 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LO", "")).strip() == nome_puro_locale:
                 try:
-                    old_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" "), "%d-%m-%Y").date()
-                    old_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" "), "%d-%m-%Y").date()
+                    old_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" ")[0], "%d-%m-%Y").date()
+                    old_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" ")[0], "%d-%m-%Y").date()
                     if (data_chiusura <= old_f) and (data_riapertura >= old_i):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
-                        dettagli_conflitto = f"Dal {row.get('INIZIO_FE','') Margine'} al {row.get('FINE_FERI','')}"
+                        dettagli_conflitto = f"Dal {row.get('INIZIO_FE','')} al {row.get('FINE_FERI','')}"
                         break
                 except Exception: continue
 
         if sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica, spunta la casella in fondo e reinvia.")
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSpunta la casella in fondo e reinvia.")
         else:
             # 🛡️ ALLINEAMENTO RIGIDO ALLE 9 INTESTAZIONI ESATTE DELLA FOTO INVIATA
             nuova = {
@@ -335,8 +334,8 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        d_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" "), "%d-%m-%Y").date()
-        d_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" "), "%d-%m-%Y").date()
+        d_i = datetime.strptime(str(row.get("INIZIO_FE", "")).split(" ")[0], "%d-%m-%Y").date()
+        d_f = datetime.strptime(str(row.get("FINE_FERI", "")).split(" ")[0], "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LO', 'Locale')}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LO', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
@@ -383,7 +382,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
             parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str.split(" |")
+            pezzo_numerico = parti_str[1].split(" |")[0]
             idx_da_eliminare = int(pezzo_numerico)
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
@@ -401,10 +400,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if file_caricato is not None:
         try:
             df_caricato = pd.read_excel(file_caricato).fillna("")
-            
-            # Forza l'allineamento orizzontale esatto sulle colonne dell'immagine inviata
             df_caricato = df_caricato.reindex(columns=colonne_foto).fillna("")
-            
             if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                 st.session_state.storico_cloud = df_caricato.to_dict('records')
                 df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
