@@ -283,26 +283,30 @@ if submit_button:
         elif sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
         else:
+                        # 🛡️ FIX CHIRURGICO: Estrazione a stringa singola pulita (No liste, No parentesi quadre nelle celle)
             codice_estratto = ""
             nome_puro_locale = ""
             concessionario_estratto = ""
             
-            if " - " in testo_pvd:
-                parti_trattino = testo_pvd.split(" - ")
-                if len(parti_trattino) > 0: codice_estratto = str(parti_trattino).strip()
-                if len(parti_trattino) > 1: resto_testo = str(parti_trattino).strip()
-                else: resto_testo = testo_pvd.strip()
+            # Converte forzatamente l'oggetto in testo puro prima di fare qualsiasi operazione
+            testo_puro_pvd = str(testo_pvd).strip()
+            
+            if " - " in testo_puro_pvd:
+                parti_trattino = testo_puro_pvd.split(" - ")
+                codice_estratto = str(parti_trattino[0]).strip()
+                resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_puro_pvd
             else:
-                resto_testo = testo_pvd.strip()
+                resto_testo = testo_puro_pvd
                 
             if " (" in resto_testo:
                 parti_parentesi = resto_testo.split(" (")
-                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi).strip()
-                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi).replace(")", "").strip()
+                nome_puro_locale = str(parti_parentesi[0]).strip()
+                concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
             else:
                 nome_puro_locale = resto_testo
-                concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+                concessionario_estratto = mappa_concessionari.get(testo_puro_pvd, "")
 
+            # Compilazione rigida con elementi testuali puri privi di scorie
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -314,6 +318,7 @@ if submit_button:
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "In attesa"
             }
+
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
