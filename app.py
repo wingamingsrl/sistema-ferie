@@ -50,8 +50,8 @@ st.markdown("""
 
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO ED INTERROGAZIONE FILE EXCEL CON ACCESSO DIRETTO API GITHUB
-# VERSIONE DI PRODUZIONE SIGILLATA — STRUTTURATA SULLE COLONNE REALI DELLA FOTO
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
+# VERSIONE DI PRODUZIONE SIGILLATA — STRUTTURATA RIGIDAMENTE SULLE 9 COLONNE DELLA FOTO
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -82,17 +82,18 @@ def carica_database_locale():
     df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
-    # Inizializzazione rigida sulle colonne accorciate esatte visibili nell'immagine
-    colonne_foto = ["DATA_INS", "TECNICO_", "CODICE_L", "NOME_LO", "CONCESSI", "INIZIO_FE", "FINE_FERI", "PROMEMO", "STATO_IN"]
-    df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
+    # 🛡️ FIX CHIRURGICO F5: Inizializza la griglia iniziale SOLO con i titoli reali dell'immagine
+    colonne_foto_wg = ["DATA_INS", "TECNICO_", "CODICE_L", "NOME_LO", "CONCESSI", "INIZIO_FE", "FINE_FERI", "PROMEMO", "STATO_IN"]
     
+    df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
     if df_s is None or df_s.empty:
         if os.path.exists(FILE_STORICO_PERMANENTE):
             df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
         else:
-            df_s = pd.DataFrame(columns=colonne_foto)
+            df_s = pd.DataFrame(columns=colonne_foto_wg)
             
-    df_s = df_s.reindex(columns=colonne_foto).fillna("")
+    # Forza la tabella ad avere sempre e solo le colonne corrette della foto
+    df_s = df_s.reindex(columns=colonne_foto_wg).fillna("")
     return df_l, df_t, df_s
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
@@ -106,8 +107,8 @@ def push_excel_su_github(df_da_salvare):
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
-        colonne_foto = ["DATA_INS", "TECNICO_", "CODICE_L", "NOME_LO", "CONCESSI", "INIZIO_FE", "FINE_FERI", "PROMEMO", "STATO_IN"]
-        df_pulito_salva = df_da_salvare.reindex(columns=colonne_foto).fillna("")
+        colonne_foto_wg = ["DATA_INS", "TECNICO_", "CODICE_L", "NOME_LO", "CONCESSI", "INIZIO_FE", "FINE_FERI", "PROMEMO", "STATO_IN"]
+        df_pulito_salva = df_da_salvare.reindex(columns=colonne_foto_wg).fillna("")
         
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_pulito_salva.to_excel(writer, index=False)
@@ -122,7 +123,7 @@ def push_excel_su_github(df_da_salvare):
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        payload_git = {"message": "🤖 [App] Allineamento database ferie Excel", "content": dati_base64, "branch": "main"}
+        payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
         if sha_file: payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
@@ -139,6 +140,7 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO SICUREZZA CON RIMOZIONE DEL BUG DI VISUALIZZAZIONE DTYPE/LENGTH
