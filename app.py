@@ -140,14 +140,18 @@ def push_excel_su_github(df_da_salvare):
         return False
 
 # =====================================================================================
-# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE DELLA SESSIONE ANTI-F5 (VALIDITÀ 2 ORE)
+# BLOCCO 3: ACCESSO SICUREZZA CON MEMORIZZAZIONE DELLA SESSIONE (VALIDITÀ 2 ORE)
 # =====================================================================================
+# Inizializzazione dei marcatore temporale per evitare il relogin continuo ad ogni F5
 if "ora_login" not in st.session_state:
     st.session_state.ora_login = None
 
+# Se l'utente fa F5, controlla se il login precedente è avvenuto meno di 2 ore fa (7200 secondi)
 if st.session_state.ora_login is not None:
-    if time.time() - st.session_state.ora_login > 7200:
-        if "autenticato" in st.session_state: del st.session_state.autenticato
+    tempo_trascorso = time.time() - st.session_state.ora_login
+    if tempo_trascorso > 7200:
+        if "autenticato" in st.session_state: 
+            del st.session_state.autenticato
         st.session_state.ora_login = None
 
 if "autenticato" not in st.session_state:
@@ -160,12 +164,12 @@ if "autenticato" not in st.session_state:
             utente_valido = df_tecnici[(df_tecnici["EMAIL"].astype(str).str.strip().str.lower() == input_email) & (df_tecnici["PASSWORD"].astype(str).str.strip() == input_password)]
             if not utente_valido.empty:
                 st.session_state.autenticato = True
-                st.session_state.ora_login = time.time()
+                st.session_state.ora_login = time.time()  # Fissa l'orario di accesso
                 st.session_state.user_email = input_email
                 
-                # 🛡️ PULIZIA STRUTTURALE COMPLETA SUL BADGE UTENTE (NO DTYPE / NO LENGTH)
-                nome_isolato_testo = str(utente_valido["NOME"].values[0]).strip()
-                st.session_state.user_nome = nome_isolato_testo
+                # Estrazione pulita testuale del nome utente
+                nome_arr = utente_valido["NOME"].values if len(utente_valido["NOME"].values) > 0 else "Tecnico"
+                st.session_state.user_nome = str(nome_arr).replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -176,7 +180,6 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
-
 
 # =====================================================================================
 # BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON CONVERSIONE ROTTA IP RIGIDA
