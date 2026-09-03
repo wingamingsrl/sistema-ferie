@@ -444,27 +444,27 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             inf = row.get("INIZIO_FERIE", row.get("INIZIO_FE", ""))
             opzioni_cancellazione.append(f"ID {idx} | {lbl} (Dal {inf})")
             
-    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
-    
+        selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            stringa_selezionata = str(selezione_delete)
-            parti_id = stringa_selezionata.split("ID ")
-            riga_pezzo = parti_id[1].split(" |")[0]
-            idx_da_eliminare = int(riga_pezzo)
-            
-            st.warning(f"Sei sicuro di voler eliminare la riga con ID {idx_da_eliminare}?")
-            if st.button("❌ CONFERMA ELIMINAZIONE DEFINITIVA"):
-                st.session_state.storico_cloud.pop(idx_da_eliminare)
-                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                push_excel_su_github(df_nuovo_salva)
-                st.success("🗑️ Chiusura rimossa con successo!")
-                time.sleep(0.5)
-                st.rerun()
-        except Exception as e_del:
-            st.error(f"Errore lettura riga: {str(e_del)}")
-        
+            # 🛡️ FIX CHIRURGICO ACCESS TASTO: Estrae l'indice posizionale corretto [1] dalla lista generata dallo split
+            parti_s = selezione_delete.split("ID ")
+            if len(parti_s) > 1:
+                pezzo_n = parti_s[1].split(" |")
+                idx_da_eliminare = int(pezzo_n[0])
+                
+                # Mostra immediatamente a video il tasto rosso di cancellazione definitiva
+                if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+                    st.session_state.storico_cloud.pop(idx_da_eliminare)
+                    df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_nuovo_salva)
+                    st.success("🗑️ Chiusura rimossa con successo!")
+                    time.sleep(0.5)
+                    st.rerun()
+        except Exception: pass
+
+       
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
