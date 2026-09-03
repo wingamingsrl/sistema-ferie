@@ -250,11 +250,25 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
-        # Scomposizione posizionale pulita senza cicli di contorsione
-        codice_estratto = testo_pvd.split(" - ").strip() if " - " in testo_pvd else ""
-        resto_testo = testo_pvd.split(" - ") if " - " in testo_pvd else testo_pvd
-        nome_puro_locale = resto_testo.split(" (").strip() if " (" in resto_testo else resto_testo.strip()
-        concessionario_estratto = testo_pvd.split(" (")[-1].replace(")", "").strip() if " (" in testo_pvd else mappa_concessionari.get(testo_pvd, "")
+        # 🛡️ FIX CHIRURGICO ANTI-CRASH: Isola l'elemento prima di applicare il comando .strip()
+        codice_estratto = ""
+        nome_puro_locale = ""
+        concessionario_estratto = ""
+        
+        if " - " in testo_pvd:
+            parti_trattino = testo_pvd.split(" - ")
+            codice_estratto = str(parti_trattino[0]).strip()
+            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
+        else:
+            resto_testo = testo_pvd.strip()
+            
+        if " (" in resto_testo:
+            parti_parentesi = resto_testo.split(" (")
+            nome_puro_locale = str(parti_parentesi[0]).strip()
+            concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
+        else:
+            nome_puro_locale = resto_testo
+            concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
         nuova = {
             "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
@@ -298,8 +312,8 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" "), "%d-%m-%Y").date()
         d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" "), "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 days")
-        if d_f - Administrator - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 days")
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
+        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
@@ -343,7 +357,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            idx_da_eliminare = int(selezione_delete.split("ID ").split(" |"))
+            parti_str = selezione_delete.split("ID ")
+            pezzo_numerico = parti_str[1].split(" |")
+            idx_da_eliminare = int(pezzo_numerico[0])
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
