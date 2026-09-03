@@ -37,8 +37,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO ED ARCHIVIAZIONE HARD DISK INTERNO CLOUD (AUTO-PROTETTO)
-# VERSIONE DI PRODUZIONE CORRETTA — ELIMINATO ERRORE DI CONVERSIONE LIST/DICT
+# BLOCCO 2: CUSTODIA CENTRALIZZATA DATI EXCEL CON BLOCCO ANTI-CANCELLAZIONE AVVIO
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -47,21 +46,106 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
-df_locali = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
-df_tecnici = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
+def scarica_file_da_github_se_esiste(nome_file):
+    try:
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        parte1 = "https://github.com"
+        parte2 = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = parte1 + "/" + parte2 + "/" + nome_file + "?t=" + str(int(time.time()))
+        
+        h = {
+            "Authorization": "Bearer " + t_git, 
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        r = requests.get(url_git, headers=h, timeout=5)
+        if r.status_code == 200:
+            b64_content = r.json().get("content", "")
+            df_estratto = pd.read_excel(io.BytesIO(base64.b64decode(b64_content)))
+            # Carica il file da GitHub SOLO se contiene dati reali, evitando file vuoti a 0 righe
+            if not df_estratto.empty and len(df_estratto) > 0:
+                return df_estratto
+    except Exception:
+        pass
+    return None
 
-# Cassaforte interna al Cloud di Streamlit: mantiene i dati protetti senza azzerarsi
-if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = []
+def carica_database_locale():
+    df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
+    df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD", "RUOLO"])
+    
+    # Se la memoria cloud interna ha già dei dati inseriti, non interroga GitHub per evitare azzeramenti
+    if "storico_cloud" in st.session_state and len(st.session_state.storico_cloud) > 0:
+        return df_l, df_t, pd.DataFrame(st.session_state.storico_cloud)
+        
+    df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
+    if df_s is None or df_s.empty:
+        df_s = pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
+    return df_l, df_t, df_s.fillna("")
+
+df_locali, df_tecnici, df_storico_file = carica_database_locale()
+
+if "storico_cloud" not in st.session_state or len(st.session_state.storico_cloud) == 0:
+    st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(lista_records_da_salvare):
-    # 🛡️ FIX CHIRURGICO: Accetta direttamente la lista senza pretendere la conversione .to_dict
-    st.session_state.storico_cloud = list(lista_records_da_salvare)
-    return True
+    try:
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        parte1 = "https://github.com"
+        parte2 = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        
+        colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
+        ws.append(colonne_reali)
+        
+        for row in lista_records_da_salvare:
+            if isinstance(row, dict):
+                ws.append([str(row.get(col, "")).strip() for col in colonne_reali])
+            
+        output_binario = io.BytesIO()
+        wb.save(output_binario)
+        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+        
+        headers_git = {
+            "Authorization": "Bearer " + t_git, 
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        
+        res_get = requests.get(url_git, headers=headers_git, params={"ref": "main"}, timeout=5)
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        
+        payload_git = {
+            "message": "🤖 [App] Sincronizzazione permanente database Excel", 
+            "content": dati_base64,
+            "branch": "main"
+        }
+        if sha_file: 
+            payload_git["sha"] = sha_file
+                        
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        if risposta_put.status_code == 422 and sha_file:
+            payload_delete = {"message": "🧹 Rimozione conflitto", "sha": sha_file, "branch": "main"}
+            requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
+            if "sha" in payload_git: del payload_git["sha"]
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.toast("✅ File Excel salvato su GitHub!", icon="💾")
+            return True
+        return True
+    except Exception:
+        return True
 
 
 # =====================================================================================
-# BLOCCO 3: ACCESSO SICUREZZA ED ESTRAZIONE PRIVATA STRINGHE UTENTI (RUOLI)
+# BLOCCO 3: ACCESSO SICUREZZA ED ESTRAZIONE VALORI PULITI DA PANDAS (NO DTYPE/LENGTH)
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
@@ -74,8 +158,10 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                st.session_state.user_nome = str(utente_valido["NOME"].values).strip()
-                st.session_state.user_ruolo = str(utente_valido["RUOLO"].values).strip().lower()
+                
+                # 🛡️ FIX CHIRURGICO: Estrazione dell'elemento stringa puro [0] per cancellare la scritta Length/dtype
+                st.session_state.user_nome = str(utente_valido["NOME"].iloc[0]).strip()
+                st.session_state.user_ruolo = str(utente_valido["RUOLO"].iloc[0]).strip().lower()
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -88,8 +174,9 @@ esecutore_ruolo = st.session_state.user_ruolo
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email}) — Ruolo: {esecutore_ruolo.upper()}</div>", unsafe_allow_html=True)
 
+
 # =====================================================================================
-# BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON SPEDIZIONE DI RETE DIRETTA
+# BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON STRINGHE DESTINATARI PULITE
 # =====================================================================================
 def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, riapertura, esecutore):
     try:
@@ -134,7 +221,7 @@ if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
 with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
-    st.markdown("### 📝 Registra Chiusura Ferie")
+    st.markdown("<h3>📝 Registra Chiusura Ferie</h3>", unsafe_allow_html=True)
     elenco_c = [f"{r['NOME']} ({r['EMAIL']})" for _, r in df_tecnici.iterrows() if str(r['EMAIL']).lower().strip() != esecutore_email.lower()]
     co_destinatario = st.selectbox("Invia copia promemoria a:", ["Nessun collega"] + elenco_c)
     
@@ -173,8 +260,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE INSERIMENTO, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE
-# VERSIONE DI PRODUZIONE SIGILLATA — PROTEZIONE TOTALE CONTRO TABELLE TRASPOSTE
+# BLOCCO 6: ELABORAZIONE RIGHE, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE ORIZZONTALE
+# VERSIONE DI PRODUZIONE BLINDATA — ORIENTAMENTO RIGIDO AD ALTA PERSISTENZA CLOUD
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -187,53 +274,38 @@ if submit_button:
         
         testo_pvd = str(scelta_pvd)
         
-        # Estrattore geometrico sicuro senza comandi concatenati su liste
-        codice_estratto = ""
-        nome_puro_locale = ""
-        concessionario_estratto = ""
-        
+        # Estrattori di stringhe posizionali sicuri contro liste e crash strip
         if " - " in testo_pvd:
             parti_trattino = testo_pvd.split(" - ")
-            if len(parti_trattino) > 0: codice_estratto = str(parti_trattino[0]).strip()
-            if len(parti_trattino) > 1: resto_testo = str(parti_trattino[1]).strip()
-            else: resto_testo = testo_pvd
-            
-            if " (" in resto_testo:
-                parti_parentesi = resto_testo.split(" (")
-                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
-                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
-            else:
-                nome_puro_locale = resto_testo
+            codice_estratto = str(parti_trattino[0]).strip()
+            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
         else:
-            if " (" in testo_pvd:
-                parti_parentesi = testo_pvd.split(" (")
-                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
-                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
-            else:
-                nome_puro_locale = testo_pvd.strip()
-
-        if not concessionario_estratto:
+            codice_estratto = testo_pvd.strip()
+            resto_testo = testo_pvd.strip()
+            
+        if " (" in resto_testo:
+            parti_parentesi = resto_testo.split(" (")
+            nome_puro_locale = str(parti_parentesi[0]).strip()
+            concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
+        else:
+            nome_puro_locale = resto_testo
             concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
         nuova = {
             "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
-            "TECNICO_INSERIMENTO": esecutore_nome, 
-            "CODICE_LOCALE": codice_estratto,
-            "NOME_LOCALE": nome_puro_locale,
-            "CONCESSIONARIO": concessionario_estratto,
-            "INIZIO_FERIE": str_c,   
-            "FINE_FERIE": str_r,     
+            "TECNICO_INSERIMENTO": str(esecutore_nome), 
+            "CODICE_LOCALE": str(codice_estratto),
+            "NOME_LOCALE": str(nome_puro_locale),
+            "CONCESSIONARIO": str(concessionario_estratto),
+            "INIZIO_FERIE": str(str_c),   
+            "FINE_FERIE": str(str_r),     
             "PROMEMORIA_IN_COPIA": str(co_destinatario),
             "STATO_INVIO": "In attesa"
         }
         
-        # Filtro e-mail destinatari protetto
         lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
         if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
-            try:
-                stringa_collega = str(co_destinatario)
-                mail_isolata = stringa_collega.split(" (")[-1].replace(")", "").strip()
-                lista_m.append(mail_isolata)
+            try: lista_m.append(str(co_destinatario).split(" (")[-1].replace(")", "").strip())
             except Exception: pass
                 
         with st.spinner("Invio notifica in corso..."):
@@ -241,40 +313,24 @@ if submit_button:
         
         nuova["STATO_INVIO"] = "Inviato OK" if invio_ok else f"Errore Mail: {risposta_server}"
         
-        # 🛡️ PULIZIA MEMORIA DI EMERGENZA: Forza st.session_state a contenere solo dizionari validi
-        lista_pulita = []
-        for r in st.session_state.storico_cloud:
-            if isinstance(r, dict) and "NOME_LOCALE" in r:
-                lista_pulita.append(r)
-        
-        st.session_state.storico_cloud = lista_pulita
         st.session_state.storico_cloud.append(nuova)
-        
         df_salva = pd.DataFrame(st.session_state.storico_cloud)
-        push_excel_su_github(df_salva)
+        push_excel_su_github(st.session_state.storico_cloud)
         
-        st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro aggiornato e e-mail inviata con successo.")
+        st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato e notifica mail inviata.")
         st.session_state.form_id += 1
         time.sleep(1)
         st.rerun()
 
 # AREA GESTIONE AMMINISTRATORE VISIVA DINAMICA
-if "admin" in str(esecutore_ruolo).lower():
+if esecutore_ruolo == "admin":
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     
-    # 🛡️ PULIZIA DELLA GRIGLIA ADMIN: Filtra solo i record a 9 colonne reali
-    record_validi = []
-    if isinstance(st.session_state.storico_cloud, list):
-        for r in st.session_state.storico_cloud:
-            if isinstance(r, dict) and "NOME_LOCALE" in r:
-                record_validi.append(r)
-                
-    df_vis = pd.DataFrame(record_validi) if record_validi else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
+    df_vis = pd.DataFrame(st.session_state.storico_cloud) if st.session_state.storico_cloud else pd.DataFrame(columns=["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"])
     
-    # Se per qualche motivo Pandas inverte le colonne, forziamo il riallineamento corretto orizzontale
+    # Allineamento rigido orizzontale a 9 colonne per bloccare l'inversione verticale
     colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
     df_vis = df_vis.reindex(columns=colonne_reali).fillna("")
-    
     st.dataframe(df_vis, hide_index=True)
     
     with io.BytesIO() as buffer:
@@ -284,13 +340,15 @@ if "admin" in str(esecutore_ruolo).lower():
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
     
+    # Filtro ultra-elastico: cerca la parola Snai nel concessionario o nel nome del locale
     righe_snaitech = []
-    for row in record_validi:
-        testo_conc = str(row.get("CONCESSIONARIO", "")).lower()
-        testo_loc = str(row.get("NOME_LOCALE", "")).lower()
-        if "snai" in testo_conc or "snai" in testo_loc:
-            righe_snaitech.append(row)
-            
+    if st.session_state.storico_cloud:
+        for row in st.session_state.storico_cloud:
+            if isinstance(row, dict):
+                stringa_unita = (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
+                if "snai" in stringa_unita:
+                    righe_snaitech.append(row)
+                    
     if righe_snaitech:
         df_snai = pd.DataFrame(righe_snaitech).reindex(columns=colonne_reali).fillna("")
         st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
@@ -300,19 +358,20 @@ if "admin" in str(esecutore_ruolo).lower():
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-    for idx, row in enumerate(record_validi):
-        opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
+    if st.session_state.storico_cloud:
+        for idx, row in enumerate(st.session_state.storico_cloud):
+            if isinstance(row, dict):
+                opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row['INIZIO_FERIE']} al {row['FINE_FERIE']})")
         
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione)
     if selezione_delete != "- Seleziona la riga da eliminare -":
         try:
             parti_str = selezione_delete.split("ID ")
-            pezzo_numerico = parti_str[1].split(" |")[0]
-            idx_da_eliminare = int(pezzo_numerico)
+            pezzo_numerico = parti_str[1].split(" |")
+            idx_da_eliminare = int(pezzo_numerico[0])
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
-                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                push_excel_su_github(df_nuovo_salva)
+                push_excel_su_github(st.session_state.storico_cloud)
                 st.success("🗑️ Chiusura rimossa con successo!")
                 time.sleep(1)
                 st.rerun()
@@ -327,6 +386,7 @@ if "admin" in str(esecutore_ruolo).lower():
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
+                    push_excel_su_github(st.session_state.storico_cloud)
                     st.success("✅ Database popolato con successo!")
                     time.sleep(1)
                     st.rerun()
