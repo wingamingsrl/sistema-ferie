@@ -142,15 +142,12 @@ def push_excel_su_github(df_da_salvare):
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE DELLA SESSIONE ANTI-F5 (VALIDITÀ 2 ORE)
 # =====================================================================================
-# Inizializzazione dei timer di sicurezza per evitare il relogin continuo
 if "ora_login" not in st.session_state:
     st.session_state.ora_login = None
 
-# Se l'utente preme F5, controlla se il login precedente è avvenuto meno di 120 minuti fa
 if st.session_state.ora_login is not None:
-    tempo_trascorso = time.time() - st.session_state.ora_login
-    if tempo_trascorso > 7200:  # 7200 secondi = 120 minuti (2 ore)
-        del st.session_state.autenticato
+    if time.time() - st.session_state.ora_login > 7200:
+        if "autenticato" in st.session_state: del st.session_state.autenticato
         st.session_state.ora_login = None
 
 if "autenticato" not in st.session_state:
@@ -163,12 +160,12 @@ if "autenticato" not in st.session_state:
             utente_valido = df_tecnici[(df_tecnici["EMAIL"].astype(str).str.strip().str.lower() == input_email) & (df_tecnici["PASSWORD"].astype(str).str.strip() == input_password)]
             if not utente_valido.empty:
                 st.session_state.autenticato = True
-                st.session_state.ora_login = time.time()  # Fissa il marcatore temporale di avvio
+                st.session_state.ora_login = time.time()
                 st.session_state.user_email = input_email
                 
-                nome_grezzo = str(utente_valido["NOME"].values) if len(utente_valido["NOME"].values) > 0 else "Tecnico"
-                nome_pulito = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
-                st.session_state.user_nome = nome_pulito
+                # 🛡️ PULIZIA STRUTTURALE COMPLETA SUL BADGE UTENTE (NO DTYPE / NO LENGTH)
+                nome_isolato_testo = str(utente_valido["NOME"].values[0]).strip()
+                st.session_state.user_nome = nome_isolato_testo
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -179,8 +176,6 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
-
-
 
 
 # =====================================================================================
@@ -359,11 +354,13 @@ for row in st.session_state.storico_cloud:
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
 
-# TASTO LOGOUT MANUALE IN SIDEBAR: Cancella istantaneamente la sessione forzando l'uscita
-if st.sidebar.button("🚪 Disconnetti Account"):
-    st.session_state.ora_login = None
-    if "autenticato" in st.session_state: del st.session_state.autenticato
-    st.rerun()
+# TASTO LOGOUT GENERALE AD ACCESSO RAPIDO SMARTPHONE
+col_log1, col_log2 = st.columns([3, 1])
+with col_log2:
+    if st.button("🚪 Esci"):
+        st.session_state.ora_login = None
+        if "autenticato" in st.session_state: del st.session_state.autenticato
+        st.rerun()
 
 # --- INTERFACCIA AMMINISTRATORE INDIPENDENTE COLONNE ESTESE ---
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
@@ -398,15 +395,18 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})")
             
     # 🛡️ FIX CHIRURGICO ACCESSO TASTO: Estrazione testuale lineare isolata dell'ID senza split distruttivi
-    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
+        selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            stringa_pulita = str(selezione_delete)
-            id_isolato = stringa_pulita.split("ID ")
-            idx_da_eliminare = int(id_isolato)
+            # 🛡️ SBLOCCO TASTO ROSSO: Isola l'ID numerico puro della riga senza andare in crash
+            stringa_selezionata = str(selezione_delete)
+            parti_id = stringa_selezionata.split("ID ")
+            riga_pezzo = parti_id[1].split(" |")
+            idx_da_eliminare = int(riga_pezzo[0])
             
-            # Appare immediatamente sullo schermo il pulsante rosso ufficiale di distruzione riga
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+            # Mostra immediatamente a video il tasto rosso di cancellazione definitiva
+            st.warning(f"Sei sicuro di voler eliminare la riga con ID {idx_da_eliminare}?")
+            if st.button("❌ CONFERMA ELIMINAZIONE DEFINITIVA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                 df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
@@ -414,7 +414,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 st.success("🗑️ Chiusura rimossa con successo!")
                 time.sleep(0.5)
                 st.rerun()
-        except Exception: pass
+        except Exception as e_del:
+            st.error(f"Errore lettura riga: {str(e_del)}")
+
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
