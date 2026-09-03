@@ -238,10 +238,9 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
-
 # =====================================================================================
 # BLOCCO 6: ELABORAZIONE RIGHE, FILTRO ESTESO SNAITECH ED AREA AMMINISTRATORE APERTA
-# VERSIONE DI PRODUZIONE SIGILLATA — APERTA E SEMPRE ACCESSIBILE PER IL CARICAMENTO EXCEL
+# VERSIONE DI PRODUZIONE SIGILLATA — FIX CHIRURGICO ESTREZIONE INDICI ANTI-CRASH LISTA
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -252,15 +251,29 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         
         testo_pvd = str(scelta_pvd)
-        # Scomposizione stringa posizionale pulita senza comandi troncati su liste
-        codice_estratto = testo_pvd.split(" - ")[0].strip() if " - " in testo_pvd else testo_pvd.strip()
-        resto_testo = testo_pvd.split(" - ")[1].strip() if " - " in testo_pvd else testo_pvd
-        nome_puro_locale = resto_testo.split(" (")[0].strip() if " (" in resto_testo else resto_testo.strip()
-        concessionario_estratto = mappa_concessionari.get(testo_pvd.split(" (")[0].strip() if " (" in testo_pvd else testo_pvd, "")
         
-        if not concessionario_estratto and " (" in testo_pvd:
-            try: concessionario_estratto = testo_pvd.split(" (")[-1].replace(")", "").strip()
-            except Exception: pass
+        # 🛡️ FIX ASSOLUTO: Isola gli elementi della lista con [0] e [1] prima di applicare il comando .strip()
+        codice_estratto = ""
+        nome_puro_locale = ""
+        concessionario_estratto = ""
+        
+        if " - " in testo_pvd:
+            parti_trattino = testo_pvd.split(" - ")
+            codice_estratto = str(parti_trattino[0]).strip()
+            resto_testo = str(parti_trattino[1]).strip() if len(parti_trattino) > 1 else testo_pvd
+        else:
+            codice_estratto = testo_pvd.strip()
+            resto_testo = testo_pvd.strip()
+            
+        if " (" in resto_testo:
+            parti_parentesi = resto_testo.split(" (")
+            nome_puro_locale = str(parti_parentesi[0]).strip()
+            concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip() if len(parti_parentesi) > 1 else ""
+        else:
+            nome_puro_locale = resto_testo
+
+        if not concessionario_estratto:
+            concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
         nuova = {
             "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), 
@@ -276,7 +289,12 @@ if submit_button:
         
         lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
         if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
-            lista_m.append(str(co_destinatario).split(" (")[-1].replace(")", "").strip())
+            try:
+                stringa_collega = str(co_destinatario)
+                mail_isolata = stringa_collega.split(" (")[-1].replace(")", "").strip()
+                if mail_isolata:
+                    lista_m.append(mail_isolata)
+            except Exception: pass
             
         with st.spinner("Salvataggio e invio notifica..."):
             invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
@@ -284,7 +302,10 @@ if submit_button:
         if invio_ok:
             nuova["STATO_INVIO"] = "Inviato OK"
             st.session_state.storico_cloud.append(nuova)
-            push_excel_su_github(st.session_state.storico_cloud)
+            
+            df_salva = pd.DataFrame(st.session_state.storico_cloud)
+            push_excel_su_github(df_salva)
+            
             st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
             st.session_state.form_id += 1
             time.sleep(1.5)
@@ -310,7 +331,7 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     del st.session_state.autenticato
     st.rerun()
 
-# 🛡️ AREA ADMIN INTEGRALE APERTA VISIBILE SUL TUO MONITOR
+# 🛡️ AREA ADMIN VISIVA ORIZZONTALE RICHIESTA SMONTATA DAI CONFLITTI
 if "admin" in str(esecutore_ruolo).lower() or esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     colonne_reali = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
@@ -351,7 +372,7 @@ if "admin" in str(esecutore_ruolo).lower() or esecutore_email.lower() == EMAIL_M
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                push_excel_su_github(st.session_state.storico_cloud)
+                push_excel_su_github(df_nuovo_salva)
                 st.success("🗑️ Chiusura rimossa con successo!")
                 time.sleep(1)
                 st.rerun()
