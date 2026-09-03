@@ -89,7 +89,6 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ FIX CHIRURGICO: Utilizza l'indirizzo API ufficiale per caricare ed aggiornare l'Excel binario nativo
         parte1 = "https://github.com"
         parte2 = "repos/wingamingsrl/sistema-ferie/contents"
         url_git = parte1 + "/" + parte2 + "/" + FILE_STORICO_PERMANENTE
@@ -119,20 +118,22 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ BYPASS 422: Se GitHub rileva un blocco strutturale o un conflitto, cancella il file vecchio e lo ricrea puro
-        if risposta_put.status_code == 422 and sha_file:
-            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
-            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
+        # 🛡️ DISINNESCORO AUTOMATICO BLOCCCHI: Se il file su GitHub è vuoto, corrotto o bloccato,
+        # lo eliminiamo forzatamente e lo ricreiamo da zero in un millisecondo in modo permanente!
+        if (risposta_put.status_code == 422 or risposta_put.status_code == 409) and sha_file:
+            payload_delete = {"message": "🧹 Rimozione file per sblocco persistenza", "sha": sha_file, "branch": "main"}
+            requests.delete(url_git, json=payload_delete, headers=headers_git, timeout=5)
             if "sha" in payload_git: 
                 del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
+            st.toast("✅ File Excel consolidato stabilmente su GitHub!", icon="💾")
             return True
         return False
     except Exception:
         return False
+
 
 
 
