@@ -254,8 +254,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
-# VERSIONE DI PRODUZIONE SIGILLATA — FIX FINALE CONTENUTO CELLE MANUALE (NO LISTE)
+# BLOCCO 6: ELABORAZIONE INSERIMENTI, CONTROLLO DOPPIONI E PARSAMENTO INTEGRALE STRINGHE
+# VERSIONE DI PRODUZIONE SIGILLATA — FIX TOTALE CONTENUTO CELLE REALE SENZA APICI
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -282,30 +282,29 @@ if submit_button:
         if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
             st.error("Rilevato elemento non conforme nella stringa di testo del locale.")
         elif sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
+            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si trata di una modifica spunta la casella in fondo e reinvia.")
         else:
-            # 🛡️ ESTRAZIONE PULITA ED ESENTE DA APICI O ARRAY
+            # 🛡️ ESTRAZIONE CHIRURGICA DEL TESTO — NO LISTE, NO PARENTESI QUADRE NELLE CELLE
             codice_estratto = ""
             nome_puro_locale = ""
             concessionario_estratto = ""
             
+            # 1. Isola il codice (tutto ciò che c'è prima di " - ")
             if " - " in testo_pvd:
-                parti_trattino = testo_pvd.split(" - ")
-                if len(parti_trattino) > 0: codice_estratto = str(parti_trattino[0]).strip()
-                if len(parti_trattino) > 1: resto_testo = str(parti_trattino[1]).strip()
-                else: resto_testo = testo_pvd.strip()
+                codice_estratto = testo_pvd.split(" - ")[0].strip()
+                resto_stringa = testo_pvd.split(" - ")[1].strip()
             else:
-                resto_testo = testo_pvd.strip()
-                
-            if " (" in resto_testo:
-                parti_parentesi = resto_testo.split(" (")
-                if len(parti_parentesi) > 0: nome_puro_locale = str(parti_parentesi[0]).strip()
-                if len(parti_parentesi) > 1: concessionario_estratto = str(parti_parentesi[1]).replace(")", "").strip()
+                resto_stringa = testo_pvd.strip()
+            
+            # 2. Isola il nome del locale ed il concessionario
+            if " (" in resto_stringa:
+                nome_puro_locale = resto_stringa.split(" (")[0].strip()
+                concessionario_estratto = resto_stringa.split(" (")[1].replace(")", "").strip()
             else:
-                nome_puro_locale = resto_testo
+                nome_puro_locale = resto_stringa.strip()
                 concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
 
-            # Compilazione rigida con elementi testuali puri privi di scorie o array
+            # Creazione rigida del record con stringhe di testo pulite
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -351,7 +350,7 @@ for row in st.session_state.storico_cloud:
     try:
         d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" "), "%d-%m-%Y").date()
         d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" "), "%d-%m-%Y").date()
-        if d_i - Battery - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
+        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
@@ -420,8 +419,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
-                st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
-                time.sleep(1.5)
+                    st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
+                    time.sleep(1.5)
                 st.rerun()
             else:    
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
