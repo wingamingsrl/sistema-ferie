@@ -136,7 +136,7 @@ def push_excel_su_github(df_da_salvare):
         return False
 
 # =====================================================================================
-# BLOCCO 3: ACCESSO SICUREZZA CON RIMOZIONE DEL BUG DI VISUALIZZAZIONE DTYPE/LENGTH
+# BLOCCO 3: ACCESSO SICUREZZA CON RIMOZIONE RIGIDA DEL BUG DTYPE/LENGTH VALORI
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
@@ -149,7 +149,9 @@ if "autenticato" not in st.session_state:
             if not utente_valido.empty:
                 st.session_state.autenticato = True
                 st.session_state.user_email = input_email
-                st.session_state.user_nome = str(utente_valido["NOME"].values).strip()
+                
+                # 🛡️ FIX CHIRURGICO ASSOLUTO: .iloc[0] estrae la stringa pura escludendo il dtype Pandas
+                st.session_state.user_nome = str(utente_valido["NOME"].iloc[0]).strip()
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
@@ -160,6 +162,7 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
+
 
 
 # =====================================================================================
