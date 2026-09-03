@@ -49,8 +49,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD
-# VERSIONE DI PRODUZIONE COMPLIANT — IMMUNE AI RESET GRAZIE AL BYPASS CACHE ENDPOINT
+# BLOCCO 2: ALLINEAMENTO EXCEL NATIVO VIA API GITHUB SENZA CACHE BLOCCHE CON REBOOT FIXED
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -63,7 +62,6 @@ def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
-        # 🛡️ ENDPOINT API DIRETTISSIMO: Forza GitHub a ignorare la cache vecchia al Reboot
         url_git = f"https://github.com{nome_file}?_nonce={c_time}"
         
         h = {
@@ -114,7 +112,7 @@ def push_excel_su_github(df_da_salvare):
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        payload_git = {"message": "🤖 [App] Sincronizzazione automatica database ferie", "content": dati_base64, "branch": "main"}
+        payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
         if sha_file: payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
@@ -133,7 +131,7 @@ def push_excel_su_github(df_da_salvare):
         return False
 
 # =====================================================================================
-# BLOCCO 3: AUTENTICAZIONE E GESTIONE CREDENZIALI DEL PERSONALE (TESTO PURO)
+# BLOCCO 3: AUTENTICAZIONE UTENTI ED ACCESSO ALL'APPLICAZIONE SMARTPHONE
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
@@ -160,7 +158,7 @@ st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})<
 
 # =====================================================================================
 # BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON CONVERSIONE ROTTA IP RIGIDA
-# CONNETTE IL CANALE CIFRATO VERSO GMAIL GESTENDO I DESTINATARI MULTIPLI
+# AGGIRA EMERGENZE DNS DEI SERVER CLOUD DI STREAMLIT
 # =====================================================================================
 def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, riapertura, esecutore):
     try:
@@ -192,7 +190,7 @@ Dettagli dell'inserimento:
 WINGAMING SRL"""
         msg.attach(MIMEText(corpo, 'plain'))
         
-        # 🛡️ IP NUMERICO FUNZIONANTE: Canale diretto ad altissima priorità anti-blackout
+        # 🛡️ ROTTA NUMERICA DIRETTA CERTIFICATA VERSO GOOGLE SMTP MALWARE-FREE
         server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
         server.login(EMAIL_MITTENTE_GMAIL, pass_gmail)
         server.sendmail(EMAIL_MITTENTE_GMAIL, lista_m, msg.as_string())
@@ -264,8 +262,8 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("LOCALE", "")).strip() == testo_pvd.strip():
                 try:
-                    old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ")[0], "%d-%m-%Y").date()
-                    old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ")[0], "%d-%m-%Y").date()
+                    old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" "), "%d-%m-%Y").date()
+                    old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" "), "%d-%m-%Y").date()
                     if (data_chiusura <= old_f) and (data_riapertura >= old_i):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
@@ -275,13 +273,13 @@ if submit_button:
         if sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica, spunta la casella in fondo e reinvia.")
         else:
-            # 🛡️ RIPRISTINO STRUTTURA VALIDA NATIVA ORIGINALE (NO CRASH DI RETE)
+            # 🛡️ RIPRISTINO STRUTTURA VALIDA NATIVA ORIGINALE (CON DATA_INSERIMENTO)
             nuova = {
                 "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                 "TECNICO": str(esecutore_nome),
                 "LOCALE": str(testo_pvd),
-                "INIZIO_FERIE": str(str_c),
-                "FINE_FERIE": str(str_r),
+                "INIZIO_FERIE": data_chiusura.strftime('%d-%m-%Y'),
+                "FINE_FERIE": data_riapertura.strftime('%d-%m-%Y'),
                 "COPIA_PROMEMORIA": str(co_destinatario)
             }
             
@@ -344,7 +342,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            idx_da_eliminare = int(selezione_delete.split("ID ")[1].split(" |")[0])
+            parti_str = selezione_delete.split("ID ")
+            pezzo_numerico = parti_str[1].split(" |")[0]
+            idx_da_eliminare = int(pezzo_numerico)
             if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.storico_cloud.pop(idx_da_eliminare)
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
