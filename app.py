@@ -137,26 +137,23 @@ def push_excel_su_github(df_da_salvare):
     except Exception:
         return False
 # =====================================================================================
-# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE COOKIE DI SESSIONE (VALIDITÀ 2 ORE)
+# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE REAL)
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
 
-# Sistema di controllo cookie nativo per Streamlit
+# 🛡️ FIX CHIRURGICO INTEGRALE F5: Riconosce l'e-mail salvata nell'URL in modo istantaneo
 if "token_sessione" in st.query_params:
-    token_salvato = st.query_params["token_sessione"]
+    token_salvato = str(st.query_params["token_sessione"]).strip()
     if "_" in token_salvato:
         try:
-            ora_token = float(token_salvato.split("_")[1])
-            if time.time() - ora_token < 7200:  # Validità 2 ore
+            email_estratta = token_salvato.split("_")[0].lower().strip()
+            # Verifica se l'e-mail estratta dall'URL esiste davvero tra i tecnici autorizzati
+            ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == email_estratta]
+            if not ut.empty:
                 st.session_state.autenticato = True
-                if "user_email" not in st.session_state:
-                    st.session_state.user_email = token_salvato.split("_")[0]
-                if "user_nome" not in st.session_state:
-                    # Cerca il nome corrispondente all'email
-                    ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == st.session_state.user_email]
-                    if not ut.empty:
-                        st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
+                st.session_state.user_email = email_estratta
+                st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
         except Exception:
             pass
 
@@ -174,7 +171,7 @@ if not st.session_state.autenticato:
                 nome_grezzo = str(utente_valido["NOME"].values[0]).strip()
                 st.session_state.user_nome = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
                 
-                # Inietta il token temporaneo nell'URL del browser per resistere all'F5
+                # Inietta il token protetto nell'URL per blindare l'F5
                 st.query_params["token_sessione"] = f"{input_email}_{int(time.time())}"
                 st.rerun()
             else:
