@@ -140,8 +140,8 @@ def push_excel_su_github(df_da_salvare):
                 payload_git["sha"] = sha_retry
                 risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
                 
-        # 🛡️ SINTASSI RISANATA: Accetta esplicitamente i codici 200 e 201 senza cicli bloccati
-        if risposta_server.status_code in:
+        # 🛡️ SINTASSI RISANATA MANUALMENTE SENZA OPERATORI INCOMPLETI
+        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
             st.toast("✅ Database allineato e scritto su GitHub!", icon="💾")
             return True
         return False
