@@ -103,7 +103,6 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ Indirizzo API ufficiale certificato per la gestione remota del file
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         # Allineamento rigido preventivo sulle 9 colonne ufficiali richieste dall'ufficio
@@ -120,20 +119,20 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # 🛡️ FUNZIONE PARALLELA DI CONTROLLO: Interroga GitHub per capire se il file esiste
+        # Verifica se il file esiste già su GitHub
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         
         if res_get.status_code == 200:
-            # CASO A: Il file esiste già, recupera il suo marcatore SHA per modificarlo
+            # CASO A: Il file esiste, recupera lo SHA per modificarlo
             sha_file = res_get.json().get("sha", "")
-            payload_git = {"message": "🤖 [Test-App] Modifica ed append registro ferie", "content": dati_base64, "branch": "main", "sha": sha_file}
+            payload_git = {"message": "🤖 [Test-App] Modifica registro ferie", "content": dati_base64, "branch": "main", "sha": sha_file}
             risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         else:
-            # CASO B: Il file non esiste (stato 404), lo crea da zero sul sito per la prima volta
-            payload_git = {"message": "🚀 [Test-App] Inizializzazione e autocreazione storico_ferie.xlsx", "content": dati_base64, "branch": "main"}
+            # CASO B: Il file non esiste, lo crea da zero per la prima volta
+            payload_git = {"message": "🚀 [Test-App] Autocreazione storico_ferie.xlsx", "content": dati_base64, "branch": "main"}
             risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
-        # Gestore di sblocco in caso di collisioni simultanee di rete (Codice 422)
+        # Gestore di sblocco per conflitti di rete (Codice 422)
         if risposta_server.status_code == 422:
             res_get_retry = requests.get(url_git, headers=headers_git, timeout=5)
             if res_get_retry.status_code == 200:
@@ -141,12 +140,14 @@ def push_excel_su_github(df_da_salvare):
                 payload_git["sha"] = sha_retry
                 risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
                 
+        # 🛡️ FIX RIGIDO CONTROLLO STATO ACCETTAZIONE GITHUB
         if risposta_server.status_code in:
             st.toast("✅ Database allineato e scritto su GitHub!", icon="💾")
             return True
         return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
