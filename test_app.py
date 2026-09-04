@@ -224,24 +224,23 @@ def esegui_sincronizzazione_robot_snai():
             st.info("✅ STEP 1b: Nessun locale Snaitech attivo trovato nel registro.")
             return
 
-        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Configuro l'hard disk virtuale per Chrome...")
+        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Aggancio del browser di sistema...")
 
-        # 🛡️ FIX FINALE INDISTRUTTIBILE CLOUD: Sposta la cartella dei browser nella directory temporanea aperta /tmp/
-        # Questo bypassa i blocchi di permessi di Linux permettendo a Playwright di estrarre ed avviare Chrome a caldo
-        cartella_aperta_tmp = "/tmp/ms-playwright"
-        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = cartella_aperta_tmp
+        # 🛡️ FORZATURA AMBIENTE CLOUD: Dice a Playwright di non scaricare nulla e usare l'hard disk locale
+        os.environ["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
         
-        # Forza l'installazione lampo dell'eseguibile di Chrome direttamente dentro la cartella sbloccata /tmp/
-        try:
-            import subprocess
-            subprocess.run(["python", "-m", "playwright", "install", "chromium"], env=os.environ, check=True)
-            st.write("📂 STEP 2a: Motori grafici estratti con successo nella cartella sbloccata del server.")
-        except Exception as e_proc:
-            st.write(f"ℹ️ Verifica container: {str(e_proc)}")
+        # Identifica la cartella reale in cui Linux ha installato il browser Chromium stabile
+        percorso_chrome_sistema = "/usr/bin/chromium" if os.path.exists("/usr/bin/chromium") else "/usr/bin/chromium-browser"
 
         with sync_playwright() as p:
             st.info("🛰️ STEP 3: Accensione del browser invisibile Chrome sul server Cloud...")
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
+            
+            # 🛡️ FIX DEFINITIVO PERCORSO: Lancia Chrome usando l'eseguibile stabile pre-installato nel server
+            browser = p.chromium.launch(
+                executable_path=percorso_chrome_sistema,
+                headless=True, 
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            ) 
             context = browser.new_context()
             page = context.new_page()
 
@@ -304,7 +303,7 @@ def esegui_sincronizzazione_robot_snai():
                         tasto_modifica = "img[id*='img_modifica'], [title*='Modifica']"
                         pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione']"
                         
-                        # 🛡️ INTERCETTAZIONE DOPPIONI VISIVA: Se vede che la riga esiste, controlla e salta
+                        # 🛡️ INTERCETTAZIONE DOPPIONI VISIVA: Se vede che la riga esiste, salta per non fare doppioni
                         if target_frame.locator(tasto_modifica).count() > 0:
                             st.write(f"   ℹ️ Record ferie già presente nel sistema visivo Snaitech. Salto il locale.")
                             continue
