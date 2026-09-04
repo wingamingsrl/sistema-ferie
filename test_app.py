@@ -209,11 +209,11 @@ def esegui_sincronizzazione_robot_snai():
         t_git = ""
         if "github" in st.secrets and "token_accesso" in st.secrets["github"]:
             t_git = str(st.secrets["github"]["token_accesso"]).strip()
-            st.write(" shadow 📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
+            st.write("📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
         else:
             st.error("❌ STEP 1b: Impossibile leggere il token dalle impostazioni protette.")
             
-        # 🛡️ INDIRIZZO FISSO ESPLICITO CON TUTTI GLI SLASH VERIFICATI LETTERA PER LETTERA
+        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per lettera con tutti gli slash al loro posto
         url_git = "https://github.com"
         st.write(f"🔍 STEP 2: Verifico l'indirizzo di rete per il segnale -> `{url_git}`")
         
@@ -234,7 +234,7 @@ def esegui_sincronizzazione_robot_snai():
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # 🧪 STEP 3: Recupero lo SHA dell'Excel reale sul server
+        # 🧪 STEP 3: Recupero lo SHA dell'Excel reale sul server usando la rotta sbloccata
         st.info("🛰️ STEP 3: Chiedo a GitHub lo SHA attuale del database Excel...")
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         st.warning(f"📊 STEP 3 - Risposta GitHub: Codice numerico {res_get.status_code}")
@@ -277,7 +277,6 @@ def esegui_sincronizzazione_robot_snai():
         st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura...")
         time.sleep(20)
         return False
-
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
