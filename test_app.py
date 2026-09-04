@@ -293,7 +293,7 @@ def esegui_sincronizzazione_robot_snai():
                 
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
-                # 🛡️ FIX SINTASSI: Verifica i codici di avvenuto inserimento o redirect di successo
+                # 🛡️ SINTASSI CORRETTA: Riconosce i codici di avvenuto inserimento o redirect di successo
                 if risposta_invio.status_code in:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Allineamento/Modifica inviata con successo sul portale!")
@@ -308,7 +308,6 @@ def esegui_sincronizzazione_robot_snai():
         
     except Exception as e_globale:
         st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
-
 
 
 # =====================================================================================
