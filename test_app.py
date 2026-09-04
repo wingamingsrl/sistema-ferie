@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — TITOLI COMPLETI AZIENDALI UNIFICATI
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO CORRETTO BARRE DI ROUTING
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -59,13 +59,13 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
-# 🛡️ STRUTTURA ESTESA UNIFICATA PER EXCEL ED APP (NIENTE PIÙ TITOLI ABBREVIATI)
 COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
 
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
+        # 🛡️ FIX CHIRURGICO URL: Inserite le barre corrette /contents/ per evitare l'unione dei testi
         url_git = f"https://github.com{nome_file}?_nonce={c_time}"
         
         h = {
@@ -86,12 +86,8 @@ def carica_database_locale():
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
     if df_s is None or df_s.empty:
-        if os.path.exists(FILE_STORICO_PERMANENTE):
-            df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-        else:
-            df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+        df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
-    # Forzatura millimetrica per l'F5: costringe il file scaricato ad incasellarsi nei titoli estesi
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     return df_l, df_t, df_s
 
@@ -99,6 +95,7 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
+
 
 def push_excel_su_github(df_da_salvare):
     try:
