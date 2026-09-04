@@ -242,8 +242,7 @@ def esegui_sincronizzazione_robot_snai():
             "password": str(SNAI_PASS_CORRETTO)
         }
         
-        url_portale_snai = "https://partner.snai.it"
-        # 🛡️ INDIRIZZO SPECIFICO DI LOGIN SBLOCCATO
+        url_portale_snai = "https://snai.it"
         risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
@@ -276,16 +275,15 @@ def esegui_sincronizzazione_robot_snai():
                 
                 st.write(f"🚀 STEP 5a: Ispezione locale {codice_aams}...")
                 
-                # 🛡️ ACCERTAMENTO PREVENTIVO DOPPIONI: Interroga Snaitech per leggere lo stato attuale del locale
+                # 🛡️ ACCERTAMENTO PREVENTIVO: Interroga Snaitech per leggere lo stato attuale del locale
                 ispezione_portale = sessione_web.get(f"{url_inserimento}?codice={codice_aams}", timeout=15)
                 testo_portale = str(ispezione_portale.text)
                 
-                # Se la pagina contiene già le date esatte inviate dall'ufficio, salta la scrittura per non fare doppioni
+                # Se la pagina contiene già le date esatte, salta la scrittura per non fare doppioni
                 if data_in_completa in testo_portale and data_fi_completa in testo_portale:
                     st.write(f"   ℹ️ Periodo ferie ({data_in_completa} / {data_fi_completa}) già registrato a portale. Salto il locale.")
                     continue
                 
-                # Se le date cambiano o il locale è vuoto, procede all'aggiornamento reale
                 payload_ferie_locale = {
                     "txtCodiceCensimento": str(codice_aams),
                     "txtDataDal": str(data_in_completa),
@@ -295,6 +293,7 @@ def esegui_sincronizzazione_robot_snai():
                 
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
+                # 🛡️ FIX SINTASSI: Verifica i codici di avvenuto inserimento o redirect di successo
                 if risposta_invio.status_code in:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Allineamento/Modifica inviata con successo sul portale!")
