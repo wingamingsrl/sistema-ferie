@@ -102,17 +102,12 @@ if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
-    st.info("🎯 STEP 1: Avvio della funzione di salvataggio parallela...")
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        url_git = f"https://api.github.com/repos/wingamingsrl/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
         
-        prefisso_api = "https://github.com"
-        percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
-        url_git = prefisso_api + "/" + percorso_cartella + "/" + str(FILE_STORICO_PERMANENTE)
-        
-        st.write(f"🔍 STEP 2: Endpoint di destinazione ricomposto -> {url_git}")
-        
-        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+        # Costringe forzatamente il database ad allinearsi in formato testo puro (No liste, No array)
+        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
         
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
@@ -125,49 +120,30 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        st.info("🛰️ STEP 3: Interrogazione remota a GitHub per verificare se il file esiste già...")
+        # Interroga GitHub per capire se il file esiste
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        st.warning(f"📊 STEP 3 - Esito: GitHub ha risposto con codice numerico {res_get.status_code}")
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        sha_file = ""
-        if res_get.status_code == 200:
-            sha_file = res_get.json().get("sha", "")
-            st.write(f"📝 STEP 3a: Il file esiste sul sito. Recuperato marcatore SHA: {sha_file}")
-            payload_git = {"message": "🤖 [Test-App] Modifica registro", "content": dati_base64, "branch": "main", "sha": sha_file}
-        else:
-            st.write("🆕 STEP 3b: Il file non esiste su GitHub (Stato 404). Configuro la creazione da zero.")
-            payload_git = {"message": "🚀 [Test-App] Autocreazione file Excel iniziale", "content": dati_base64, "branch": "main"}
+        # Invia il messaggio a GitHub convertendo ogni parametro in testo base sicuro
+        payload_git = {"message": "🤖 [App] Aggiornamento registro ferie", "content": str(dati_base64), "branch": "main"}
+        if sha_file: 
+            payload_git["sha"] = str(sha_file)
             
-        st.info("📤 STEP 4: Invio del payload binario verso il server di GitHub...")
-        risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice numerico {risposta_server.status_code}")
-        
-        if risposta_server.status_code == 422:
-            st.error("⚠️ STEP 4a: Rilevato conflitto 422. Tento un recupero di sblocco in linea...")
-            res_retry = requests.get(url_git, headers=headers_git, timeout=5)
-            if res_retry.status_code == 200:
-                payload_git["sha"] = res_retry.json().get("sha", "")
-                risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-                st.warning(f"📊 STEP 4b - Esito Secondo Tentativo: Codice {risposta_server.status_code}")
-                
-        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
+        # 🛡️ DISINNESCORO RIGIDO DEL CODICE 422 SE IL FILE È STATO CANCELLATO MANUALMENTE
+        if risposta_put.status_code == 422:
+            if "sha" in payload_git: 
+                del payload_git["sha"]
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
-            st.success("🎉 STEP 5: Operazione conclusa con successo! Scrittura registrata.")
-            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
-            time.sleep(20)
             return True
-        else:
-            st.error(f"❌ STEP 5: GitHub ha rifiutato lo sblocco. Messaggio del server: {risposta_server.text}")
-            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
-            time.sleep(20)
-            return False
-            
-    except Exception as e_step:
-        st.error(f"💥 STEP FALLITO: Errore di esecuzione interna -> {str(e_step)}")
-        st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
-        time.sleep(20)
         return False
+    except Exception:
+        return False
+
 
 
 # =====================================================================================
