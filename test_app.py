@@ -224,18 +224,34 @@ def esegui_sincronizzazione_robot_snai():
             st.info("✅ STEP 1b: Nessun locale Snaitech attivo trovato nel registro.")
             return
 
-        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Aggancio del browser di sistema...")
+        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Ricerca radar del browser di sistema...")
 
-        # 🛡️ FORZATURA AMBIENTE CLOUD: Dice a Playwright di non scaricare nulla e usare l'hard disk locale
+        # 🛡️ FORZATURA AMBIENTE CLOUD: Impedisce download a caldo
         os.environ["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
         
-        # 🛡️ FIX ROTTA INTEGRALE: Punta al file corretto richiesto dal server Linux di Streamlit
-        percorso_chrome_sistema = "/usr/bin/chromium-browser"
+        # 🛡️ RADAR AUTOMATICO PERCORSI LINUX: Ispeziona l'hard disk virtuale per trovare dove si trova Chrome
+        percorsi_possibili_cloud = [
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chrome",
+            "/snap/bin/chromium"
+        ]
+        
+        percorso_chrome_sistema = None
+        for rotta in percorsi_possibili_cloud:
+            if os.path.exists(rotta):
+                percorso_chrome_sistema = rotta
+                break
+                
+        if percorso_chrome_sistema is None:
+            # Se i percorsi rigidi falliscono, tenta la chiamata globale di sistema nativa
+            percorso_chrome_sistema = "chromium"
+
+        st.write(f"📂 STEP 2a: Radar completato! Rilevato motore Chrome al percorso: `{percorso_chrome_sistema}`")
 
         with sync_playwright() as p:
             st.info("🛰️ STEP 3: Accensione del browser invisibile Chrome sul server Cloud...")
             
-            # Lancia Chrome usando l'eseguibile stabile pre-installato nel server
             browser = p.chromium.launch(
                 executable_path=percorso_chrome_sistema,
                 headless=True, 
@@ -277,7 +293,6 @@ def esegui_sincronizzazione_robot_snai():
                 time.sleep(15)
                 
                 st.info("🔓 STEP 6: ENTRATA RIUSCITA! Apertura fisica del menu Anagrafica Locali...")
-                # Esegue il clic nativo sul menu per attivare il PostBack di Snaitech, aggirando l'errore 404
                 page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click(timeout=20000)
                 time.sleep(8)
 
@@ -303,7 +318,6 @@ def esegui_sincronizzazione_robot_snai():
                         tasto_modifica = "img[id*='img_modifica'], [title*='Modifica']"
                         pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione']"
                         
-                        # 🛡️ INTERCETTAZIONE DOPPIONI VISIVA: Se vede che la riga esiste, salta per non fare doppioni
                         if target_frame.locator(tasto_modifica).count() > 0:
                             st.write(f"   ℹ️ Record ferie già presente nel sistema visivo Snaitech. Salto il locale.")
                             continue
@@ -321,7 +335,6 @@ def esegui_sincronizzazione_robot_snai():
                         target_frame.locator(campo_al).first.fill(data_fi_completa)
                         time.sleep(1)
 
-                        # Clicca sul tasto reale di salvataggio del portale
                         target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva')").first.click()
                         locali_elaborati_conteggio += 1
                         st.write(f"   ✅ Allineamento con successo!")
@@ -340,6 +353,7 @@ def esegui_sincronizzazione_robot_snai():
                 
     except Exception as e_globale:
         st.error(f"💥 ERRORE CRITICO INTERNO: {str(e_globale)}")
+
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
