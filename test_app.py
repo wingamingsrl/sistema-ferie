@@ -223,8 +223,8 @@ def esegui_sincronizzazione_robot_snai():
             df_pulito_salva.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
         
-        # 🛡️ ROTTA API CORRETTA AL 100% CON TUTTI GLI SLASH AL LORO POSTO
-        url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
+        # 🛡️ COSTRUZIONE ESPLICITA DELLA ROTTA CON TUTTI GLI SLASH SCRITTI A MANO
+        url_git = "https://github.com"
         
         headers_git = {
             "Authorization": f"token {t_git}", 
@@ -235,7 +235,7 @@ def esegui_sincronizzazione_robot_snai():
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        # Sovrascrive l'Excel per far sobbalzare il timer di GitHub e farlo partire subito
+        # Sovrascrive l'Excel per far partire subito il timer di GitHub
         marcatore_ora = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         payload_git = {
             "message": f"🤖 [App] Forzatura manuale inserimento Snaitech - {marcatore_ora}", 
@@ -254,6 +254,7 @@ def esegui_sincronizzazione_robot_snai():
             
     except Exception as e_api:
         st.error(f"💥 Errore di collegamento: {str(e_api)}")
+
 
 
 
