@@ -204,13 +204,19 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 Spedizione del segnale di innesco al server di automazione grafica...")
+    st.info("🎯 DIAGNOSTICA INNESCO - STEP 1: Avvio connessione remota...")
     try:
-        # Usa il token dei ragazzi che sappiamo essere sbloccato e funzionante al 100%
-        t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        
-        # Percorso del file di innesco fittizio sul repository
+        # Controlla se il token di sicurezza dei ragazzi viene letto correttamente
+        t_git = ""
+        if "github" in st.secrets and "token_accesso" in st.secrets["github"]:
+            t_git = str(st.secrets["github"]["token_accesso"]).strip()
+            st.write("📝 STEP 1a: Token di sicurezza intercettato nella memoria dell'app.")
+        else:
+            st.error("❌ STEP 1b: Impossibile leggere il token dalle impostazioni protette.")
+            
+        # Definiamo l'indirizzo esatto per la scrittura del file di innesco
         url_innesco = "https://github.com"
+        st.write(f"🔍 STEP 2: Verifico l'indirizzo di rete per il segnale -> `{url_innesco}`")
         
         headers_git = {
             "Authorization": f"token {t_git}",
@@ -218,11 +224,21 @@ def esegui_sincronizzazione_robot_snai():
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Interroga GitHub per capire se il file di innesco esiste già e prelevare il suo SHA
+        # 🧪 STEP 3: Chiediamo a GitHub se il file esiste già per gestire la sovrascrittura
+        st.info("🛰️ STEP 3: Chiedo a GitHub se esiste un innesco precedente...")
         res_get = requests.get(url_innesco, headers=headers_git, timeout=5)
-        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        st.warning(f"📊 STEP 3 - Risposta GitHub: Codice numerico {res_get.status_code}")
         
-        # Crea un messaggio con un marcatore temporale per costringere GitHub Actions a rilevare il cambiamento
+        sha_file = ""
+        if res_get.status_code == 200:
+            sha_file = res_get.json().get("sha", "")
+            st.write(f"📝 STEP 3a: File esistente rilevato. Codice di sicurezza SHA -> {sha_file}")
+        elif res_get.status_code == 404:
+            st.write("📝 STEP 3b: Primo innesco assoluto. Nessun file precedente presente sul server.")
+        else:
+            st.error(f"❌ STEP 3c: GitHub ha rifiutato l'ispezione. Messaggio: {res_get.text}")
+            
+        # Prepariamo il pacchetto dati con l'orario attuale dell'ufficio
         marcatore_tempo = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         testo_innesco_b64 = base64.b64encode(f"FORZATURA MANUALE MANUELA: {marcatore_tempo}".encode('utf-8')).decode('utf-8')
         
@@ -234,16 +250,28 @@ def esegui_sincronizzazione_robot_snai():
         if sha_file:
             payload_innesco["sha"] = str(sha_file)
             
-        risposta_put = requests.put(url_innesco, json=payload_innesco, headers=headers_git, timeout=10)
+        # 🧪 STEP 4: Spedizione forzata dell'ordine di avvio
+        st.info("📤 STEP 4: Invio il file di innesco a GitHub per accendere il robot...")
+        risposta_put = requests.put(url_innesco, json=payload_innesco, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è stato iniettato nel server: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
+        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
+        
+        if r := (risposta_put.status_code == 200 or risposta_put.status_code == 201):
+            st.success("🎉 STEP 5: Operazione completata! Il segnale è stato registrato su GitHub.")
+            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura dei passaggi...")
+            time.sleep(20)
+            return True
         else:
-            st.error(f"❌ Impossibile inviare il segnale. Risposta server: {risposta_put.status_code}")
-    except Exception as e_api:
-        st.error(f"💥 Errore di collegamento: {str(e_api)}")
-
-
+            st.error(f"❌ STEP 5: Invio fallito. Contenuto errore server: {risposta_put.text}")
+            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura dei passaggi...")
+            time.sleep(20)
+            return False
+            
+    except Exception as e_step:
+        st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
+        st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura dei passaggi...")
+        time.sleep(20)
+        return False
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
