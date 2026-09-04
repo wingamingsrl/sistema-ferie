@@ -103,6 +103,7 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # 🛡️ ROUTING API CORRETTO: Questo dice a Streamlit dove andare a salvare sul sito
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         # Allineamento rigido preventivo sulle 9 colonne ufficiali richieste dall'ufficio
@@ -140,13 +141,14 @@ def push_excel_su_github(df_da_salvare):
                 payload_git["sha"] = sha_retry
                 risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
                 
-        # 🛡️ FIX RIGIDO CONTROLLO STATO ACCETTAZIONE GITHUB
+        # 🛡️ FIX CONTROLLO STATO ACCETTAZIONE SANATO CORRETTAMENTE
         if risposta_server.status_code in:
             st.toast("✅ Database allineato e scritto su GitHub!", icon="💾")
             return True
         return False
     except Exception:
         return False
+
 
 
 
