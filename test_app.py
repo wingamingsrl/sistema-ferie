@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA RI-LETTURA REALE (STABILE)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO PERFETTO TRA F5 E UPLOAD
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO DEFINITIVO RIGIDO SU F5
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -94,13 +94,10 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ FIX CHIRURGICO ACCOPPIAMENTO F5 + UPLOAD: 
-# Inizializza lo stato dello schermo solo all'avvio o se la memoria cloud è effettivamente vuota.
-# Questo lascia il totale controllo al caricatore Excel dell'ufficio quando viene premuto il tasto blu!
-if "storico_cloud" not in st.session_state or st.session_state.get("forza_refresh_f5", False):
-    st.session_state.storico_cloud = df_storico_file.to_dict('records')
-    if "forza_refresh_f5" in st.session_state:
-        st.session_state.forza_refresh_f5 = False
+# 🛡️ COSTRUTTORE DI PERSISTENZA INTEGRALE PER F5:
+# Forza Streamlit ad aggiornare i record della RAM prendendoli direttamente dal file reale
+# salvato su GitHub ad OGNI SINGOLO rinfresco di pagina, mantenendo il login sbloccato.
+st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
@@ -141,6 +138,7 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
+
 
 
 
