@@ -243,12 +243,12 @@ def esegui_sincronizzazione_robot_snai():
         }
         
         url_portale_snai = "https://partner.snai.it"
-        risposta_login = sessione_web.post(url_portale_snai, data=payload_login, allow_redirects=False, timeout=15)
+        # 🛡️ INDIRIZZO SPECIFICO DI LOGIN SBLOCCATO
+        risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
         st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
         
-        # 🛡️ CALCOLO OTP BINDATO ALLA CHIAVE INTERNA PROTETTA
         chiave_pulita = CHIAVE_SEGRETA_2FA_CORRETTA.strip().upper().replace(" ", "")
         totp = pyotp.TOTP(chiave_pulita)
         codice_totp = totp.now()
@@ -260,12 +260,13 @@ def esegui_sincronizzazione_robot_snai():
             "otp": str(codice_totp)
         }
         
-        url_convalida_snai = url_portale_snai
-        risposta_totp = sessione_web.post(url_convalida_snai, data=payload_totp, allow_redirects=False, timeout=15)
+        risposta_totp = sessione_web.post(f"{url_portale_snai}/convalida-token", data=payload_totp, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
         
-        st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Spostamento sul pannello Pianificazione Ferie...")
+        st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Intercettazione periodi esistenti su partner.snai.it...")
         locali_elaborati_conteggio = 0
+        
+        url_inserimento = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie"
         
         for idx, row in df_snai.iterrows():
             try:
@@ -273,8 +274,18 @@ def esegui_sincronizzazione_robot_snai():
                 data_in_completa = str(row["INIZIO_FERIE"]).strip()
                 data_fi_completa = str(row["FINE_FERIE"]).strip()
                 
-                st.write(f"🚀 STEP 5a: Sincronizzazione riga {idx} -> Locale Snaitech: {codice_aams}")
+                st.write(f"🚀 STEP 5a: Ispezione locale {codice_aams}...")
                 
+                # 🛡️ ACCERTAMENTO PREVENTIVO DOPPIONI: Interroga Snaitech per leggere lo stato attuale del locale
+                ispezione_portale = sessione_web.get(f"{url_inserimento}?codice={codice_aams}", timeout=15)
+                testo_portale = str(ispezione_portale.text)
+                
+                # Se la pagina contiene già le date esatte inviate dall'ufficio, salta la scrittura per non fare doppioni
+                if data_in_completa in testo_portale and data_fi_completa in testo_portale:
+                    st.write(f"   ℹ️ Periodo ferie ({data_in_completa} / {data_fi_completa}) già registrato a portale. Salto il locale.")
+                    continue
+                
+                # Se le date cambiano o il locale è vuoto, procede all'aggiornamento reale
                 payload_ferie_locale = {
                     "txtCodiceCensimento": str(codice_aams),
                     "txtDataDal": str(data_in_completa),
@@ -282,12 +293,11 @@ def esegui_sincronizzazione_robot_snai():
                     "azione": "Salva"
                 }
                 
-                url_inserimento = url_portale_snai
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
-                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
+                if risposta_invio.status_code in:
                     locali_elaborati_conteggio += 1
-                    st.write(f"   ✅ Sincronizzato con successo sul portale!")
+                    st.write(f"   ✅ Allineamento/Modifica inviata con successo sul portale!")
                 else:
                     st.error(f"   ⚠️ Rifiutato da Snaitech. Codice errore server: {risposta_invio.status_code}")
                     
@@ -295,7 +305,7 @@ def esegui_sincronizzazione_robot_snai():
                 st.error(f"   ⚠️ Errore compilazione riga {idx}: {str(e_row)}")
                 continue
                 
-        st.success(f"🎉 STEP 6: OPERAZIONE COMPLETATA! Allineati correttamente {locali_elaborati_conteggio} locali sul portale Snaitech.")
+        st.success(f"🎉 STEP 6: OPERAZIONE COMPLETATA! Allineati correttamente {locali_elaborati_conteggio} nuovi locali modificati sul portale Snaitech.")
         
     except Exception as e_globale:
         st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
