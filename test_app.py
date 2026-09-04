@@ -186,13 +186,14 @@ def push_excel_su_github(df_da_salvare):
                     del payload_git["sha"]
                 risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
                 
-                if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            # 🛡️ MESSAGGIO GENERICO PULITO (NO GITHUB / NO EXCEL)
+        # 🛡️ ALLINEAMENTO PROTETTO: Accetta i codici 200 e 201 inserendo i messaggi generici puliti
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ Modifiche salvate correttamente in archivio!", icon="💾")
             return True
         return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
