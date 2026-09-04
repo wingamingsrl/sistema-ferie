@@ -507,7 +507,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.rerun()
         except Exception: pass
         
-    st.markdown("---")
+       st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
     if file_caricato is not None:
@@ -515,14 +515,22 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             df_caricato = pd.read_excel(file_caricato).fillna("")
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
+                    
+                    # 🛡️ FIX UPLOAD ITALIANO: Intercetta le date caricate e le blocca in formato italiano puro stringa
+                    for col_data in ["INIZIO_FERIE", "FINE_FERIE"]:
+                        if col_data in df_caricato.columns:
+                            try:
+                                # Se Pandas ha già convertito in data americana, la raddrizza all'italiana text
+                                df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M')
+                            except Exception:
+                                df_caricato[col_data] = df_caricato[col_data].astype(str).str.strip()
+                    
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
-                    # 🛡️ TEXT FIX: Messaggio amministrativo pulito
                     st.success("✅ Database aziendale aggiornato e sincronizzato con successo!")
-                    time.sleep(1.5)
+                    time.sleep(2.0)
                     st.rerun()
-
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
