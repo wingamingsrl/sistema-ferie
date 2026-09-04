@@ -99,16 +99,22 @@ if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
+    st.info("🎯 STEP 1: Avvio della funzione di salvataggio parallela...")
     try:
+        # Recupero delle credenziali protette dai Secrets
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ TRUCCO BARRA VISIBILE: Il simbolo / è protetto e visibile per la scrittura
-        base_url = "https://github.com"
-        url_git = base_url + "/" + FILE_STORICO_PERMANENTE
+        # Costruzione dell'endpoint API forzando i caratteri speciali in modo testuale isolato
+        cartella_api = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = "https://github.com" + cartella_api + "/" + str(FILE_STORICO_PERMANENTE)
         
-        output_binario = io.BytesIO()
+        st.write(f"🔍 STEP 2: Endpoint di destinazione ricomposto -> {url_git}")
+        
+        # Allineamento preventivo della griglia orizzontale a 9 colonne dell'ufficio
         df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
         
+        # Conversione del DataFrame in un file Excel binario memorizzato in RAM
+        output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_pulito_salva.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
@@ -119,25 +125,44 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        st.info("🛰️ STEP 3: Interrogazione remota a GitHub per verificare se il file esiste già...")
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        st.warning(f"📊 STEP 3 - Esito: GitHub ha risposto con codice numerico {res_get.status_code}")
         
-        payload_git = {"message": "🤖 [Test-App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
-        if sha_file: payload_git["sha"] = sha_file
+        sha_file = ""
+        if res_get.status_code == 200:
+            sha_file = res_get.json().get("sha", "")
+            st.write(f"📝 STEP 3a: Il file esiste sul sito. Recuperato marcatore SHA: {sha_file}")
+            payload_git = {"message": "🤖 [Test-App] Aggiornamento registro", "content": dati_base64, "branch": "main", "sha": sha_file}
+        else:
+            st.write("🆕 STEP 3b: Il file non esiste su GitHub (Stato 404). Configuro la creazione da zero.")
+            payload_git = {"message": "🚀 [Test-App] Autocreazione file Excel iniziale", "content": dati_base64, "branch": "main"}
             
-        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        st.info("📤 STEP 4: Invio del payload binario verso il server di GitHub...")
+        risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 422 and sha_file:
-            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
-            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
-            if "sha" in payload_git: del payload_git["sha"]
-            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            
-        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice numerico {risposta_server.status_code}")
+        
+        # Gestione interna dei conflitti simultanei di scrittura di rete
+        if risposta_server.status_code == 422:
+            st.error("⚠️ STEP 4a: Rilevato conflitto 422. Tonto un recupero di sblocco in linea...")
+            res_retry = requests.get(url_git, headers=headers_git, timeout=5)
+            if res_retry.status_code == 200:
+                payload_git["sha"] = res_retry.json().get("sha", "")
+                risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+                st.warning(f"📊 STEP 4b - Esito Secondo Tentativo: Codice {risposta_server.status_code}")
+                
+        # Controllo finale rigido di avvenuta archiviazione
+        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
+            st.success("🎉 STEP 5: Operazione conclusa con successo! Scrittura registrata.")
             return True
-        return False
-    except Exception:
+        else:
+            st.error(f"❌ STEP 5: GitHub ha rifiutato lo sblocco. Messaggio del server: {risposta_server.text}")
+            return False
+            
+    except Exception as e_step:
+        st.error(f"💥 STEP FALLITO: Errore di esecuzione interna -> {str(e_step)}")
         return False
 
 
