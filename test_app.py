@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL, AUTOCREAZIONE E PULIZIA AUTOMATICA SCADUTI
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — CANCELLA DA SOLA LE FERIE GIÀ TRASCORSE
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL, AUTOCREAZIONE E SCRITTURA PURA FORZATA (SIGILLATO)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — BLINDA LE MODIFICHE E LE CANCELLAZIONI
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -94,7 +94,7 @@ def carica_database_locale():
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # 🛡️ PULIZIA AUTOMATICA RIGIDA CHIUSURE SCADUTE (ESEGUTTA AD OGNI AVVIO/F5)
+    # 🛡️ PULIZIA AUTOMATICA RIGIDA SCADUTI ALL'AVVIO
     righe_valide = []
     oggi_ora = datetime.now()
     file_modificato_pulizia = False
@@ -103,21 +103,17 @@ def carica_database_locale():
         testo_fine = str(row.get("FINE_FERIE", "")).strip()
         if testo_fine:
             try:
-                # Parsa la data e l'ora estesa (es: 17-09-2026 12:00)
                 data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
-                # Se la fine delle ferie è passata rispetto ad oggi, la scarta (elimina da Excel)
                 if data_fine_valida < oggi_ora:
                     file_modificato_pulizia = True
                     continue
             except Exception:
                 try:
-                    # Controlla se per caso è inserita come data semplice senza ora
                     data_fine_valida = datetime.strptime(testo_fine.split(" ")[0], "%d-%m-%Y")
                     if data_fine_valida.date() < oggi_ora.date():
                         file_modificato_pulizia = True
                         continue
-                except Exception:
-                    pass
+                except Exception: pass
         righe_valide.append(row)
         
     if righe_valide:
@@ -127,7 +123,6 @@ def carica_database_locale():
         
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # Se ha rimosso dei record scaduti, salva immediatamente il file pulito su GitHub in background
     if file_modificato_pulizia:
         push_excel_su_github(df_s)
         
@@ -141,9 +136,11 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        url_git = "https://github.com" + "/" + str(FILE_STORICO_PERMANENTE)
+        indirizzo_base = "https://github.com"
+        url_git = indirizzo_base + "/" + str(FILE_STORICO_PERMANENTE)
         
-        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+        # 🛡️ FIX PURA STRUTTURA: Converte in stringhe pulite per bypassare i firewall di GitHub
+        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
         
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
@@ -159,19 +156,19 @@ def push_excel_su_github(df_da_salvare):
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
+        payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": str(dati_base64), "branch": "main"}
         if sha_file: 
-            payload_git["sha"] = sha_file
+            payload_git["sha"] = str(sha_file)
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 422 and sha_file:
-            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
-            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
-            if "sha" in payload_git: del payload_git["sha"]
+        if risposta_put.status_code == 422:
+            if "sha" in payload_git: 
+                del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.toast("✅ File Excel allineato su GitHub!", icon="💾")
             return True
         return False
     except Exception:
@@ -299,8 +296,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE RIGHE, GESTIONE EXCEL AZIENDALE ORIZZONTALE ED AREA ADMIN
-# VERSIONE DI PRODUZIONE 100% UNIFICATA SULLE COLONNE REALI DELL'UFFICIO RICHIESTE
+# BLOCCO 6 - PARTE A: ELABORAZIONE INSERIMENTI E MOTORE EMAIL DINAMICO MODIFICHE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -311,7 +307,6 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
-        # 🛡️ FIX CONTROLLO DOPPIONI ESTESO: Legge correttamente sia la data che l'ora per bloccare la sovrapposizione
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
         data_inizio_nuova = datetime.combine(data_chiusura, ora_chiusura)
         data_fine_nuova = datetime.combine(data_riapertura, ora_riapertura)
@@ -327,15 +322,13 @@ if submit_button:
                         break
                 except Exception:
                     try:
-                        # Controllo di sicurezza se nel file Excel vecchio mancava l'orario
-                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
-                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
+                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
+                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
                         if (data_chiusura <= old_f.date()) and (data_riapertura >= old_i.date()):
                             sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                             dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
                             break
                     except Exception: continue
-
 
         if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
             st.error("Rilevato elemento non conforme nella stringa di testo.")
@@ -377,9 +370,28 @@ if submit_button:
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
                 except Exception: pass
-                    
+            
+            titolo_azione = "Modifica Chiusura" if (sovrapposizione_rilevata and forza_sovrascrittura) else "Registrazione Chiusura"
+            
             with st.spinner("Salvataggio e invio notifica..."):
-                invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
+                try:
+                    pass_gmail = str(st.secrets["gmail"]["password_applicativa"]).strip()
+                    msg = MIMEMultipart()
+                    msg['From'] = EMAIL_MITTENTE_GMAIL
+                    msg['To'] = ", ".join(lista_m)
+                    msg['Subject'] = f"🛡️ {titolo_azione} Ferie - {nome_puro_locale}"
+                    
+                    linee_concessionari = f" {concessionario_estratto}"
+                    corpo = f"Rilevato aggiornamento chiusura ferie nel sistema WinGaming.\n\nDettagli della pratica:\n--------------------------------------------------\n🔔 Stato Operazione:  {titolo_azione.upper()}\n👤 Tecnico Esecutore: {esecutore_nome}\n📍 Locale Coinvolto:  {nome_puro_locale}\n🏢 Concessionario/i:{linee_concessionari}\n📅 Inizio Chiusura:   {str_c}\n🚚 Data Riapertura:   {str_r}\n--------------------------------------------------\n\nWINGAMING SRL"
+                    msg.attach(MIMEText(corpo, 'plain'))
+                    
+                    server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+                    server.login(EMAIL_MITTENTE_GMAIL, pass_gmail)
+                    server.sendmail(EMAIL_MITTENTE_GMAIL, lista_m, msg.as_string())
+                    server.quit()
+                    invio_ok, risposta_server = True, "OK"
+                except Exception as e_mail:
+                    invio_ok, risposta_server = False, str(e_mail)
             
             if invio_ok:
                 nuova["STATO_INVIO"] = "Inviato OK"
@@ -397,25 +409,22 @@ if submit_button:
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
-
+# =====================================================================================
+# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
+# =====================================================================================
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
 oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" "), "%d-%m-%Y").date()
-        d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" "), "%d-%m-%Y").date()
+        d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
+        d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
         if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
-
-if st.sidebar.button("🚪 Disconnetti Account"):
-    st.query_params.clear()
-    st.session_state.autenticato = False
-    st.rerun()
 
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
@@ -440,7 +449,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
     else:
         st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
-        
+# =====================================================================================
+# BLOCCO 6 - PARTE C: TASTO CANCELLAZIONE EXCEL REALE, CARICATORE UFFICIO E LOGOUT
+# =====================================================================================
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
@@ -483,9 +494,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.rerun()
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
-
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
-# --- PULSANTE LOGOUT UFFICIALE VISIBILE SULLO SCHERMO SMARTPHONE ---
+
+# PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
 st.markdown("<br>", unsafe_allow_html=True)
 col_out1, col_out2, col_out3 = st.columns([1, 2, 1])
 with col_out2:
