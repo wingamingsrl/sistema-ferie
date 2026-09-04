@@ -518,12 +518,15 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     
-                    # 🛡️ FIX UPLOAD ITALIANO: Intercetta le date caricate e le blocca in formato italiano puro stringa
-                    for col_data in ["INIZIO_FERIE", "FINE_FERIE"]:
+                    # 🛡️ FIX DATA INSERIMENTO IN UPLOAD: Raddrizza anche la data di registrazione all'italiana
+                    for col_data in ["DATA_INSERIMENTO", "INIZIO_FERIE", "FINE_FERIE"]:
                         if col_data in df_caricato.columns:
                             try:
-                                # Se Pandas ha già convertito in data americana, la raddrizza all'italiana text
-                                df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M')
+                                # Se ha l'orario esteso con i secondi, mantiene la struttura pulita italiana
+                                if col_data == "DATA_INSERIMENTO":
+                                    df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M:%S')
+                                else:
+                                    df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M')
                             except Exception:
                                 df_caricato[col_data] = df_caricato[col_data].astype(str).str.strip()
                     
@@ -531,11 +534,12 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
                     st.success("✅ Database aziendale aggiornato e sincronizzato con successo!")
-                    time.sleep(1.5)
+                    time.sleep(2.0)
                     st.rerun()
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
 
 # PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
 st.markdown("<br>", unsafe_allow_html=True)
