@@ -206,18 +206,32 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 DIAGNOSTICA INNESCO - STEP 1: Avvio connessione remota...")
     try:
-        # Recupera il token sbloccato che usi già per l'Excel dei ragazzi
+        # Recupera il token sbloccato dei ragazzi
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         st.write("📝 STEP 1a: Token di sicurezza intercettato con successo.")
             
-        # 🛡️ VIA D'ACCESSO FILE SBLOCCATA: Punta alla scrittura del file di innesco sul repository
         url_innesco = "https://github.com"
         st.write("🔍 STEP 2: Indirizzo di rete del segnale configurato correttamente.")
         
-        # 🧪 STEP 3: Chiediamo a GitHub se esiste un innesco precedente per prendere lo SHA
-        res_get = requests.get(url_innesco, headers={"Authorization": f"token {t_git}"}, timeout=5)
-        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
-        st.write(f"📊 STEP 3: Controllo storico precedente superato (Stato {res_get.status_code}).")
+        # 🧪 STEP 3: Controllo protetto dell'esistenza del file senza crash di formato
+        headers_git = {
+            "Authorization": f"token {t_git}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        
+        res_get = requests.get(url_innesco, headers=headers_git, timeout=5)
+        st.write(f"📊 STEP 3: GitHub ha risposto al controllo iniziale con codice {res_get.status_code}")
+        
+        sha_file = ""
+        # 🛡️ FIX ASSOLUTO: Estrae lo json solo ed esclusivamente se il file sul server esiste davvero
+        if res_get.status_code == 200:
+            try:
+                sha_file = res_get.json().get("sha", "")
+                st.write(f"📝 STEP 3a: File esistente intercettato. Codice SHA -> {sha_file}")
+            except Exception: pass
+        else:
+            st.write("📝 STEP 3b: Il file non esiste ancora. Verrà creato da zero in questo istante.")
         
         # Prepariamo il pacchetto con l'orario attuale dell'ufficio
         marcatore_tempo = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
@@ -231,22 +245,18 @@ def esegui_sincronizzazione_robot_snai():
         if sha_file:
             payload_innesco["sha"] = str(sha_file)
             
-        # 📤 STEP 4: Spedisce il file di testo per svegliare il robot esterno
-        headers_git = {
-            "Authorization": f"token {t_git}",
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "WinGaming-Cloud-App"
-        }
+        # 📤 STEP 4: Spedisce l'ordine di scrittura definitivo a GitHub
+        st.info("📤 STEP 4: Invio il segnale di innesco al server remoto...")
         risposta_put = requests.put(url_innesco, json=payload_innesco, headers=headers_git, timeout=5)
-        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
+        st.warning(f"📊 STEP 4a - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
         
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minutes le ferie saranno salvate sul portale Snaitech.")
+            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato correttamente: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
             st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
             time.sleep(10)
             return True
         else:
-            st.error(f"❌ STEP 5: Invio fallito. Contenuto errore server: {risposta_put.text}")
+            st.error(f"❌ STEP 5: Invio fallito. Risposta del server: {risposta_put.text}")
             time.sleep(10)
             return False
             
@@ -254,6 +264,7 @@ def esegui_sincronizzazione_robot_snai():
         st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
         time.sleep(10)
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
