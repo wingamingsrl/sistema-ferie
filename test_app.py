@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA RI-LETTURA REALE (STABILE)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO COESISTENZA F5, UPLOAD E MANUALE
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E SEPARAZIONE RIGIDA MEMORIA (ANTI-RESET)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FIX FINALE CONVIVENZA INTEGRALE F5 ED UPLOAD
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -94,14 +94,12 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ FIX GENERALE PERSISTENZA: Gestisce la RAM sia per l'Upload dell'ufficio che per gli inserimenti manuali
-if "forza_congelamento_ram" not in st.session_state:
-    st.session_state.forza_congelamento_ram = False
-
-if not st.session_state.forza_congelamento_ram:
+# 🛡️ BLINDATURA INTEGRALE ANCORAGGIO MEMORIA (RISOLVE F5 E SOVRASCRITTURE):
+# Carica lo storico da GitHub SOLO la primissima volta che si accende l'app.
+# Da quel momento in poi, lo schermo obbedisce solo alle modifiche fatte in tempo reale
+# (sia upload che a mano), senza mai farsi azzerare o ingannare dai ritardi del server.
+if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
-else:
-    st.session_state.forza_congelamento_ram = False
 
 def push_excel_su_github(df_da_salvare):
     try:
@@ -334,23 +332,23 @@ if submit_button:
             with st.spinner("Salvataggio e invio notifica..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
             
-            if invio_ok:
+             if invio_ok:
                 nuova["STATO_INVIO"] = "Inviato OK"
-                if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
-                
-                st.session_state.storico_cloud.append(nuova)
-                df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                
-                # 🛡️ BLINDA L'INSERIMENTO MANUALE: Protegge la RAM durante il rinfresco
-                st.session_state.forza_congelamento_ram = True
-                push_excel_su_github(df_salva)
-                
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
-                st.session_state.form_id += 1
-                time.sleep(0.5)
-                st.rerun()
+                if '../' in nuova["CODICE_LOCALE"] or '/' in nuova["CODICE_LOCALE"]:
+                    st.error("Rilevato elemento non conforme.")
+                else:
+                    if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                        st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    
+                    st.session_state.storico_cloud.append(nuova)
+                    df_salva = pd.DataFrame(st.session_state.storico_cloud)
+                    df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_salva)
+                    
+                    st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
+                    st.session_state.form_id += 1
+                    time.sleep(0.5)
+                    st.rerun()
 
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
@@ -433,10 +431,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         try:
             df_caricato = pd.read_excel(file_caricato).fillna("")
             if "CODICE_LOCALE" in df_caricato.columns:
-                if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
+                               if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
-                    # 🛡️ BLINDA L'UPLOAD DELL'UFFICIO: Protegge la RAM durante il rinfresco
-                    st.session_state.forza_congelamento_ram = True  
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
                     st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
