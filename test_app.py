@@ -291,14 +291,15 @@ def esegui_sincronizzazione_robot_snai():
                     "azione": "Salva"
                 }
                 
+                               # 🛡️ SINTASSI CORRETTA AL 100%: Controlla l'esito reale della spedizione
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
-                # 🛡️ SINTASSI CORRETTA: Riconosce i codici di avvenuto inserimento o redirect di successo
-                if risposta_invio.status_code in:
+                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Allineamento/Modifica inviata con successo sul portale!")
                 else:
                     st.error(f"   ⚠️ Rifiutato da Snaitech. Codice errore server: {risposta_invio.status_code}")
+
                     
             except Exception as e_row:
                 st.error(f"   ⚠️ Errore compilazione riga {idx}: {str(e_row)}")
