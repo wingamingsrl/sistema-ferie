@@ -430,7 +430,7 @@ if submit_button:
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
-                time.sleep(2.0)
+                time.sleep(4.0)
                 st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
@@ -503,7 +503,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     st.success("🗑️ Chiusura rimossa con successo!")
-                    time.sleep(0.5)
+                    time.sleep(2.5)
                     st.rerun()
         except Exception: pass
         
@@ -520,7 +520,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     push_excel_su_github(df_caricato)
                     # 🛡️ TEXT FIX: Messaggio amministrativo pulito
                     st.success("✅ Database aziendale aggiornato e sincronizzato con successo!")
-                    time.sleep(1.5)
+                    time.sleep(2.5)
                     st.rerun()
 
             else:
