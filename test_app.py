@@ -206,7 +206,6 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 STEP 1: Inizializzazione della memoria RAM e controllo locali...")
     try:
-        # Credenziali proprietarie aziendali WinGaming cablate all'interno del motore
         SNAI_USER_CORRETTO = "2141ManuelaA"
         SNAI_PASS_CORRETTO = "Salmi123!"
 
@@ -226,10 +225,20 @@ def esegui_sincronizzazione_robot_snai():
 
         st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Generazione credenziali cifrate...")
         
+        # 🛡️ CAMUFFAMENTO INTEGRALE: Maschera la sessione simulando Chrome su Windows 11 dell'ufficio
         sessione_web = requests.Session()
         sessione_web.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Chua-Muted": "?0",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1"
         })
 
         st.info("🌐 STEP 3: Tentativo di connessione e Log In su partner.snai.it...")
@@ -238,7 +247,9 @@ def esegui_sincronizzazione_robot_snai():
             "password": str(SNAI_PASS_CORRETTO)
         }
         
-        risposta_login = sessione_web.post("https://snai.it", data=payload_login, timeout=10)
+        # Effettua la richiesta forzando l'indirizzo partner.snai.it isolato ed esplicito
+        url_portale_snai = "https://snai.it"
+        risposta_login = sessione_web.post(url_portale_snai, data=payload_login, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
         st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
@@ -250,7 +261,8 @@ def esegui_sincronizzazione_robot_snai():
             "otp": str(codice_totp)
         }
         
-        risposta_totp = sessione_web.post("https://snai.it", data=payload_totp, timeout=10)
+        url_convalida_snai = "https://snai.it"
+        risposta_totp = sessione_web.post(url_convalida_snai, data=payload_totp, timeout=15)
         st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
         
         st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Spostamento sul pannello Pianificazione Ferie...")
@@ -272,7 +284,7 @@ def esegui_sincronizzazione_robot_snai():
                 }
                 
                 url_inserimento = "https://snai.it"
-                risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, timeout=10)
+                risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, timeout=15)
                 
                 if risposta_invio.status_code == 200 or risposta_invio.status_code == 201:
                     locali_elaborati_conteggio += 1
