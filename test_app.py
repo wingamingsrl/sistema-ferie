@@ -223,22 +223,15 @@ def esegui_sincronizzazione_robot_snai():
             st.info("✅ STEP 1b: Nessun locale Snaitech attivo trovato nel registro.")
             return
 
-        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Generazione credenziali cifrate...")
+        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Configuro sessione protetta...")
         
-        # 🛡️ CAMUFFAMENTO INTEGRALE: Maschera la sessione simulando Chrome su Windows 11 dell'ufficio
         sessione_web = requests.Session()
         sessione_web.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
             "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Chua-Muted": "?0",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1"
+            "Connection": "keep-alive"
         })
 
         st.info("🌐 STEP 3: Tentativo di connessione e Log In su partner.snai.it...")
@@ -247,9 +240,9 @@ def esegui_sincronizzazione_robot_snai():
             "password": str(SNAI_PASS_CORRETTO)
         }
         
-        # Effettua la richiesta forzando l'indirizzo partner.snai.it isolato ed esplicito
-        url_portale_snai = "https://snai.it"
-        risposta_login = sessione_web.post(url_portale_snai, data=payload_login, timeout=15)
+        # 🛡️ FIX BLOCCO REDIRECT: Imposto allow_redirects=False per vietare al server di dirottarci su www.snai.it
+        url_portale_snai = "https://partner.snai.it"
+        risposta_login = sessione_web.post(url_portale_snai, data=payload_login, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
         st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
@@ -261,8 +254,8 @@ def esegui_sincronizzazione_robot_snai():
             "otp": str(codice_totp)
         }
         
-        url_convalida_snai = "https://snai.it"
-        risposta_totp = sessione_web.post(url_convalida_snai, data=payload_totp, timeout=15)
+        url_convalida_snai = "https://partner.snai.it"
+        risposta_totp = sessione_web.post(url_convalida_snai, data=payload_totp, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
         
         st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Spostamento sul pannello Pianificazione Ferie...")
@@ -283,10 +276,10 @@ def esegui_sincronizzazione_robot_snai():
                     "azione": "Salva"
                 }
                 
-                url_inserimento = "https://snai.it"
-                risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, timeout=15)
+                url_inserimento = "https://partner.snai.it"
+                risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
-                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201:
+                if risposta_invio.status_code in:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Sincronizzato con successo sul portale!")
                 else:
@@ -300,6 +293,7 @@ def esegui_sincronizzazione_robot_snai():
         
     except Exception as e_globale:
         st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
+
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
