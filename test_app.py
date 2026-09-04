@@ -196,7 +196,7 @@ def push_excel_su_github(df_da_salvare):
     except Exception:
         return False
 # =====================================================================================
-# FUNZIONI INTEGRATE DEL ROBOT AUTOMATICO DI SINCRONIZZAZIONE PARTNER.SNAI.IT
+# FUNZIONI INTEGRATE DEL ROBOT AUTOMATICO DI SINCRONIZZAZIONE .SNAI.IT
 # =====================================================================================
 def genera_codice_otp_automatico():
     chiave_pulita = CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", "")
@@ -234,13 +234,13 @@ def esegui_sincronizzazione_robot_snai():
             "Connection": "keep-alive"
         })
 
-        st.info("🌐 STEP 3: Tentativo di connessione e Log In su partner.snai.it...")
+        st.info("🌐 STEP 3: Tentativo di connessione e Log In su .snai.it...")
         payload_login = {
             "username": str(SNAI_USER_CORRETTO),
             "password": str(SNAI_PASS_CORRETTO)
         }
         
-        # 🛡️ FIX BLOCCO REDIRECT: Imposto allow_redirects=False per vietare al server di dirottarci su www.snai.it
+        # 🛡️ ANCORAGGIO DI RETE PROTETTO: Rotta blindata esclusiva su .snai.it
         url_portale_snai = "https://partner.snai.it"
         risposta_login = sessione_web.post(url_portale_snai, data=payload_login, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
@@ -276,10 +276,12 @@ def esegui_sincronizzazione_robot_snai():
                     "azione": "Salva"
                 }
                 
+                # 🛡️ ANCORAGGIO DI RETE PROTETTO: Corretto l'inserimento sulla rotta reale di .snai.it
                 url_inserimento = "https://partner.snai.it"
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
-                if risposta_invio.status_code in:
+                # 🛡️ SINTASSI CORRETTA: Riconosce i codici di avvenuto inserimento del server
+                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Sincronizzato con successo sul portale!")
                 else:
@@ -293,6 +295,7 @@ def esegui_sincronizzazione_robot_snai():
         
     except Exception as e_globale:
         st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
+
 
 
 # =====================================================================================
@@ -577,9 +580,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     # =====================================================================================
     st.markdown("---")
     st.markdown("### 🤖 Sincronizzazione Diretta Portale Snaitech")
-    st.write("Questo comando attiva il robot Playwright che effettua il login automatico con OTP su partner.snai.it e compila le scadenze.")
+    st.write("Questo comando attiva il robot Playwright che effettua il login automatico con OTP su .snai.it e compila le scadenze.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU PARTNER.SNAI.IT"):
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU .SNAI.IT"):
         with st.spinner("Robot in azione sul portale Snaitech... Non chiudere la pagina..."):
             esegui_sincronizzazione_robot_snai()
 
