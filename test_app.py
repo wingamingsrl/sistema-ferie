@@ -237,7 +237,7 @@ if not st.session_state.autenticato:
 esecutore_nome = st.session_state.user_nome
 esecutore_email = st.session_state.user_email
 
-st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🧳 PORTALE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
 
 
