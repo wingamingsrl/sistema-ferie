@@ -375,9 +375,11 @@ if submit_button:
             else:
                 nome_puro_locale = resto_s
                 concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+            # 🛡️ FIX DATA INSERIMENTO ALL'ITALIANA: Formato Giorno-Mese-Anno con secondi reali
+            data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
             nuova = {
-                "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                "DATA_INSERIMENTO": str(data_inserimento_it),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
                 "CODICE_LOCALE": str(codice_estratto),
                 "NOME_LOCALE": str(nome_puro_locale),
@@ -387,6 +389,7 @@ if submit_button:
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "In attesa"
             }
+
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
