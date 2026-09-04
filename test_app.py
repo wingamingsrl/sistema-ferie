@@ -264,8 +264,8 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
 
 # =====================================================================================
-# BLOCCO 6: ELABORAZIONE RIGHE, CONTROLLO DOPPIONI ED AREA AMMINISTRATORE DEFINITIVA
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO CORRETTO COLONNE ESTESE
+# BLOCCO 6: ELABORAZIONE RIGHE, GESTIONE EXCEL AZIENDALE ORIZZONTALE ED AREA ADMIN
+# VERSIONE DI PRODUZIONE 100% UNIFICATA SULLE COLONNE REALI DELL'UFFICIO RICHIESTE
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -332,24 +332,20 @@ if submit_button:
             with st.spinner("Salvataggio e invio notifica..."):
                 invio_ok, risposta_server = invia_mail_diretta_smtp(lista_m, nome_puro_locale, concessionario_estratto, str_c, str_r, esecutore_nome)
             
-             if invio_ok:
+            if invio_ok:
                 nuova["STATO_INVIO"] = "Inviato OK"
-                if '../' in nuova["CODICE_LOCALE"] or '/' in nuova["CODICE_LOCALE"]:
-                    st.error("Rilevato elemento non conforme.")
-                else:
-                    if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                        st.session_state.storico_cloud.pop(riga_conflitto_idx)
-                    
-                    st.session_state.storico_cloud.append(nuova)
-                    df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    push_excel_su_github(df_salva)
-                    
-                    st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
-                    st.session_state.form_id += 1
-                    time.sleep(0.5)
-                    st.rerun()
-
+                if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                
+                st.session_state.storico_cloud.append(nuova)
+                df_salva = pd.DataFrame(st.session_state.storico_cloud)
+                df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                push_excel_su_github(df_salva)
+                
+                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
+                st.session_state.form_id += 1
+                time.sleep(0.5)
+                st.rerun()
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
@@ -372,7 +368,6 @@ if st.sidebar.button("🚪 Disconnetti Account"):
     st.session_state.autenticato = False
     st.rerun()
 
-# --- PANNELLO AMMINISTRATORE ---
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
     colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
@@ -407,7 +402,6 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
     if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
         try:
-            # 🛡️ FIX CHIRURGICO: Estrazione nativa posizionale senza conflitti di tipo lista
             parti_s = selezione_delete.split("ID ")
             if len(parti_s) > 1:
                 sub_stringa = parti_s[1]
@@ -431,16 +425,16 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         try:
             df_caricato = pd.read_excel(file_caricato).fillna("")
             if "CODICE_LOCALE" in df_caricato.columns:
-                               if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
+                if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
                     st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
                     time.sleep(1.5)
                     st.rerun()
-
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
+
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
 # --- PULSANTE LOGOUT UFFICIALE VISIBILE SULLO SCHERMO SMARTPHONE ---
 st.markdown("<br>", unsafe_allow_html=True)
