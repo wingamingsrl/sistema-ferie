@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA RI-LETTURA REALE (STABILE)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — COESISTENZA PERFETTA TRA F5 E UPLOAD
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO COESISTENZA F5, UPLOAD E MANUALE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -94,14 +94,14 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ FIX CHIRURGICO: Gestisce l'F5 bloccando la sovrascrittura se l'utente sta facendo un Upload
-if "attiva_upload_ufficio" not in st.session_state:
-    st.session_state.attiva_upload_ufficio = False
+# 🛡️ FIX GENERALE PERSISTENZA: Gestisce la RAM sia per l'Upload dell'ufficio che per gli inserimenti manuali
+if "forza_congelamento_ram" not in st.session_state:
+    st.session_state.forza_congelamento_ram = False
 
-if not st.session_state.attiva_upload_ufficio:
+if not st.session_state.forza_congelamento_ram:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 else:
-    st.session_state.attiva_upload_ufficio = False
+    st.session_state.forza_congelamento_ram = False
 
 def push_excel_su_github(df_da_salvare):
     try:
