@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E AUTOCREAZIONE INTEGRALE (CONGELATO)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FIX FINALE AGGIORNAMENTO REALE SU F5
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E DIAGNOSTICA STEP-BY-STEP CON DELAY
+# VERSIONE DI SPEZIONE AMBIENTE SANDBOX — RILEVAZIONE RIGIDA ESITI DI RETE GITHUB
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -64,11 +64,11 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ BYPASS INTEGRALE: Costringe GitHub a sputare il file fresco ad ogni singolo F5
         c_time = str(int(time.time() * 1000))
         
-        indirizzo_base = "https://github.com"
-        url_git = indirizzo_base + "/" + str(nome_file) + "?_nonce=" + c_time
+        prefisso_api = "https://github.com"
+        percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = prefisso_api + "/" + percorso_cartella + "/" + str(nome_file) + "?_nonce=" + c_time
         
         h = {
             "Authorization": f"token {t_git}", 
@@ -87,7 +87,6 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    # 🛡️ AUTOCREAZIONE INTEGRALE: Se il file non c'è sul sito, prepara la tabella vuota a 9 colonne per l'F5
     if df_s is None or df_s.empty:
         if os.path.exists(FILE_STORICO_PERMANENTE):
             df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
@@ -103,15 +102,19 @@ if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
+    st.info("🎯 STEP 1: Avvio della funzione di salvataggio parallela...")
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        indirizzo_base = "https://github.com"
-        url_git = indirizzo_base + "/" + str(FILE_STORICO_PERMANENTE)
+        prefisso_api = "https://github.com"
+        percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
+        url_git = prefisso_api + "/" + percorso_cartella + "/" + str(FILE_STORICO_PERMANENTE)
         
-        output_binario = io.BytesIO()
+        st.write(f"🔍 STEP 2: Endpoint di destinazione ricomposto -> {url_git}")
+        
         df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
         
+        output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_pulito_salva.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
@@ -122,26 +125,48 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        st.info("🛰️ STEP 3: Interrogazione remota a GitHub per verificare se il file esiste già...")
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        st.warning(f"📊 STEP 3 - Esito: GitHub ha risposto con codice numerico {res_get.status_code}")
         
-        payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
-        if sha_file: 
-            payload_git["sha"] = sha_file
+        sha_file = ""
+        if res_get.status_code == 200:
+            sha_file = res_get.json().get("sha", "")
+            st.write(f"📝 STEP 3a: Il file esiste sul sito. Recuperato marcatore SHA: {sha_file}")
+            payload_git = {"message": "🤖 [Test-App] Modifica registro", "content": dati_base64, "branch": "main", "sha": sha_file}
+        else:
+            st.write("🆕 STEP 3b: Il file non esiste su GitHub (Stato 404). Configuro la creazione da zero.")
+            payload_git = {"message": "🚀 [Test-App] Autocreazione file Excel iniziale", "content": dati_base64, "branch": "main"}
             
-        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        st.info("📤 STEP 4: Invio del payload binario verso il server di GitHub...")
+        risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 422 and sha_file:
-            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
-            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
-            if "sha" in payload_git: del payload_git["sha"]
-            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            
-        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice numerico {risposta_server.status_code}")
+        
+        if risposta_server.status_code == 422:
+            st.error("⚠️ STEP 4a: Rilevato conflitto 422. Tento un recupero di sblocco in linea...")
+            res_retry = requests.get(url_git, headers=headers_git, timeout=5)
+            if res_retry.status_code == 200:
+                payload_git["sha"] = res_retry.json().get("sha", "")
+                risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+                st.warning(f"📊 STEP 4b - Esito Secondo Tentativo: Codice {risposta_server.status_code}")
+                
+        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
+            st.success("🎉 STEP 5: Operazione conclusa con successo! Scrittura registrata.")
+            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
+            time.sleep(20)
             return True
-        return False
-    except Exception:
+        else:
+            st.error(f"❌ STEP 5: GitHub ha rifiutato lo sblocco. Messaggio del server: {risposta_server.text}")
+            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
+            time.sleep(20)
+            return False
+            
+    except Exception as e_step:
+        st.error(f"💥 STEP FALLITO: Errore di esecuzione interna -> {str(e_step)}")
+        st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
+        time.sleep(20)
         return False
 
 
