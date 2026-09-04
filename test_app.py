@@ -393,7 +393,10 @@ if submit_button:
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
                 except Exception: pass
             
+                      # --- SEZIONE SALVATAGGIO E INVIO EMAIL ALLINEATA AL MILLIMETRO ---
             titolo_azione = "Modifica Chiusura" if (sovrapposizione_rilevata and forza_sovrascrittura) else "Registrazione Chiusura"
+            invio_ok = False
+            risposta_server = "OK"
             
             with st.spinner("Salvataggio e invio notifica..."):
                 try:
@@ -411,11 +414,11 @@ if submit_button:
                     server.login(EMAIL_MITTENTE_GMAIL, pass_gmail)
                     server.sendmail(EMAIL_MITTENTE_GMAIL, lista_m, msg.as_string())
                     server.quit()
-                    invio_ok, risposta_server = True, "OK"
+                    invio_ok = True
                 except Exception as e_mail:
-                    invio_ok, risposta_server = False, str(e_mail)
+                    risposta_server = str(e_mail)
             
-                        if invio_ok:
+            if invio_ok:
                 nuova["STATO_INVIO"] = "Inviato OK"
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
                     st.session_state.storico_cloud.pop(riga_conflitto_idx)
@@ -425,13 +428,13 @@ if submit_button:
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
-                # 🛡️ POSIZIONAMENTO SOTTO IL BOTTONE: Messaggio fisso ed elegante
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
-                time.sleep(2.0)  # Lascia il tempo di leggere il messaggio prima di aggiornare lo schermo
+                time.sleep(2.0)
                 st.rerun()
             else:
-                st.error("❌ Spedizione e-mail fallita. Controlla la connessione di rete dell'ufficio.")
+                st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
+
 
 # =====================================================================================
 # BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
