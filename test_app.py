@@ -186,13 +186,13 @@ def push_excel_su_github(df_da_salvare):
                     del payload_git["sha"]
                 risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
                 
-        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.toast("✅ File Excel allineato correttamente su GitHub!", icon="💾")
+                if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            # 🛡️ MESSAGGIO GENERICO PULITO (NO GITHUB / NO EXCEL)
+            st.toast("✅ Modifiche salvate correttamente in archivio!", icon="💾")
             return True
         return False
     except Exception:
         return False
-
 
 
 # =====================================================================================
@@ -424,10 +424,12 @@ if submit_button:
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
-                st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
+                # 🛡️ MESSAGGIO UFFICIALE AZIENDALE PULITO E GENERICO
+                st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
                 time.sleep(0.5)
                 st.rerun()
+
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 # =====================================================================================
@@ -512,9 +514,11 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
-                    st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
+                    # 🛡️ TEXT FIX: Messaggio amministrativo pulito
+                    st.success("✅ Database aziendale aggiornato e sincronizzato con successo!")
                     time.sleep(1.5)
                     st.rerun()
+
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
