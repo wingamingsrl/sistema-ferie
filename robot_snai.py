@@ -57,7 +57,7 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         try:
-            page.goto("https://snai.it", timeout=35000)
+            page.goto("https://partner.snai.it", timeout=35000)
             time.sleep(3)
             
             page.fill("input#username, input[name='username']", SNAI_USER)
@@ -78,7 +78,7 @@ def avvia_sincronizzazione_automatica():
             time.sleep(15)
             
             # 🛡️ NAVIGAZIONE SULL'INDIRIZZO REALE DI MANUELA
-            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
             time.sleep(8)
 
             for _, row in df_snai.iterrows():
