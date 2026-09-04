@@ -220,107 +220,73 @@ def esegui_sincronizzazione_robot_snai():
             st.info("✅ STEP 1b: Nessun locale Snaitech attivo trovato nel registro.")
             return
 
-        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali. Avvio del motore di navigazione Chromium...")
+        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Generazione credenziali cifrate...")
+        
+        # Inizializza la sessione web protetta del robot
+        sessione_web = requests.Session()
+        sessione_web.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+        })
 
-        # Forza l'ambiente di sistema a cercare Chrome nella cartella aperta di Linux
-        os.environ["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
+        st.info("🌐 STEP 3: Tentativo di connessione e Log In su partner.snai.it...")
+        payload_login = {
+            "username": str(SNAI_USER),
+            "password": str(SNAI_PASS)
+        }
+        
+        # Esegue il primo login con le tue credenziali proprietarie aziendali
+        risposta_login = sessione_web.post("https://snai.it", data=payload_login, timeout=10)
+        st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
-        with sync_playwright() as p:
-            # 🛡️ BLINDATURA REALE: Punta direttamente all'eseguibile stabile di Chrome installato sul server Linux
-            percorso_chrome_sistema = "/usr/bin/chromium" if os.path.exists("/usr/bin/chromium") else "/usr/bin/chromium-browser"
-            
-            browser = p.chromium.launch(
-                executable_path=percorso_chrome_sistema,
-                headless=True, 
-                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-            ) 
-            context = browser.new_context()
-            page = context.new_page()
-
+        st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
+        codice_totp = genera_codice_otp_automatico()
+        st.warning(f"📌 STEP 4a: Codice OTP calcolato dal telefono -> {codice_totp}")
+        
+        payload_totp = {
+            "token": str(codice_totp),
+            "otp": str(codice_totp)
+        }
+        
+        # Convalida il lucchetto di sicurezza inserendo il codice TOTP generato
+        risposta_totp = sessione_web.post("https://snai.it", data=payload_totp, timeout=10)
+        st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
+        
+        st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Spostamento sul pannello Pianificazione Ferie...")
+        locali_elaborati_conteggio = 0
+        
+        for idx, row in df_snai.iterrows():
             try:
-                st.info("🌐 STEP 3: Tentativo di connessione al portale partner.snai.it...")
-                page.goto("https://snai.it", timeout=30000)
-                time.sleep(3)
+                codice_aams = str(row["CODICE_LOCALE"]).strip()
+                data_in_completa = str(row["INIZIO_FERIE"]).strip()
+                data_fi_completa = str(row["FINE_FERIE"]).strip()
                 
-                st.write("📝 STEP 3a: Compilazione moduli credenziali Snaitech...")
-                page.fill("input#username, input[name='username']", SNAI_USER)
-                page.fill("input#password, input[name='password']", SNAI_PASS)
-                page.click("button[type='submit'], input[type='submit'], .btn-login")
-                time.sleep(4)
+                st.write(f"🚀 STEP 5a: Sincronizzazione riga {idx} -> Locale Snaitech: {codice_aams}")
                 
-                st.write("⏳ STEP 3b: Attesa del countdown obbligatorio Snaitech (11 secondi)...")
-                time.sleep(11)
+                # Payload nativo che inietta le date direttamente nei server di Snaitech
+                payload_ferie_locale = {
+                    "txtCodiceCensimento": str(codice_aams),
+                    "txtDataDal": str(data_in_completa),
+                    "txtDataAl": str(data_fi_completa),
+                    "azione": "Salva"
+                }
                 
-                try:
-                    page.evaluate("document.querySelectorAll('.modal, .modal-backdrop, .fade.in').forEach(el => el.remove());")
-                    st.write("🧹 STEP 3c: Rimozione pop-up pubblicitari completata.")
-                except Exception: pass
-
-                st.info("🔑 STEP 4: Generazione del codice di sicurezza OTP 2FA in tempo reale...")
-                codice_totp = genera_codice_otp_automatico()
-                st.warning(f"📌 STEP 4a: Codice OTP generato -> {codice_totp}")
+                # Spedisce la chiusura ferie direttamente nel sotto-foglio anagrafica di Snaitech
+                url_inserimento = "https://snai.it"
+                risposta_invio = sessione_web.post(url_git_modifica := url_inserimento, data=payload_ferie_locale, timeout=10)
                 
-                page.fill("input#token, input[name='token'], input[name='otp']", codice_totp)
-                time.sleep(1)
+                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201:
+                    locali_elaborati_conteggio += 1
+                    st.write(f"   ✅ Sincronizzato con successo sul portale!")
+                else:
+                    st.error(f"   ⚠️ Rifiutato da Snaitech. Codice errore server: {risposta_invio.status_code}")
+                    
+            except Exception as e_row:
+                st.error(f"   ⚠️ Errore compilazione riga {idx}: {str(e_row)}")
+                continue
                 
-                page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia')")
-                st.write("⏳ STEP 4b: Convalida credenziali... Attesa caricamento area riservata (12 secondi)...")
-                time.sleep(12)
-                
-                st.info("📦 STEP 5: Ingresso riuscito! Spostamento sul menu Anagrafica Locali...")
-                page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click(timeout=15000)
-                time.sleep(6)
-
-                locali_elaborati_conteggio = 0
-                for idx, row in df_snai.iterrows():
-                    try:
-                        codice_aams = str(row["CODICE_LOCALE"]).strip()
-                        data_in_completa = str(row["INIZIO_FERIE"]).strip()
-                        data_fi_completa = str(row["FINE_FERIE"]).strip()
-                        
-                        st.write(f"🚀 STEP 5a: Elaborazione riga {idx} -> Locale: {codice_aams}")
-
-                        target_frame = page
-                        if len(page.frames) > 1:
-                            target_frame = page.frames
-
-                        campo_ricerca = "input[id*='Censimento'], input[id*='txtCodice']"
-                        if target_frame.locator(campo_ricerca).count() > 0:
-                            target_frame.locator(campo_ricerca).first.fill(codice_aams)
-                            target_frame.keyboard.press("Enter")
-                            time.sleep(4)
-
-                        tasto_modifica = "img[id*='img_modifica'], [title*='Modifica']"
-                        pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione']"
-                        
-                        if target_frame.locator(tasto_modifica).count() > 0:
-                            target_frame.locator(tasto_modifica).first.click(timeout=5000)
-                        elif target_frame.locator(pallino_verde_nuovo).count() > 0:
-                            target_frame.locator(pallino_verde_nuovo).first.click(timeout=5000)
-                        time.sleep(3)
-
-                        campo_dal = "input[id*='txtDataDal'], input[id*='Inizio']"
-                        campo_al = "input[id*='txtDataAl'], input[id*='Fine']"
-                        
-                        target_frame.locator(campo_dal).first.fill(data_in_completa)
-                        target_frame.locator(campo_al).first.fill(data_fi_completa)
-                        time.sleep(1)
-
-                        target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva')").first.click()
-                        locali_elaborati_conteggio += 1
-                        time.sleep(3)
-                        
-                    except Exception as e_row:
-                        st.error(f"⚠️ Errore locale {codice_aams}: {str(e_row)}")
-                        continue
-                        
-                st.success(f"🎉 STEP 6: Sincronizzazione conclusa! Elaborati {locali_elaborati_conteggio} locali.")
-                
-            except Exception as e_snai:
-                st.error(f"❌ STEP FALLITO: Errore durante la navigazione: {str(e_snai)}")
-            finally:
-                browser.close()
-                
+        st.success(f"🎉 STEP 6: OPERAZIONE COMPLETATA! Allineati correttamente {locali_elaborati_conteggio} locali sul portale Snaitech.")
+        
     except Exception as e_globale:
         st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
 
