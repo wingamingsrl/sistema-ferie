@@ -204,134 +204,34 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 STEP 1: Inizializzazione della memoria RAM e controllo locali...")
+    st.info("🎯 Collegamento con il server di automazione grafica in corso...")
     try:
-        CHIAVE_SEGRETA_2FA_CORRETTA = "FTIA6UQZM2LQLPYJ"
-        SNAI_USER_CORRETTO = "2141ManuelaA"
-        SNAI_PASS_CORRETTO = "Salmi123!"
-
-        if "storico_cloud" not in st.session_state or not st.session_state.storico_cloud:
-            st.error("❌ STEP 1a: Il database delle ferie a schermo è vuoto.")
-            return
-            
-        df_ferie = pd.DataFrame(st.session_state.storico_cloud)
-        df_snai = df_ferie[
-            df_ferie["CONCESSIONARIO"].astype(str).str.lower().str.contains("snai|snaitech", regex=True) |
-            df_ferie["NOME_LOCALE"].astype(str).str.lower().str.contains("snai", regex=True)
-        ]
-
-        if df_snai.empty:
-            st.info("✅ STEP 1b: Nessun locale Snaitech attivo trovato nel registro.")
-            return
-
-        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Configuro sessione emulata...")
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        sessione_web = requests.Session()
-        sessione_web.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "it-IT,it;q=0.9",
-            "Connection": "keep-alive"
-        })
-
-        st.info("🌐 STEP 3: Connessione e Log In su partner.snai.it...")
-        url_portale_snai = "https://partner.snai.it"
+        # 🛡️ ROTTA API DISPATCH: Canale ufficiale per dialogare con i flussi di lavoro di GitHub
+        url_dispatch = "https://github.com"
         
-        sessione_web.get(f"{url_portale_snai}/login", timeout=15)
-        
-        payload_login = {
-            "username": str(SNAI_USER_CORRETTO),
-            "password": str(SNAI_PASS_CORRETTO)
+        headers_dispatch = {
+            "Authorization": f"token {t_git}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "WinGaming-Cloud-App"
         }
-        risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, timeout=15)
-        st.write(f"📊 STEP 3a - Esito Login: Stato {risposta_login.status_code}")
-
-        st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
-        chiave_pulita = CHIAVE_SEGRETA_2FA_CORRETTA.strip().upper().replace(" ", "")
-        totp = pyotp.TOTP(chiave_pulita)
-        codice_totp = totp.now()
-        st.warning(f"📌 STEP 4a: Codice OTP calcolato dal telefono -> {codice_totp}")
         
-        payload_totp = {"token": str(codice_totp), "otp": str(codice_totp)}
-        risposta_totp = sessione_web.post(f"{url_portale_snai}/convalida-token", data=payload_totp, timeout=15)
-        st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
+        # 🛡️ PAROLA D'ORDINE CONVALIDATA: Forza GitHub ad attivare il trigger manuale
+        payload_dispatch = {
+            "event_type": "manual_trigger",
+            "client_payload": {}
+        }
         
-        st.info("🔓 STEP 5: ACCESSO SUPERATO! Entrata nell'area Esercizi censiti...")
-        locali_elaborati_conteggio = 0
+        risposta_remota = requests.post(url_dispatch, json=payload_dispatch, headers=headers_dispatch, timeout=10)
         
-        url_esercizi_snai = f"{url_portale_snai}/secure/Anagrafiche/Esercizi.aspx"
-        
-        for idx, row in df_snai.iterrows():
-            try:
-                codice_aams = str(row["CODICE_LOCALE"]).strip()
-                data_in_completa = str(row["INIZIO_FERIE"]).strip()
-                data_fi_completa = str(row["FINE_FERIE"]).strip()
-                
-                st.write(f"🚀 STEP 5a: Ispezione e scaricamento codici di pagina per il locale {codice_aams}...")
-                
-                p_html = sessione_web.get(url_esercizi_snai, timeout=15)
-                testo_html = str(p_html.text)
-                
-                v_state, v_gen, e_valid = "", "", ""
-                try:
-                    if "__VIEWSTATE" in testo_html:
-                        v_state = testo_html.split('id="__VIEWSTATE" value="')[1].split('"')[0]
-                    if "__VIEWSTATEGENERATOR" in testo_html:
-                        v_gen = testo_html.split('id="__VIEWSTATEGENERATOR" value="')[1].split('"')[0]
-                    if "__EVENTVALIDATION" in testo_html:
-                        e_valid = testo_html.split('id="__EVENTVALIDATION" value="')[1].split('"')[0]
-                except Exception: pass
-
-                payload_cerca = {
-                    "__VIEWSTATE": v_state,
-                    "__VIEWSTATEGENERATOR": v_gen,
-                    "__EVENTVALIDATION": e_valid,
-                    "txtCodiceCensimento": str(codice_aams),
-                    "btnCerca": "Cerca"
-                }
-                
-                p_risultato = sessione_web.post(url_esercizi_snai, data=payload_cerca, timeout=15)
-                testo_risultato = str(p_risultato.text)
-                
-                if data_in_completa in testo_risultato and data_fi_completa in testo_risultato:
-                    st.write(f"   ℹ️ Periodo ferie ({data_in_completa} / {data_fi_completa}) già censito. Salto il locale.")
-                    continue
-                
-                try:
-                    if "__VIEWSTATE" in testo_risultato: v_state = testo_risultato.split('id="__VIEWSTATE" value="')[1].split('"')[0]
-                    if "__EVENTVALIDATION" in testo_risultato: e_valid = testo_risultato.split('id="__EVENTVALIDATION" value="')[1].split('"')[0]
-                except Exception: pass
-
-                payload_salva = {
-                    "__VIEWSTATE": v_state,
-                    "__VIEWSTATEGENERATOR": v_gen,
-                    "__EVENTVALIDATION": e_valid,
-                    "txtCodiceCensimento": str(codice_aams),
-                    "txtDataDal": str(data_in_completa),
-                    "txtDataAl": str(data_fi_completa),
-                    "btnSalva": "Salva",
-                    "azione": "Salva"
-                }
-                
-                risposta_invio = sessione_web.post(url_esercizi_snai, data=payload_salva, timeout=15)
-                
-                # 🛡️ SINTASSI CORRETTA E REATTIVA: Riconosce i codici di avvenuto inserimento reali
-                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
-                    locali_elaborati_conteggio += 1
-                    st.write(f"   ✅ Clic virtuale eseguito! Salvato con successo nel database Snaitech.")
-                else:
-                    st.error(f"   ⚠️ Risposta anomala. Codice errore server: {risposta_invio.status_code}")
-                    
-            except Exception as e_row:
-                st.error(f"   ⚠️ Errore compilazione riga {idx}: {str(e_row)}")
-                continue
-                
-        st.success(f"🎉 STEP 6: OPERAZIONE COMPLETATA! Allineati correttamente {locali_elaborati_conteggio} nuovi locali sul portale Snaitech.")
-        
-    except Exception as e_globale:
-        st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
-
-
+        # GitHub restituisce lo Stato 204 quando prende in carico l'ordine e accende Chrome
+        if risposta_remota.status_code == 204:
+            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito in background. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
+        else:
+            st.error(f"❌ Impossibile attivare il robot remoto. Errore API: {risposta_remota.status_code}")
+    except Exception as e_api:
+        st.error(f"💥 Errore di collegamento: {str(e_api)}")
 
 
 # =====================================================================================
