@@ -204,39 +204,42 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 Collegamento con il server di automazione grafica in corso...")
+    st.info("🎯 Spedizione del segnale di innesco al server di automazione grafica...")
     try:
-        # 🛡️ LETTURA REALE PROTETTA: Cerca il token dedicato al robot sia nella radice che sotto [github]
-        if "token_robot_snai" in st.secrets:
-            t_git_robot = str(st.secrets["token_robot_snai"]).strip()
-        elif "github" in st.secrets and "token_robot_snai" in st.secrets["github"]:
-            t_git_robot = str(st.secrets["github"]["token_robot_snai"]).strip()
-        else:
-            # Se non trova il token specifico, usa quello generale come backup d'emergenza
-            t_git_robot = str(st.secrets["github"]["token_accesso"]).strip()
+        # Usa il token dei ragazzi che sappiamo essere sbloccato e funzionante al 100%
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        url_dispatch = "https://github.com"
+        # Percorso del file di innesco fittizio sul repository
+        url_innesco = "https://github.com"
         
-        headers_dispatch = {
-            "Authorization": f"token {t_git_robot}",
-            "Accept": "application/vnd.github.v3+json",
+        headers_git = {
+            "Authorization": f"token {t_git}",
+            "Accept": "application/vnd.github+json",
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        payload_dispatch = {
-            "event_type": "manual_trigger",
-            "client_payload": {}
+        # Interroga GitHub per capire se il file di innesco esiste già e prelevare il suo SHA
+        res_get = requests.get(url_innesco, headers=headers_git, timeout=5)
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        
+        # Crea un messaggio con un marcatore temporale per costringere GitHub Actions a rilevare il cambiamento
+        marcatore_tempo = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        testo_innesco_b64 = base64.b64encode(f"FORZATURA MANUALE MANUELA: {marcatore_tempo}".encode('utf-8')).decode('utf-8')
+        
+        payload_innesco = {
+            "message": f"🚀 [App] Innesco forzatura manuale robot Snaitech - {marcatore_tempo}",
+            "content": str(testo_innesco_b64),
+            "branch": "main"
         }
-        
-        risposta_remota = requests.post(url_dispatch, json=payload_dispatch, headers=headers_dispatch, timeout=10)
-        
-        if risposta_remota.status_code == 204:
-            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
-        elif risposta_remota.status_code == 404:
-            st.error("❌ Errore API: 404 (Canale bloccato).\n\n📌 **Soluzione immediata:** Nei Secrets di Streamlit hai incollato la riga dentro il blocco sbagliato. Assicurati che sia scritta **subito sotto** a `token_accesso`, all'interno della sezione `[github]`, esattamente così:\n\n```toml\n[github]\ntoken_accesso = \"ghp_...\"\ntoken_robot_snai = \"ghp_...\"\n```")
-        else:
-            st.error(f"❌ Risposta anomala da GitHub. Codice errore API: {risposta_remota.status_code}")
+        if sha_file:
+            payload_innesco["sha"] = str(sha_file)
             
+        risposta_put = requests.put(url_innesco, json=payload_innesco, headers=headers_git, timeout=10)
+        
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è stato iniettato nel server: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
+        else:
+            st.error(f"❌ Impossibile inviare il segnale. Risposta server: {risposta_put.status_code}")
     except Exception as e_api:
         st.error(f"💥 Errore di collegamento: {str(e_api)}")
 
