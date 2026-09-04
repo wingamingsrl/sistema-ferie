@@ -237,8 +237,7 @@ def esegui_sincronizzazione_robot_snai():
         st.info("🌐 STEP 3: Connessione e Log In su partner.snai.it...")
         url_portale_snai = "https://partner.snai.it"
         
-        # Primo aggancio per prendere i cookie iniziali della pagina
-        fase_iniziale = sessione_web.get(f"{url_portale_snai}/login", timeout=15)
+        sessione_web.get(f"{url_portale_snai}/login", timeout=15)
         
         payload_login = {
             "username": str(SNAI_USER_CORRETTO),
@@ -260,7 +259,6 @@ def esegui_sincronizzazione_robot_snai():
         st.info("🔓 STEP 5: ACCESSO SUPERATO! Entrata nell'area Esercizi censiti...")
         locali_elaborati_conteggio = 0
         
-        # 🛡️ ROTTA STRUTTURALE REALE DI MANUELA SBLOCCATA
         url_esercizi_snai = f"{url_portale_snai}/secure/Anagrafiche/Esercizi.aspx"
         
         for idx, row in df_snai.iterrows():
@@ -271,11 +269,9 @@ def esegui_sincronizzazione_robot_snai():
                 
                 st.write(f"🚀 STEP 5a: Ispezione e scaricamento codici di pagina per il locale {codice_aams}...")
                 
-                # Scarica la pagina per catturare i token segreti Microsoft (__VIEWSTATE)
                 p_html = sessione_web.get(url_esercizi_snai, timeout=15)
                 testo_html = str(p_html.text)
                 
-                # Estrazione chirurgica automatica dei token segreti ASP.NET per eludere i blocchi 404
                 v_state, v_gen, e_valid = "", "", ""
                 try:
                     if "__VIEWSTATE" in testo_html:
@@ -286,7 +282,6 @@ def esegui_sincronizzazione_robot_snai():
                         e_valid = testo_html.split('id="__EVENTVALIDATION" value="')[1].split('"')[0]
                 except Exception: pass
 
-                # 🛡️ EMULAZIONE CLIC CERCA: Spedisce il codice censimento nel filtro imitando il tasto Cerca
                 payload_cerca = {
                     "__VIEWSTATE": v_state,
                     "__VIEWSTATEGENERATOR": v_gen,
@@ -298,18 +293,15 @@ def esegui_sincronizzazione_robot_snai():
                 p_risultato = sessione_web.post(url_esercizi_snai, data=payload_cerca, timeout=15)
                 testo_risultato = str(p_risultato.text)
                 
-                # Controlla se le date ci sono già nella tabella emulata
                 if data_in_completa in testo_risultato and data_fi_completa in testo_risultato:
                     st.write(f"   ℹ️ Periodo ferie ({data_in_completa} / {data_fi_completa}) già censito. Salto il locale.")
                     continue
                 
-                # Aggiorna i token segreti estratti dalla nuova pagina dei risultati prima di salvare
                 try:
                     if "__VIEWSTATE" in testo_risultato: v_state = testo_risultato.split('id="__VIEWSTATE" value="')[1].split('"')[0]
                     if "__EVENTVALIDATION" in testo_risultato: e_valid = testo_risultato.split('id="__EVENTVALIDATION" value="')[1].split('"')[0]
                 except Exception: pass
 
-                # 🛡️ EMULAZIONE CLIC SALVA: Compila le date e simula la pressione del pallino verde/salva
                 payload_salva = {
                     "__VIEWSTATE": v_state,
                     "__VIEWSTATEGENERATOR": v_gen,
@@ -323,7 +315,8 @@ def esegui_sincronizzazione_robot_snai():
                 
                 risposta_invio = sessione_web.post(url_esercizi_snai, data=payload_salva, timeout=15)
                 
-                if risposta_invio.status_code in:
+                # 🛡️ SINTASSI CORRETTA E REATTIVA: Riconosce i codici di avvenuto inserimento reali
+                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Clic virtuale eseguito! Salvato con successo nel database Snaitech.")
                 else:
