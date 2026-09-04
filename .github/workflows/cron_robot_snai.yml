@@ -1,0 +1,38 @@
+name: 🤖 Robot Automatico Inserimento Ferie Snaitech
+
+on:
+  schedule:
+    # ⏰ SCATTA IN AUTOMATICO OGNI SERA ALLE 20:00 ITALIANE (18:00 UTC)
+    - cron: '0 18 * * *'
+  repository_dispatch:
+    # 🚀 SCATTA ALL'ISTANTE QUANDO PREMI IL PULSANTE BLU SU STREAMLIT
+    types: [manual_trigger]
+  workflow_dispatch:
+
+jobs:
+  run-robot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📂 Clonazione archivio repository
+      uses: actions/checkout@v3
+
+    - name: 🐍 Configurazione ambiente Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: 📦 Installazione librerie e dipendenze
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas openpyxl requests pyotp playwright
+
+    - name: 🌐 Installazione browser Chrome Visivo nativo
+      run: |
+        python -m playwright install chromium
+
+    - name: 🚀 ESECUZIONE ROBOT - INSERIMENTO CLIC REALI SU PARTNER.SNAI.IT
+      env:
+        TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        python robot_snai.py
