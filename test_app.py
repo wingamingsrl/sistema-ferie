@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA REALE INTEGRALE (ANTI-F5)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FUNZIONE GITHUB RIPRISTINATA E CONGELATA
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FUNZIONE GITHUB RIPRISTINATA CON / FISSA
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -64,9 +64,11 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ BYPASS CACHE INTEGRALE: Costringe GitHub a sputare il file fresco ad ogni F5
         c_time = str(int(time.time() * 1000))
-        url_git = f"https://github.com{nome_file}?_nonce={c_time}"
+        
+        # 🛡️ TRUCCO BARRA VISIBILE: Isola il simbolo / per evitare che venga nascosto
+        indirizzo_base = "https://github.com"
+        url_git = indirizzo_base + "/" + str(nome_file) + "?_nonce=" + c_time
         
         h = {
             "Authorization": f"token {t_git}", 
@@ -96,13 +98,16 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ ANCORAGGIO FISSO ANTI-RESET: Costringe lo schermo a mostrare l'Excel di GitHub ad ogni rinfresco
+# 🛡️ ANCORAGGIO FISSO ANTI-RESET: Costringe lo schermo a caricare i dati reali
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
+        
+        # 🛡️ TRUCCO BARRA VISIBILE: Isola il simbolo / per la funzione di scrittura
+        indirizzo_base = "https://github.com"
+        url_git = indirizzo_base + "/" + str(FILE_STORICO_PERMANENTE)
         
         output_binario = io.BytesIO()
         df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
@@ -137,7 +142,6 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
-
 
 
 # =====================================================================================
