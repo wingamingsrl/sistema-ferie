@@ -224,117 +224,105 @@ def esegui_sincronizzazione_robot_snai():
             st.info("✅ STEP 1b: Nessun locale Snaitech attivo trovato nel registro.")
             return
 
-        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Avvio del motore di navigazione invisibile...")
+        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Configuro sessione protetta...")
+        
+        sessione_web = requests.Session()
+        sessione_web.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive"
+        })
 
-        # 🛡️ FIX FINALE CLOUD: Usa Webkit (Firefox/Safari) che è pre-installato e non soffre di blocchi di permessi
-        with sync_playwright() as p:
-            browser = p.webkit.launch(headless=True) 
-            context = browser.new_context()
-            page = context.new_page()
+        st.info("🌐 STEP 3: Tentativo di connessione e Log In su partner.snai.it...")
+        payload_login = {
+            "username": str(SNAI_USER_CORRETTO),
+            "password": str(SNAI_PASS_CORRETTO)
+        }
+        
+        url_portale_snai = "https://snai.it"
+        # 🛡️ EFFETTUA IL LOGIN PERMETTENDO I REDIRECT INTERNI MA BLOCCANDO QUELLI ESTERNI
+        risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, timeout=15)
+        st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
+        st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
+        chiave_pulita = CHIAVE_SEGRETA_2FA_CORRETTA.strip().upper().replace(" ", "")
+        totp = pyotp.TOTP(chiave_pulita)
+        codice_totp = totp.now()
+        
+        st.warning(f"📌 STEP 4a: Codice OTP calcolato dal telefono -> {codice_totp}")
+        
+        payload_totp = {
+            "token": str(codice_totp),
+            "otp": str(codice_totp)
+        }
+        
+        risposta_totp = sessione_web.post(f"{url_portale_snai}/convalida-token", data=payload_totp, timeout=15)
+        st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
+        
+        st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Intercettazione automatica dei link di Snaitech...")
+        
+        # 🛡️ LETTURA INTELLIGENTE PERCORSI: Chiede alla home di Snaitech la rotta esatta del menu
+        home_risposta = sessione_web.get(url_portale_snai, timeout=15)
+        testo_home = str(home_risposta.text)
+        
+        # Cerca dinamicamente dove si trova la pagina delle ferie dentro i server di Snaitech
+        url_inserimento = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie"
+        if "PianificazioneFerie.aspx" in testo_home:
+            url_inserimento = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie.aspx"
+        elif "PianificazioneFerie" not in testo_home:
+            # Se la rotta è nascosta, estrae il link dinamico dal codice del menu protetto
             try:
-                st.info("🌐 STEP 3: Connessione a partner.snai.it...")
-                page.goto("https://partner.snai.it", timeout=30000)
-                time.sleep(3)
-                
-                st.write("📝 STEP 3a: Inserimento credenziali Snaitech...")
-                page.fill("input#username, input[name='username'], input[type='text']", SNAI_USER_CORRETTO)
-                page.fill("input#password, input[name='password'], input[type='password']", SNAI_PASS_CORRETTO)
-                
-                st.write("🚀 STEP 3b: Invio moduli di accesso...")
-                page.click("button[type='submit'], input[type='submit'], .btn-login")
-                time.sleep(4)
-                
-                st.write("⏳ STEP 3c: Pausa di sicurezza di 11 secondi per far scadere il countdown...")
-                time.sleep(11)
-                
-                try:
-                    page.evaluate("""
-                        document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"], .fade.in').forEach(el => el.remove());
-                        document.body.classList.remove('modal-open');
-                        document.body.style.overflow = 'auto';
-                    """)
-                    st.write("🧹 STEP 3d: Codice pop-up eliminato dalla pagina con successo!")
-                except Exception: pass
-                time.sleep(2)
+                if 'href="' in testo_home:
+                    for pezzo in testo_home.split('href="'):
+                        if "PianificazioneFerie" in pezzo:
+                            url_inserimento = url_portale_snai + "/" + pezzo.split('"')[0].lstrip("/")
+                            break
+            except Exception: pass
 
-                st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
-                codice_totp = genera_codice_otp_automatico()
-                st.warning(f"📌 STEP 4a: Codice generato inviato a schermo: {codice_totp}")
+        st.write(f"🔍 STEP 5a: Rotta interna rilevata ed agganciata -> {url_inserimento}")
+        locali_elaborati_conteggio = 0
+        
+        for idx, row in df_snai.iterrows():
+            try:
+                codice_aams = str(row["CODICE_LOCALE"]).strip()
+                data_in_completa = str(row["INIZIO_FERIE"]).strip()
+                data_fi_completa = str(row["FINE_FERIE"]).strip()
                 
-                page.fill("input#token, input[name='token'], input[name='otp']", str(codice_totp))
-                time.sleep(1)
+                st.write(f"🚀 STEP 5b: Ispezione locale {codice_aams}...")
                 
-                page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia'), input[type='submit']")
-                st.write("⏳ STEP 4b: Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
-                time.sleep(15)
+                # Interroga la pagina dinamica rilevata per cercare i doppioni
+                ispezione_portale = sessione_web.get(f"{url_inserimento}?codice={codice_aams}", timeout=15)
+                testo_portale = str(ispezione_portale.text)
                 
-                st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Intercettazione menu Anagrafica Locali...")
-                page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click(timeout=15000)
-                time.sleep(8)
-
-                locali_elaborati_conteggio = 0
-                for idx, row in df_snai.iterrows():
-                    try:
-                        codice_aams = str(row["CODICE_LOCALE"]).strip()
-                        data_in_completa = str(row["INIZIO_FERIE"]).strip()
-                        data_fi_completa = str(row["FINE_FERIE"]).strip()
-                        
-                        st.write(f"🚀 STEP 5a: Navigazione ed ispezione locale -> {codice_aams}")
-
-                        target_frame = page
-                        if len(page.frames) > 1:
-                            target_frame = page.frames
-
-                        campo_ricerca = "input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodice']"
-                        if target_frame.locator(campo_ricerca).count() > 0:
-                            target_frame.locator(campo_ricerca).first.fill(codice_aams)
-                            target_frame.keyboard.press("Enter")
-                            time.sleep(5)
-
-                        # Verifica la presenza della riga per capire se esiste o se è un doppione
-                        tasto_modifica = "img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='edit'], [title*='Modifica']"
-                        pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione']"
-                        
-                        if target_frame.locator(tasto_modifica).count() > 0:
-                            # 🛡️ OCCHIO INTELLIGENTE: Se rileva che il tasto di modifica c'è già, ispeziona i campi per saltare se identici
-                            st.write(f"   ℹ️ Chiusura già presente a monitor. Salto il locale per evitare doppioni.")
-                            continue
-                        elif target_frame.locator(pallino_verde_nuovo).count() > 0:
-                            st.write("   🟢 Nuova inserzione! Clic sul pallino verde per aggiungere il periodo...")
-                            target_frame.locator(pallino_verde_nuovo).first.click(timeout=10000)
-                        else:
-                            target_frame.locator("img[id*='pianificazione']").first.click(timeout=10000)
-                        time.sleep(5)
-
-                        campo_dal = "input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Inizio']"
-                        campo_al = "input[id*='txtDataAl'], input[id*='Fine'], input[name*='Fine']"
-                        
-                        target_frame.locator(campo_dal).first.fill(data_in_completa)
-                        time.sleep(1)
-                        target_frame.locator(campo_al).first.fill(data_fi_completa)
-                        time.sleep(1)
-
-                        # Sblocca il salvataggio reale cliccando sul bottone di Snaitech
-                        target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva')").first.click()
-                        locali_elaborati_conteggio += 1
-                        st.write(f"   ✅ Locale {codice_aams} allineato con successo!")
-                        time.sleep(4)
-                        
-                    except Exception as row_err:
-                        st.error(f"   ⚠️ Errore compilazione locale {codice_aams}: {str(row_err)}")
-                        continue
-                        
-                st.success(f"🎉 STEP 6: OPERAZIONE COMPLETATA! Allineati correttamente {locali_elaborati_conteggio} nuovi locali modificati sul portale Snaitech.")
+                if data_in_completa in testo_portale and data_fi_completa in testo_portale:
+                    st.write(f"   ℹ️ Periodo ferie ({data_in_completa} / {data_fi_completa}) già registrato a portale. Salto il locale.")
+                    continue
                 
-            except Exception as e_snai:
-                st.error(f"❌ STEP FALLITO: Errore durante la navigazione sul portale: {str(e_snai)}")
-            finally:
-                browser.close()
+                payload_ferie_locale = {
+                    "txtCodiceCensimento": str(codice_aams),
+                    "txtDataDal": str(data_in_completa),
+                    "txtDataAl": str(data_fi_completa),
+                    "azione": "Salva"
+                }
                 
+                risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, timeout=15)
+                
+                if risposta_invio.status_code in:
+                    locali_elaborati_conteggio += 1
+                    st.write(f"   ✅ Allineamento/Modifica inviata con successo sul portale!")
+                else:
+                    st.error(f"   ⚠️ Rifiutato da Snaitech. Codice errore server: {risposta_invio.status_code}")
+                    
+            except Exception as e_row:
+                st.error(f"   ⚠️ Errore compilazione riga {idx}: {str(e_row)}")
+                continue
+                
+        st.success(f"🎉 STEP 6: OPERAZIONE COMPLETATA! Allineati correttamente {locali_elaborati_conteggio} nuovi locali modificati sul portale Snaitech.")
+        
     except Exception as e_globale:
         st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
-
 
 
 # =====================================================================================
