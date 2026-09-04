@@ -206,13 +206,10 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 Collegamento con il server di automazione grafica in corso...")
     try:
-        # Preleva il token inserito nei Secrets di Streamlit
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ COSTRUZIONE CERTIFICATA DELLA ROTTA DISPATCH DI GITHUB
-        proprietario = "wingamingsrl"
-        archivio_repo = "sistema-ferie"
-        url_dispatch = f"https://github.com{proprietario}/{archivio_repo}/dispatches"
+        # 🛡️ COSTRUZIONE CERTIFICATA DELLA ROTTA CON TUTTI GLI SLASH AL LORO POSTO
+        url_dispatch = "https://github.com"
         
         headers_dispatch = {
             "Authorization": f"token {t_git}",
@@ -227,16 +224,16 @@ def esegui_sincronizzazione_robot_snai():
         
         risposta_remota = requests.post(url_dispatch, json=payload_dispatch, headers=headers_dispatch, timeout=10)
         
-        # Se GitHub accetta il comando e fa partire il server virtuale con Chrome, restituisce 204
         if risposta_remota.status_code == 204:
             st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito in questo istante. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
         elif risposta_remota.status_code == 404:
-            st.error("❌ Impossibile attivare il robot remoto (Errore API: 404).\n\n📌 **Cosa controllare:** Il token di accesso salvato nei Secrets di Streamlit non ha i permessi di scrittura attivi per le Actions. Genera un nuovo token su GitHub spuntando le caselle 'repo' e 'workflow' e incollalo nei Secrets.")
+            st.error("❌ Impossibile attivare il robot remoto (Errore API: 404).\n\n📌 **Nota per l'Ufficio:** Il percorso è corretto, ma il token di accesso salvato nei Secrets di Streamlit non ha i permessi di scrittura 'repo' o 'workflow' attivi per comandare le Actions di GitHub. Rigenera il token spuntando quelle voci e incollalo nei Secrets.")
         else:
             st.error(f"❌ Risposta anomala da GitHub. Codice errore API: {risposta_remota.status_code}")
             
     except Exception as e_api:
         st.error(f"💥 Errore di collegamento: {str(e_api)}")
+
 
 
 # =====================================================================================
