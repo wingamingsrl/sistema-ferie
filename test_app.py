@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E PARSAMENTO COERENTE (FORZATURA 422)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ANTIDOTO CONTRO I RESET DEL REBOOT MANUALE
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E AUTOCREAZIONE INTEGRALE (SIGILLATO)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — INDISTRUTTIBILE AL REBOOT E ALLA CANCELLAZIONE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -86,6 +86,7 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
+    # 🛡️ PROTEZIONE REBOOT: Se il file è stato rimosso dal sito, genera la struttura vuota pulita a 9 colonne per l'F5
     if df_s is None or df_s.empty:
         if os.path.exists(FILE_STORICO_PERMANENTE):
             df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
@@ -102,7 +103,6 @@ st.session_state.storico_cloud = df_storico_file.to_dict('records')
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        
         indirizzo_base = "https://github.com"
         url_git = indirizzo_base + "/" + str(FILE_STORICO_PERMANENTE)
         
@@ -123,19 +123,19 @@ def push_excel_su_github(df_da_salvare):
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
-        if sha_file: payload_git["sha"] = sha_file
+        if sha_file: 
+            payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ DISINNESCORO RIGIDO DEL BLOCCO CONFLITTO 422 SU FILE ESISTENTI
+        # 🛡️ BLINDATURA INTEGRALE AUTOMATICA SE IL FILE NON ESISTE O SE È STATO CANCELLATO
         if risposta_put.status_code == 422:
-            # Se GitHub rifiuta l'aggiornamento per sfasamento orario, pialla il blocco e sovrascrive forzatamente
-            p_del = {"message": "🧹 Sblocco conflitto strutturale", "branch": "main"}
-            if sha_file: 
-                p_del["sha"] = sha_file
-            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
+            if sha_file:
+                # Se il file esisteva ma c'è un conflitto di orario, tenta il reset pulito
+                p_del = {"message": "🧹 Sblocco conflitto strutturale", "sha": sha_file, "branch": "main"}
+                requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
             
-            # Riesegue l'invio immediato inserendolo come file vergine aggiornato
+            # 🚀 FORZATURA FILE NUOVO: Rimuove lo SHA e impone a GitHub di creare il file da zero
             if "sha" in payload_git: 
                 del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
@@ -146,8 +146,6 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
-
-
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
