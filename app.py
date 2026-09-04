@@ -509,7 +509,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     st.success("🗑️ Chiusura rimossa con successo!")
-                    time.sleep(2.5)
+                    time.sleep(1.5)
                     st.rerun()
         except Exception: pass
         
