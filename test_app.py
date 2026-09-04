@@ -204,27 +204,29 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 Invio del segnale di innesco tramite il database aziendale...")
+    st.info("🎯 DIAGNOSTICA INNESCO EXCEL - STEP 1: Avvio connessione remota...")
     try:
-        # Usiamo il token principale dell'Excel che è già autorizzato al 100%
-        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        t_git = ""
+        if "github" in st.secrets and "token_accesso" in st.secrets["github"]:
+            t_git = str(st.secrets["github"]["token_accesso"]).strip()
+            st.write(" shadow 📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
+        else:
+            st.error("❌ STEP 1b: Impossibile leggere il token dalle impostazioni protette.")
+            
+        # 🛡️ INDIRIZZO FISSO ESPLICITO CON TUTTI GLI SLASH VERIFICATI LETTERA PER LETTERA
+        url_git = "https://github.com"
+        st.write(f"🔍 STEP 2: Verifico l'indirizzo di rete per il segnale -> `{url_git}`")
         
         if "storico_cloud" not in st.session_state or not st.session_state.storico_cloud:
-            st.error("❌ Errore: Nessun dato presente a monitor da allineare.")
+            st.error("❌ STEP 2a: Nessun dato presente a monitor da allineare.")
             return
             
-        # Prende i dati a schermo per forzare l'allineamento
         df_innesco = pd.DataFrame(st.session_state.storico_cloud)
-        
-        # Rigenera il file Excel in background
         df_pulito_salva = df_innesco.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_pulito_salva.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
-        
-        # 🛡️ COSTRUZIONE ESPLICITA DELLA ROTTA CON TUTTI GLI SLASH SCRITTI A MANO
-        url_git = "https://github.com"
         
         headers_git = {
             "Authorization": f"token {t_git}", 
@@ -232,10 +234,18 @@ def esegui_sincronizzazione_robot_snai():
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        # 🧪 STEP 3: Recupero lo SHA dell'Excel reale sul server
+        st.info("🛰️ STEP 3: Chiedo a GitHub lo SHA attuale del database Excel...")
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        st.warning(f"📊 STEP 3 - Risposta GitHub: Codice numerico {res_get.status_code}")
         
-        # Sovrascrive l'Excel per far partire subito il timer di GitHub
+        sha_file = ""
+        if res_get.status_code == 200:
+            sha_file = res_get.json().get("sha", "")
+            st.write(f"📝 STEP 3a: SHA recuperato con successo -> {sha_file}")
+        else:
+            st.error(f"❌ STEP 3b: Impossibile leggere lo SHA. Messaggio: {res_get.text}")
+            
         marcatore_ora = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         payload_git = {
             "message": f"🤖 [App] Forzatura manuale inserimento Snaitech - {marcatore_ora}", 
@@ -245,17 +255,28 @@ def esegui_sincronizzazione_robot_snai():
         if sha_file: 
             payload_git["sha"] = str(sha_file)
             
+        # 🧪 STEP 4: Spedizione forzata del comando tramite sovrascrittura Excel
+        st.info("📤 STEP 4: Invio l'aggiornamento dell'Excel a GitHub per far scattare il timer...")
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
+        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
+        
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato correttamente: l'inserimento visivo con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
+            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
+            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura...")
+            time.sleep(20)
+            return True
         else:
-            st.error(f"❌ Errore di allineamento sul server. Codice di aiuto: {risposta_put.status_code}")
+            st.error(f"❌ STEP 5: Invio fallito. Contenuto errore server: {risposta_put.text}")
+            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura...")
+            time.sleep(20)
+            return False
             
-    except Exception as e_api:
-        st.error(f"💥 Errore di collegamento: {str(e_api)}")
-
-
+    except Exception as e_step:
+        st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
+        st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura...")
+        time.sleep(20)
+        return False
 
 
 # =====================================================================================
