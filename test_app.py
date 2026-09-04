@@ -503,7 +503,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     st.success("🗑️ Chiusura rimossa con successo!")
-                    time.sleep(1.5)
+                    time.sleep(1.0)
                     st.rerun()
         except Exception: pass
     st.markdown("---")
@@ -528,7 +528,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
                     st.success("✅ Database aziendale aggiornato e sincronizzato con successo!")
-                    time.sleep(2.0)
+                    time.sleep(1.5)
                     st.rerun()
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
