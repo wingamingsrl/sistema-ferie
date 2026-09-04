@@ -206,6 +206,10 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 STEP 1: Inizializzazione della memoria RAM e controllo locali...")
     try:
+        # Credenziali proprietarie aziendali WinGaming cablate all'interno del motore
+        SNAI_USER_CORRETTO = "2141ManuelaA"
+        SNAI_PASS_CORRETTO = "Salmi123!"
+
         if "storico_cloud" not in st.session_state or not st.session_state.storico_cloud:
             st.error("❌ STEP 1a: Il database delle ferie a schermo è vuoto.")
             return
@@ -222,7 +226,6 @@ def esegui_sincronizzazione_robot_snai():
 
         st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Generazione credenziali cifrate...")
         
-        # Inizializza la sessione web protetta del robot
         sessione_web = requests.Session()
         sessione_web.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -231,11 +234,10 @@ def esegui_sincronizzazione_robot_snai():
 
         st.info("🌐 STEP 3: Tentativo di connessione e Log In su partner.snai.it...")
         payload_login = {
-            "username": str(SNAI_USER),
-            "password": str(SNAI_PASS)
+            "username": str(SNAI_USER_CORRETTO),
+            "password": str(SNAI_PASS_CORRETTO)
         }
         
-        # Esegue il primo login con le tue credenziali proprietarie aziendali
         risposta_login = sessione_web.post("https://snai.it", data=payload_login, timeout=10)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
@@ -248,7 +250,6 @@ def esegui_sincronizzazione_robot_snai():
             "otp": str(codice_totp)
         }
         
-        # Convalida il lucchetto di sicurezza inserendo il codice TOTP generato
         risposta_totp = sessione_web.post("https://snai.it", data=payload_totp, timeout=10)
         st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
         
@@ -263,7 +264,6 @@ def esegui_sincronizzazione_robot_snai():
                 
                 st.write(f"🚀 STEP 5a: Sincronizzazione riga {idx} -> Locale Snaitech: {codice_aams}")
                 
-                # Payload nativo che inietta le date direttamente nei server di Snaitech
                 payload_ferie_locale = {
                     "txtCodiceCensimento": str(codice_aams),
                     "txtDataDal": str(data_in_completa),
@@ -271,9 +271,8 @@ def esegui_sincronizzazione_robot_snai():
                     "azione": "Salva"
                 }
                 
-                # Spedisce la chiusura ferie direttamente nel sotto-foglio anagrafica di Snaitech
                 url_inserimento = "https://snai.it"
-                risposta_invio = sessione_web.post(url_git_modifica := url_inserimento, data=payload_ferie_locale, timeout=10)
+                risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, timeout=10)
                 
                 if risposta_invio.status_code == 200 or risposta_invio.status_code == 201:
                     locali_elaborati_conteggio += 1
@@ -289,7 +288,6 @@ def esegui_sincronizzazione_robot_snai():
         
     except Exception as e_globale:
         st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
-
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
