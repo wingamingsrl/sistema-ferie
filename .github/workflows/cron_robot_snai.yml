@@ -2,11 +2,9 @@ name: 🤖 Robot Automatico Inserimento Ferie Snaitech
 
 on:
   schedule:
-    # ⏰ SCATTA IN AUTOMATICO OGNI SERA ALLE 20:00 ITALIANE (18:00 UTC)
-    - cron: '0 18 * * *'
+    - cron: '0 18 * * *'  # Scatta da solo ogni sera alle 20:00 italiane
   repository_dispatch:
-    # 🚀 SCATTA ALL'ISTANTE QUANDO PREMI IL PULSANTE BLU SU STREAMLIT
-    types: [manual_trigger]
+    types: [manual_trigger]  # Risponde istantaneamente al pulsante blu di Streamlit
   workflow_dispatch:
 
 jobs:
