@@ -457,6 +457,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
     else:
         st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
+
 # =====================================================================================
 # BLOCCO 6 - PARTE C: TASTO CANCELLAZIONE EXCEL REALE, CARICATORE UFFICIO E LOGOUT
 # =====================================================================================
@@ -476,7 +477,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 idx_iscolato_str = sub_stringa.split(" |")[0]
                 idx_da_eliminare = int(idx_iscolato_str)
                 
-                               if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+                if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                     st.session_state.congelamento_sincro_attivo = True  # 🛡️ COSTRUTTORE DI PROTEZIONE RAM CANCELLAZIONI
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
@@ -485,7 +486,6 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.success("🗑️ Chiusura rimossa con successo!")
                     time.sleep(0.5)
                     st.rerun()
-
         except Exception: pass
         
     st.markdown("---")
@@ -516,3 +516,4 @@ with col_out2:
         st.success("Uscita effettuata con successo!")
         time.sleep(0.5)
         st.rerun()
+
