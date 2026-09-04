@@ -229,13 +229,13 @@ def esegui_sincronizzazione_robot_snai():
         # 🛡️ FORZATURA AMBIENTE CLOUD: Dice a Playwright di non scaricare nulla e usare l'hard disk locale
         os.environ["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
         
-        # Identifica la cartella reale in cui Linux ha installato il browser Chromium stabile
-        percorso_chrome_sistema = "/usr/bin/chromium" if os.path.exists("/usr/bin/chromium") else "/usr/bin/chromium-browser"
+        # 🛡️ FIX ROTTA INTEGRALE: Punta al file corretto richiesto dal server Linux di Streamlit
+        percorso_chrome_sistema = "/usr/bin/chromium-browser"
 
         with sync_playwright() as p:
             st.info("🛰️ STEP 3: Accensione del browser invisibile Chrome sul server Cloud...")
             
-            # 🛡️ FIX DEFINITIVO PERCORSO: Lancia Chrome usando l'eseguibile stabile pre-installato nel server
+            # Lancia Chrome usando l'eseguibile stabile pre-installato nel server
             browser = p.chromium.launch(
                 executable_path=percorso_chrome_sistema,
                 headless=True, 
@@ -324,7 +324,7 @@ def esegui_sincronizzazione_robot_snai():
                         # Clicca sul tasto reale di salvataggio del portale
                         target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva')").first.click()
                         locali_elaborati_conteggio += 1
-                        st.write(f"   ✅ Allineato con successo!")
+                        st.write(f"   ✅ Allineamento con successo!")
                         time.sleep(4)
                         
                     except Exception as e_row:
@@ -340,7 +340,6 @@ def esegui_sincronizzazione_robot_snai():
                 
     except Exception as e_globale:
         st.error(f"💥 ERRORE CRITICO INTERNO: {str(e_globale)}")
-
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
