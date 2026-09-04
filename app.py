@@ -49,7 +49,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — INDIRIZZO API GITHUB RIPRISTINATO FIXED
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — TITOLI COMPLETI AZIENDALI UNIFICATI
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -58,14 +58,13 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
-# Struttura estesa unificata per Excel ed App richiesti dall'ufficio
+# 🛡️ STRUTTURA ESTESA UNIFICATA PER EXCEL ED APP (NIENTE PIÙ TITOLI ABBREVIATI)
 COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
 
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
-        # 🛡️ ROUTING FIX: Corretto l'endpoint con l'indirizzo API ufficiale per l'F5
         url_git = f"https://github.com{nome_file}?_nonce={c_time}"
         
         h = {
@@ -85,10 +84,13 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    # Protezione Reboot: Se il file è stato rimosso, genera la struttura vuota pulita
     if df_s is None or df_s.empty:
-        df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+        if os.path.exists(FILE_STORICO_PERMANENTE):
+            df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+        else:
+            df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
+    # Forzatura millimetrica per l'F5: costringe il file scaricato ad incasellarsi nei titoli estesi
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     return df_l, df_t, df_s
 
@@ -100,7 +102,6 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ ROUTING FIX: Corretto l'endpoint con l'indirizzo API ufficiale per la scrittura del file
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
@@ -136,24 +137,28 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
+
 # =====================================================================================
-# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE REAL)
+# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE COOKIE DI SESSIONE (VALIDITÀ 2 ORE)
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
 
-# 🛡️ FIX CHIRURGICO INTEGRALE F5: Riconosce l'e-mail salvata nell'URL in modo istantaneo
+# Sistema di controllo cookie nativo per Streamlit
 if "token_sessione" in st.query_params:
-    token_salvato = str(st.query_params["token_sessione"]).strip()
+    token_salvato = st.query_params["token_sessione"]
     if "_" in token_salvato:
         try:
-            email_estratta = token_salvato.split("_")[0].lower().strip()
-            # Verifica se l'e-mail estratta dall'URL esiste davvero tra i tecnici autorizzati
-            ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == email_estratta]
-            if not ut.empty:
+            ora_token = float(token_salvato.split("_")[1])
+            if time.time() - ora_token < 7200:  # Validità 2 ore
                 st.session_state.autenticato = True
-                st.session_state.user_email = email_estratta
-                st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
+                if "user_email" not in st.session_state:
+                    st.session_state.user_email = token_salvato.split("_")[0]
+                if "user_nome" not in st.session_state:
+                    # Cerca il nome corrispondente all'email
+                    ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == st.session_state.user_email]
+                    if not ut.empty:
+                        st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
         except Exception:
             pass
 
@@ -171,7 +176,7 @@ if not st.session_state.autenticato:
                 nome_grezzo = str(utente_valido["NOME"].values[0]).strip()
                 st.session_state.user_nome = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
                 
-                # Inietta il token protetto nell'URL per blindare l'F5
+                # Inietta il token temporaneo nell'URL del browser per resistere all'F5
                 st.query_params["token_sessione"] = f"{input_email}_{int(time.time())}"
                 st.rerun()
             else:
@@ -183,7 +188,6 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
-
 
 # =====================================================================================
 # BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON CONVERSIONE ROTTA IP RIGIDA
