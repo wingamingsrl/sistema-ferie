@@ -526,7 +526,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     push_excel_su_github(df_caricato)
                     # 🛡️ TEXT FIX: Messaggio amministrativo pulito
                     st.success("✅ Database aziendale aggiornato e sincronizzato con successo!")
-                    time.sleep(2.5)
+                    time.sleep(1.5)
                     st.rerun()
 
             else:
