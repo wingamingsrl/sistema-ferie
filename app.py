@@ -326,7 +326,9 @@ if submit_button:
     elif datetime.combine(data_riapertura, ora_riapertura) <= datetime.combine(data_chiusura, ora_chiusura):
         st.error("Errore: La data di riapertura deve essere successiva alla chiusura.")
     else:
-        str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
+    # 🛡️ FIX DATE ALL'ITALIANA: Forza il formato Giorno-Mese-Anno Ore:Minuti ovunque
+        str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
+        str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
@@ -336,6 +338,7 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LOCALE", "")).strip() in testo_pvd or testo_pvd.strip() in str(row.get("NOME_LOCALE", "")):
                 try:
+                    # Legge il formato italiano standard per il controllo doppioni
                     old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
                     old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
                     if (data_inizio_nuova <= old_f) and (data_fine_nuova >= old_i):
@@ -344,13 +347,14 @@ if submit_button:
                         break
                 except Exception:
                     try:
-                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
-                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
+                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
+                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
                         if (data_chiusura <= old_f.date()) and (data_riapertura >= old_i.date()):
                             sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                             dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
                             break
                     except Exception: continue
+
 
         if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
             st.error("Rilevato elemento non conforme nella stringa di testo.")
@@ -437,7 +441,7 @@ if submit_button:
 
 
 # =====================================================================================
-# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
+# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI ALLINEATI AL FORMATO ITALIANO
 # =====================================================================================
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -445,6 +449,7 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
+        # Parsa correttamente la data italiana separando lo spazio orario
         d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
         d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
@@ -452,6 +457,7 @@ for row in st.session_state.storico_cloud:
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
+
 
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
