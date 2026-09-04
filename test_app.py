@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO CORRETTO BARRE DI ROUTING
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FIX FINALE CON BARRE DI DIVISIONE VISIBILI
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -65,8 +65,10 @@ def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
-        # 🛡️ FIX CHIRURGICO URL: Inserite le barre corrette /contents/ per evitare l'unione dei testi
-        url_git = f"https://github.com{nome_file}?_nonce={c_time}"
+        
+        # 🛡️ TRUCCO BARRA VISIBILE: Il simbolo / è protetto e visibile per l'F5
+        base_url = "https://github.com"
+        url_git = base_url + "/" + nome_file + "?_nonce=" + c_time
         
         h = {
             "Authorization": f"token {t_git}", 
@@ -96,17 +98,17 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
-
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        # 🛡️ ENDPOINT API CERTIFICATO: Specifica l'indirizzo corretto con le barre per non fondere i testi
-        url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
-        # Allineamento rigido preventivo sulle 9 colonne ufficiali richieste dall'ufficio
-        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+        # 🛡️ TRUCCO BARRA VISIBILE: Il simbolo / è protetto e visibile per la scrittura
+        base_url = "https://github.com"
+        url_git = base_url + "/" + FILE_STORICO_PERMANENTE
         
         output_binario = io.BytesIO()
+        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+        
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_pulito_salva.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
@@ -117,34 +119,27 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Interroga GitHub per verificare lo stato di esistenza del file sul repository
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        if res_get.status_code == 200:
-            # CASO A: Il file esiste già, recupera lo SHA originale per sovrascriverlo
-            sha_file = res_get.json().get("sha", "")
-            payload_git = {"message": "🤖 [Test-App] Modifica registro ferie", "content": dati_base64, "branch": "main", "sha": sha_file}
-            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        else:
-            # CASO B: Il file non esiste (errore 404), lo crea da zero inserendo le 9 colonne
-            payload_git = {"message": "🚀 [Test-App] Autocreazione database storico_ferie.xlsx", "content": dati_base64, "branch": "main"}
-            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        payload_git = {"message": "🤖 [Test-App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
+        if sha_file: payload_git["sha"] = sha_file
             
-        # Gestore di sblocco automatico per conflitti di rete (Codice 422)
-        if risposta_server.status_code == 422:
-            res_get_retry = requests.get(url_git, headers=headers_git, timeout=5)
-            if res_get_retry.status_code == 200:
-                sha_retry = res_get_retry.json().get("sha", "")
-                payload_git["sha"] = sha_retry
-                risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-                
-        # 🛡️ SINTASSI BLINDATA: Accetta i codici numerici esenti da cicli o interruzioni orfane
-        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
+        if risposta_put.status_code == 422 and sha_file:
+            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
+            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
+            if "sha" in payload_git: del payload_git["sha"]
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
             return True
         return False
     except Exception:
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE COOKIE DI SESSIONE (VALIDITÀ 2 ORE)
