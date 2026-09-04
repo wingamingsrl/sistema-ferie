@@ -8,17 +8,19 @@ import time
 import base64
 import requests
 import smtplib
+import pyotp  # 🛡️ INTEGRATO PER LA GENERAZIONE AUTOMATICA OTP 2FA
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import streamlit as st
 import pandas as pd
 import openpyxl
 from datetime import datetime, timedelta, time as dtime
+from playwright.sync_api import sync_playwright  # 🛡️ INTEGRATO PER IL MOTORE AUTOMATICO CHROME
 
 icona_app = "logo.png" if os.path.exists("logo.png") else "📅"
 
 st.set_page_config(
-    page_title="Ferie Gestori", 
+    page_title="Ferie Gestori - Sandbox Test", 
     page_icon=icona_app, 
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -47,6 +49,7 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
+
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E PARSAMENTO REALE CONTRACCOSMICO
