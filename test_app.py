@@ -50,7 +50,7 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA RI-LETTURA REALE (STABILE)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ALLINEAMENTO DEFINITIVO RIGIDO SU F5
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — COESISTENZA PERFETTA TRA F5 E UPLOAD
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -94,10 +94,14 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ COSTRUTTORE DI PERSISTENZA INTEGRALE PER F5:
-# Forza Streamlit ad aggiornare i record della RAM prendendoli direttamente dal file reale
-# salvato su GitHub ad OGNI SINGOLO rinfresco di pagina, mantenendo il login sbloccato.
-st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# 🛡️ FIX CHIRURGICO: Gestisce l'F5 bloccando la sovrascrittura se l'utente sta facendo un Upload
+if "attiva_upload_ufficio" not in st.session_state:
+    st.session_state.attiva_upload_ufficio = False
+
+if not st.session_state.attiva_upload_ufficio:
+    st.session_state.storico_cloud = df_storico_file.to_dict('records')
+else:
+    st.session_state.attiva_upload_ufficio = False
 
 def push_excel_su_github(df_da_salvare):
     try:
@@ -138,8 +142,6 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
-
-
 
 
 # =====================================================================================
@@ -429,6 +431,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
+                    st.session_state.attiva_upload_ufficio = True  # 🛡️ BLINDA L'UPLOAD CONGELANDO LA RAM
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
                     st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
