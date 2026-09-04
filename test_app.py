@@ -342,12 +342,16 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                
+                # 🛡️ BLINDA L'INSERIMENTO MANUALE: Protegge la RAM durante il rinfresco
+                st.session_state.forza_congelamento_ram = True
                 push_excel_su_github(df_salva)
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\n📧 Registro allineato su GitHub e e-mail inviata.")
                 st.session_state.form_id += 1
                 time.sleep(0.5)
                 st.rerun()
+
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
@@ -431,12 +435,14 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
-                    st.session_state.attiva_upload_ufficio = True  # 🛡️ BLINDA L'UPLOAD CONGELANDO LA RAM
+                    # 🛡️ BLINDA L'UPLOAD DELL'UFFICIO: Protegge la RAM durante il rinfresco
+                    st.session_state.forza_congelamento_ram = True  
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
                     st.success("✅ Database popolato e sincronizzato con successo su GitHub!")
                     time.sleep(1.5)
                     st.rerun()
+
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
