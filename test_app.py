@@ -311,17 +311,31 @@ if submit_button:
         str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
+        # 🛡️ FIX CONTROLLO DOPPIONI ESTESO: Legge correttamente sia la data che l'ora per bloccare la sovrapposizione
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
+        data_inizio_nuova = datetime.combine(data_chiusura, ora_chiusura)
+        data_fine_nuova = datetime.combine(data_riapertura, ora_riapertura)
+        
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LOCALE", "")).strip() in testo_pvd or testo_pvd.strip() in str(row.get("NOME_LOCALE", "")):
                 try:
-                    old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" "), "%d-%m-%Y").date()
-                    old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" "), "%d-%m-%Y").date()
-                    if (data_chiusura <= old_f) and (data_riapertura >= old_i):
+                    old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
+                    old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
+                    if (data_inizio_nuova <= old_f) and (data_fine_nuova >= old_i):
                         sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                         dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
                         break
-                except Exception: continue
+                except Exception:
+                    try:
+                        # Controllo di sicurezza se nel file Excel vecchio mancava l'orario
+                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
+                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
+                        if (data_chiusura <= old_f.date()) and (data_riapertura >= old_i.date()):
+                            sovrapposizione_rilevata, riga_conflitto_idx = True, idx
+                            dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
+                            break
+                    except Exception: continue
+
 
         if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
             st.error("Rilevato elemento non conforme nella stringa di testo.")
