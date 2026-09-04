@@ -206,6 +206,8 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 STEP 1: Inizializzazione della memoria RAM e controllo locali...")
     try:
+        # 🛡️ COORDINATE PROPRIETARIE AZIENDALI CABLATE NELLA PANCIA DELLA FUNZIONE
+        CHIAVE_SEGRETA_2FA_CORRETTA = "FTIA6UQZM2LQLPYJ"
         SNAI_USER_CORRETTO = "2141ManuelaA"
         SNAI_PASS_CORRETTO = "Salmi123!"
 
@@ -234,19 +236,23 @@ def esegui_sincronizzazione_robot_snai():
             "Connection": "keep-alive"
         })
 
-        st.info("🌐 STEP 3: Tentativo di connessione e Log In su .snai.it...")
+        st.info("🌐 STEP 3: Tentativo di connessione e Log In su partner.snai.it...")
         payload_login = {
             "username": str(SNAI_USER_CORRETTO),
             "password": str(SNAI_PASS_CORRETTO)
         }
         
-        # 🛡️ ANCORAGGIO DI RETE PROTETTO: Rotta blindata esclusiva su .snai.it
-        url_portale_snai = "https://partner.snai.it"
+        url_portale_snai = "https://parner.snai.it"
         risposta_login = sessione_web.post(url_portale_snai, data=payload_login, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
         st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
-        codice_totp = genera_codice_otp_automatico()
+        
+        # 🛡️ CALCOLO OTP BINDATO ALLA CHIAVE INTERNA PROTETTA
+        chiave_pulita = CHIAVE_SEGRETA_2FA_CORRETTA.strip().upper().replace(" ", "")
+        totp = pyotp.TOTP(chiave_pulita)
+        codice_totp = totp.now()
+        
         st.warning(f"📌 STEP 4a: Codice OTP calcolato dal telefono -> {codice_totp}")
         
         payload_totp = {
@@ -254,7 +260,7 @@ def esegui_sincronizzazione_robot_snai():
             "otp": str(codice_totp)
         }
         
-        url_convalida_snai = "https://partner.snai.it"
+        url_convalida_snai = url_portale_snai
         risposta_totp = sessione_web.post(url_convalida_snai, data=payload_totp, allow_redirects=False, timeout=15)
         st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
         
@@ -276,11 +282,9 @@ def esegui_sincronizzazione_robot_snai():
                     "azione": "Salva"
                 }
                 
-                # 🛡️ ANCORAGGIO DI RETE PROTETTO: Corretto l'inserimento sulla rotta reale di .snai.it
-                url_inserimento = "https://partner.snai.it"
+                url_inserimento = url_portale_snai
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
-                # 🛡️ SINTASSI CORRETTA: Riconosce i codici di avvenuto inserimento del server
                 if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Sincronizzato con successo sul portale!")
