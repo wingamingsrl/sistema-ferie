@@ -142,16 +142,12 @@ if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
-    st.info("🎯 DIAGNOSTICA MODIFICHE/CANCELLAZIONI - STEP 1: Avvio invio...")
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # 🛡️ ENDPOINT API PULITO: Indirizzo nativo privo di _nonce per recuperare lo SHA reale senza errori 404
+        url_git = f"https://api.github.com/repos/wingamingsrl/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
         
-        prefisso_api = "https://github.com"
-        percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
-        url_git = prefisso_api + "/" + percorso_cartella + "/" + str(FILE_STORICO_PERMANENTE)
-        
-        st.write(f"🔍 STEP 2: Verifico l'indirizzo di rete -> {url_git}")
-        
+        # Converte rigidamente il database in stringhe testuali pure per bypassare i firewall di GitHub
         df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
         
         output_binario = io.BytesIO()
@@ -165,52 +161,38 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # 🧪 STEP 3: Recupero lo SHA del file esistente per la sovrascrittura
-        st.info("🛰️ STEP 3: Chiedo a GitHub lo SHA attuale del file per sovrascriverlo...")
+        # Recupera lo SHA reale e aggiornato direttamente dal file sul sito
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        st.warning(f"📊 STEP 3 - Risposta GitHub: Codice {res_get.status_code}")
-        
-        sha_file = ""
-        if res_get.status_code == 200:
-            sha_file = res_get.json().get("sha", "")
-            st.write(f"📝 STEP 3a: SHA recuperato con successo -> {sha_file}")
-        else:
-            st.error(f"❌ STEP 3b: Impossibile leggere lo SHA. Messaggio: {res_get.text}")
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [Test-App] Elaborazione Modifica/Cancellazione", 
+            "message": "🤖 [App] Sincronizzazione ed allineamento database ferie", 
             "content": str(dati_base64), 
             "branch": "main"
         }
         if sha_file: 
             payload_git["sha"] = str(sha_file)
             
-        # 🧪 STEP 4: Spedizione della modifica/cancellazione
-        st.info("📤 STEP 4: Invio il file modificato a GitHub chiedendo la sovrascrittura...")
-        risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice numerico {risposta_server.status_code}")
-        
-        if risposta_server.status_code == 422:
-            st.error(f"⚠️ STEP 4a: Rilevato blocco 422. Contenuto errore server: {risposta_server.text}")
-            
-        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
+        # Gestione di sblocco in caso di collisioni simultanee di rete (Codice 422)
+        if risposta_put.status_code == 422:
+            res_retry = requests.get(url_git, headers=headers_git, timeout=5)
+            if res_retry.status_code == 200:
+                payload_git["sha"] = str(res_retry.json().get("sha", ""))
+                risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            else:
+                if "sha" in payload_git: 
+                    del payload_git["sha"]
+                risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+                
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ File Excel allineato correttamente su GitHub!", icon="💾")
-            st.success("🎉 STEP 5: Operazione completata! Modifica registrata su GitHub.")
-            st.warning("⏱️ Portale congelato per 20 secondi per la lettura...")
-            time.sleep(20)
             return True
-        else:
-            st.error(f"❌ STEP 5: Scrittura fallita. GitHub ha risposto: {risposta_server.text}")
-            st.warning("⏱️ Portale congelato per 20 secondi per la lettura...")
-            time.sleep(20)
-            return False
-            
-    except Exception as e_step:
-        st.error(f"💥 STEP FALLITO: Errore interno -> {str(e_step)}")
-        st.warning("⏱️ Portale congelato per 20 secondi per la lettura...")
-        time.sleep(20)
         return False
+    except Exception:
+        return False
+
 
 
 # =====================================================================================
