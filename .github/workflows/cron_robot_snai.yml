@@ -2,10 +2,14 @@ name: 🤖 Robot Automatico Inserimento Ferie Snaitech
 
 on:
   schedule:
-    - cron: '0 18 * * *'  # Scatta da solo ogni sera alle 20:00 italiane
-  repository_dispatch:
-    types: [manual_trigger]  # Risponde istantaneamente al pulsante blu di Streamlit
+    # ⏰ SCATTA DA SOLO OGNI SERA ALLE 20:00 ITALIANE
+    - cron: '0 18 * * *'
+  push:
+    # 🚀 SCATTA ALL'ISTANTE QUANDO PREMI IL PULSANTE BLU E VIENE MODIFICATO IL FILE DI INNESCO
+    paths:
+      - 'innesco_robot.txt'
   workflow_dispatch:
+
 
 jobs:
   run-robot:
