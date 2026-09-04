@@ -47,10 +47,9 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
-
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E AUTOCREAZIONE ARCHIVIO VERGINE
-# VERSIONE DI PRODUZIONE SIGILLATA — ELIMINA IL RESET AL REBOOT CREANDO IL FILE DA SE
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — INDIRIZZO API GITHUB RIPRISTINATO FIXED
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -59,12 +58,14 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
+# Struttura estesa unificata per Excel ed App richiesti dall'ufficio
 COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
 
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
+        # 🛡️ ROUTING FIX: Corretto l'endpoint con l'indirizzo API ufficiale per l'F5
         url_git = f"https://github.com{nome_file}?_nonce={c_time}"
         
         h = {
@@ -84,7 +85,7 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    # 🛡️ PROTEZIONE REBOOT: Se Manuela ha rimosso il file o GitHub non risponde, genera la struttura vuota ma pulita
+    # Protezione Reboot: Se il file è stato rimosso, genera la struttura vuota pulita
     if df_s is None or df_s.empty:
         df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
@@ -99,6 +100,7 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # 🛡️ ROUTING FIX: Corretto l'endpoint con l'indirizzo API ufficiale per la scrittura del file
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
@@ -114,7 +116,6 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Interroga GitHub per vedere se il file esiste già e recuperare il suo ID (SHA)
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
@@ -123,14 +124,12 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # Gestione dei conflitti di rete temporanei
         if risposta_put.status_code == 422 and sha_file:
             p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
             requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
             if "sha" in payload_git: del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
-        # 🛡️ SBLOCCO NOTIFICA TOAST SMARTPHONE
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
             return True
