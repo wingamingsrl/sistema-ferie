@@ -242,7 +242,6 @@ def esegui_sincronizzazione_robot_snai():
         }
         
         url_portale_snai = "https://snai.it"
-        # 🛡️ EFFETTUA IL LOGIN PERMETTENDO I REDIRECT INTERNI MA BLOCCANDO QUELLI ESTERNI
         risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
@@ -263,21 +262,18 @@ def esegui_sincronizzazione_robot_snai():
         
         st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Intercettazione automatica dei link di Snaitech...")
         
-        # 🛡️ LETTURA INTELLIGENTE PERCORSI: Chiede alla home di Snaitech la rotta esatta del menu
         home_risposta = sessione_web.get(url_portale_snai, timeout=15)
         testo_home = str(home_risposta.text)
         
-        # Cerca dinamicamente dove si trova la pagina delle ferie dentro i server di Snaitech
         url_inserimento = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie"
         if "PianificazioneFerie.aspx" in testo_home:
             url_inserimento = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie.aspx"
         elif "PianificazioneFerie" not in testo_home:
-            # Se la rotta è nascosta, estrae il link dinamico dal codice del menu protetto
             try:
                 if 'href="' in testo_home:
                     for pezzo in testo_home.split('href="'):
                         if "PianificazioneFerie" in pezzo:
-                            url_inserimento = url_portale_snai + "/" + pezzo.split('"')[0].lstrip("/")
+                            url_inserimento = url_portale_snai + "/" + pezzo.split('"').lstrip("/")
                             break
             except Exception: pass
 
@@ -292,7 +288,6 @@ def esegui_sincronizzazione_robot_snai():
                 
                 st.write(f"🚀 STEP 5b: Ispezione locale {codice_aams}...")
                 
-                # Interroga la pagina dinamica rilevata per cercare i doppioni
                 ispezione_portale = sessione_web.get(f"{url_inserimento}?codice={codice_aams}", timeout=15)
                 testo_portale = str(ispezione_portale.text)
                 
@@ -309,7 +304,8 @@ def esegui_sincronizzazione_robot_snai():
                 
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, timeout=15)
                 
-                if risposta_invio.status_code in:
+                # 🛡️ SINTASSI CORRETTA E REATTIVA: Verifica gli stati di successo del server di Snaitech
+                if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
                     locali_elaborati_conteggio += 1
                     st.write(f"   ✅ Allineamento/Modifica inviata con successo sul portale!")
                 else:
