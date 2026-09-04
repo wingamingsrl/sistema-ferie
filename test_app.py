@@ -241,7 +241,7 @@ def esegui_sincronizzazione_robot_snai():
             "password": str(SNAI_PASS_CORRETTO)
         }
         
-        url_portale_snai = "https://snai.it"
+        url_portale_snai = "https://partner.snai.it"
         risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, timeout=15)
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
