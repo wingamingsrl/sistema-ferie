@@ -206,7 +206,6 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 STEP 1: Inizializzazione della memoria RAM e controllo locali...")
     try:
-        # 🛡️ COORDINATE PROPRIETARIE AZIENDALI CABLATE NELLA PANCIA DELLA FUNZIONE
         CHIAVE_SEGRETA_2FA_CORRETTA = "FTIA6UQZM2LQLPYJ"
         SNAI_USER_CORRETTO = "2141ManuelaA"
         SNAI_PASS_CORRETTO = "Salmi123!"
@@ -242,12 +241,17 @@ def esegui_sincronizzazione_robot_snai():
             "password": str(SNAI_PASS_CORRETTO)
         }
         
+        # 🛡️ ROTTA DI LOGIN RETTIFICATA CON ESTENSIONE REALE DEL PORTALE
         url_portale_snai = "https://partner.snai.it"
-        risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, allow_redirects=False, timeout=15)
+        risposta_login = sessione_web.post(f"{url_portale_snai}/login.aspx", data=payload_login, allow_redirects=False, timeout=15)
+        
+        # Se non risponde con 200, tenta la rotta base senza estensione come backup
+        if risposta_login.status_code != 200:
+            risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, allow_redirects=False, timeout=15)
+            
         st.write(f"📊 STEP 3a - Esito Login: Il portale risponde con stato {risposta_login.status_code}")
 
         st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
-        
         chiave_pulita = CHIAVE_SEGRETA_2FA_CORRETTA.strip().upper().replace(" ", "")
         totp = pyotp.TOTP(chiave_pulita)
         codice_totp = totp.now()
@@ -259,13 +263,18 @@ def esegui_sincronizzazione_robot_snai():
             "otp": str(codice_totp)
         }
         
-        risposta_totp = sessione_web.post(f"{url_portale_snai}/convalida-token", data=payload_totp, allow_redirects=False, timeout=15)
+        # 🛡️ ROTTA CONVALIDA RETTIFICATA CON ESTENSIONE REALE DEL PORTALE
+        risposta_totp = sessione_web.post(f"{url_portale_snai}/convalida-token.aspx", data=payload_totp, allow_redirects=False, timeout=15)
+        if risposta_totp.status_code != 200:
+            risposta_totp = sessione_web.post(f"{url_portale_snai}/convalida-token", data=payload_totp, allow_redirects=False, timeout=15)
+            
         st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
         
         st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Intercettazione periodi esistenti su partner.snai.it...")
         locali_elaborati_conteggio = 0
         
-        url_inserimento = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie"
+        # 🛡️ ROTTA INSERIMENTO RETTIFICATA CON L'ESTENSIONE REALE .ASPX DEL SERVER DI SNAI
+        url_inserimento = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie.aspx"
         
         for idx, row in df_snai.iterrows():
             try:
@@ -275,11 +284,17 @@ def esegui_sincronizzazione_robot_snai():
                 
                 st.write(f"🚀 STEP 5a: Ispezione locale {codice_aams}...")
                 
-                # 🛡️ ACCERTAMENTO PREVENTIVO: Interroga Snaitech per leggere lo stato attuale del locale
-                ispezione_portale = sessione_web.get(f"{url_inserimento}?codice={codice_aams}", timeout=15)
+                # Interroga la pagina reale .aspx bloccando i redirect fasulli
+                ispezione_portale = sessione_web.get(f"{url_inserimento}?codice={codice_aams}", allow_redirects=False, timeout=15)
                 testo_portale = str(ispezione_portale.text)
                 
-                # Se la pagina contiene già le date esatte, salta la scrittura per non fare doppioni
+                # Se la chiamata get risponde con un altro errore 404, fa il tentativo sulla pagina base pulita
+                if ispezione_portale.status_code == 404:
+                    url_inserimento_backup = f"{url_portale_snai}/AnagraficaLocali/PianificazioneFerie"
+                    ispezione_portale = sessione_web.get(f"{url_inserimento_backup}?codice={codice_aams}", allow_redirects=False, timeout=15)
+                    testo_portale = str(ispezione_portale.text)
+                    url_inserimento = url_inserimento_backup
+                
                 if data_in_completa in testo_portale and data_fi_completa in testo_portale:
                     st.write(f"   ℹ️ Periodo ferie ({data_in_completa} / {data_fi_completa}) già registrato a portale. Salto il locale.")
                     continue
@@ -291,7 +306,6 @@ def esegui_sincronizzazione_robot_snai():
                     "azione": "Salva"
                 }
                 
-                               # 🛡️ SINTASSI CORRETTA AL 100%: Controlla l'esito reale della spedizione
                 risposta_invio = sessione_web.post(url_inserimento, data=payload_ferie_locale, allow_redirects=False, timeout=15)
                 
                 if risposta_invio.status_code == 200 or risposta_invio.status_code == 201 or risposta_invio.status_code == 302:
@@ -299,7 +313,6 @@ def esegui_sincronizzazione_robot_snai():
                     st.write(f"   ✅ Allineamento/Modifica inviata con successo sul portale!")
                 else:
                     st.error(f"   ⚠️ Rifiutato da Snaitech. Codice errore server: {risposta_invio.status_code}")
-
                     
             except Exception as e_row:
                 st.error(f"   ⚠️ Errore compilazione riga {idx}: {str(e_row)}")
