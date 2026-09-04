@@ -506,8 +506,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     time.sleep(1.5)
                     st.rerun()
         except Exception: pass
-        
-       st.markdown("---")
+    st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
     if file_caricato is not None:
