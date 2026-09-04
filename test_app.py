@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA REALE INTEGRALE (ANTI-F5)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FUNZIONE GITHUB RIPRISTINATA CON / FISSA
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E PARSAMENTO COERENTE (FORZATURA 422)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ANTIDOTO CONTRO I RESET DEL REBOOT MANUALE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -66,7 +66,6 @@ def scarica_file_da_github_se_esiste(nome_file):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
         
-        # 🛡️ TRUCCO BARRA VISIBILE: Isola il simbolo / per evitare che venga nascosto
         indirizzo_base = "https://github.com"
         url_git = indirizzo_base + "/" + str(nome_file) + "?_nonce=" + c_time
         
@@ -98,14 +97,12 @@ def carica_database_locale():
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ ANCORAGGIO FISSO ANTI-RESET: Costringe lo schermo a caricare i dati reali
 st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ TRUCCO BARRA VISIBILE: Isola il simbolo / per la funzione di scrittura
         indirizzo_base = "https://github.com"
         url_git = indirizzo_base + "/" + str(FILE_STORICO_PERMANENTE)
         
@@ -130,10 +127,17 @@ def push_excel_su_github(df_da_salvare):
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        if risposta_put.status_code == 422 and sha_file:
-            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
+        # 🛡️ DISINNESCORO RIGIDO DEL BLOCCO CONFLITTO 422 SU FILE ESISTENTI
+        if risposta_put.status_code == 422:
+            # Se GitHub rifiuta l'aggiornamento per sfasamento orario, pialla il blocco e sovrascrive forzatamente
+            p_del = {"message": "🧹 Sblocco conflitto strutturale", "branch": "main"}
+            if sha_file: 
+                p_del["sha"] = sha_file
             requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
-            if "sha" in payload_git: del payload_git["sha"]
+            
+            # Riesegue l'invio immediato inserendolo come file vergine aggiornato
+            if "sha" in payload_git: 
+                del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
@@ -142,6 +146,7 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
