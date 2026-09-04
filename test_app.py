@@ -52,6 +52,10 @@ st.markdown("""
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
 # VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FIX FINALE CON BARRE DI DIVISIONE VISIBILI
 # =====================================================================================
+# =====================================================================================
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — BLINDATURA TOTALE F5 CONTRO FILE ASSENTI
+# =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
 FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
@@ -66,7 +70,7 @@ def scarica_file_da_github_se_esiste(nome_file):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
         
-        # 🛡️ TRUCCO BARRA VISIBILE: Il simbolo / è protetto e visibile per l'F5
+        # 🛡️ FIX CHIRURGICO URL F5: Ricomposizione protetta con barra di divisione visibile
         base_url = "https://github.com"
         url_git = base_url + "/" + nome_file + "?_nonce=" + c_time
         
@@ -87,6 +91,9 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
+    
+    # 🛡️ BLINDATURA INTEGRALE F5: Se il file non c'è su GitHub (404), NON svuotare lo schermo!
+    # Genera una tabella vuota ma con le 9 colonne corrette, pronta a ricevere i dati
     if df_s is None or df_s.empty:
         df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
@@ -103,11 +110,9 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        prefisso_api = "https://github.com"
+        prefisso_api = "https://api.github.com"
         percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
         url_git = prefisso_api + "/" + percorso_cartella + "/" + str(FILE_STORICO_PERMANENTE)
-        
-        st.write(f"🔍 STEP 2: Endpoint di destinazione ricomposto -> {url_git}")
         
         df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
         
@@ -131,28 +136,25 @@ def push_excel_su_github(df_da_salvare):
             sha_file = res_get.json().get("sha", "")
             st.write(f"📝 STEP 3a: Il file esiste sul sito. Recuperato marcatore SHA: {sha_file}")
             payload_git = {"message": "🤖 [Test-App] Modifica registro", "content": dati_base64, "branch": "main", "sha": sha_file}
+            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         else:
             st.write("🆕 STEP 3b: Il file non esiste su GitHub (Stato 404). Configuro la creazione da zero.")
             payload_git = {"message": "🚀 [Test-App] Autocreazione file Excel iniziale", "content": dati_base64, "branch": "main"}
+            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
-        st.info("📤 STEP 4: Invio del payload binario verso il server di GitHub...")
-        risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        
         st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice numerico {risposta_server.status_code}")
         
+        # 🛡️ DISINNESCORO RIGIDO DEL CODICE 422: Se GitHub rifiuta la modifica, forza la creazione iniziale immediata
         if risposta_server.status_code == 422:
-            st.error("⚠️ STEP 4a: Rilevato conflitto 422. Tento un recupero di sblocco in linea...")
-            res_retry = requests.get(url_git, headers=headers_git, timeout=5)
-            if res_retry.status_code == 200:
-                payload_git["sha"] = res_retry.json().get("sha", "")
-                risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-                st.warning(f"📊 STEP 4b - Esito Secondo Tentativo: Codice {risposta_server.status_code}")
+            st.error("⚠️ STEP 4a: Rilevato blocco 422. Forzo la sovrascrittura di autocreazione iniziale su GitHub...")
+            if "sha" in payload_git:
+                del payload_git["sha"]
+            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            st.warning(f"📊 STEP 4b - Esito Forzatura: Il server ha risposto con codice numerico {risposta_server.status_code}")
                 
         if risposta_server.status_code == 200 or risposta_server.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
             st.success("🎉 STEP 5: Operazione conclusa con successo! Scrittura registrata.")
-            
-            # 🛡️ DELAY DI SICUREZZA: Blocca la pagina per 20 secondi reali prima di fare il refresh
             st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
             time.sleep(20)
             return True
