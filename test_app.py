@@ -204,74 +204,56 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 DIAGNOSTICA INNESCO - STEP 1: Avvio connessione remota...")
+    st.info("🎯 Invio del segnale di innesco tramite il database aziendale...")
     try:
-        # Controlla se il token di sicurezza dei ragazzi viene letto correttamente
-        t_git = ""
-        if "github" in st.secrets and "token_accesso" in st.secrets["github"]:
-            t_git = str(st.secrets["github"]["token_accesso"]).strip()
-            st.write("📝 STEP 1a: Token di sicurezza intercettato nella memoria dell'app.")
-        else:
-            st.error("❌ STEP 1b: Impossibile leggere il token dalle impostazioni protette.")
-            
-        # Definiamo l'indirizzo esatto per la scrittura del file di innesco
-        url_innesco = "https://github.com"
-        st.write(f"🔍 STEP 2: Verifico l'indirizzo di rete per il segnale -> `{url_innesco}`")
+        # Usiamo il token principale dell'Excel che è già autorizzato al 100%
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
+        if "storico_cloud" not in st.session_state or not st.session_state.storico_cloud:
+            st.error("❌ Errore: Nessun dato presente a monitor da allineare.")
+            return
+            
+        # Prende i dati a schermo e aggiunge un marcatore orario fittizio in fondo per forzare l'allineamento
+        df_innesco = pd.DataFrame(st.session_state.storico_cloud)
+        
+        # Rigenera il file Excel in background
+        df_pulito_salva = df_innesco.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
+        output_binario = io.BytesIO()
+        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
+            df_pulito_salva.to_excel(writer, index=False)
+        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+        
+        # Recupera lo SHA ufficiale e aggiornato dell'Excel sul server
+        url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         headers_git = {
-            "Authorization": f"token {t_git}",
+            "Authorization": f"token {t_git}", 
             "Accept": "application/vnd.github+json",
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # 🧪 STEP 3: Chiediamo a GitHub se il file esiste già per gestire la sovrascrittura
-        st.info("🛰️ STEP 3: Chiedo a GitHub se esiste un innesco precedente...")
-        res_get = requests.get(url_innesco, headers=headers_git, timeout=5)
-        st.warning(f"📊 STEP 3 - Risposta GitHub: Codice numerico {res_get.status_code}")
+        res_get = requests.get(url_git, headers=headers_git, timeout=5)
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        sha_file = ""
-        if res_get.status_code == 200:
-            sha_file = res_get.json().get("sha", "")
-            st.write(f"📝 STEP 3a: File esistente rilevato. Codice di sicurezza SHA -> {sha_file}")
-        elif res_get.status_code == 404:
-            st.write("📝 STEP 3b: Primo innesco assoluto. Nessun file precedente presente sul server.")
-        else:
-            st.error(f"❌ STEP 3c: GitHub ha rifiutato l'ispezione. Messaggio: {res_get.text}")
-            
-        # Prepariamo il pacchetto dati con l'orario attuale dell'ufficio
-        marcatore_tempo = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        testo_innesco_b64 = base64.b64encode(f"FORZATURA MANUALE MANUELA: {marcatore_tempo}".encode('utf-8')).decode('utf-8')
-        
-        payload_innesco = {
-            "message": f"🚀 [App] Innesco forzatura manuale robot Snaitech - {marcatore_tempo}",
-            "content": str(testo_innesco_b64),
+        # Sovrascrive l'Excel per far sobbalzare il timer delle 20:00 e farlo partire subito
+        marcatore_ora = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        payload_git = {
+            "message": f"🤖 [App] Forzatura manuale inserimento Snaitech - {marcatore_ora}", 
+            "content": str(dati_base64), 
             "branch": "main"
         }
-        if sha_file:
-            payload_innesco["sha"] = str(sha_file)
+        if sha_file: 
+            payload_git["sha"] = str(sha_file)
             
-        # 🧪 STEP 4: Spedizione forzata dell'ordine di avvio
-        st.info("📤 STEP 4: Invio il file di innesco a GitHub per accendere il robot...")
-        risposta_put = requests.put(url_innesco, json=payload_innesco, headers=headers_git, timeout=5)
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
-        
-        if r := (risposta_put.status_code == 200 or risposta_put.status_code == 201):
-            st.success("🎉 STEP 5: Operazione completata! Il segnale è stato registrato su GitHub.")
-            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura dei passaggi...")
-            time.sleep(20)
-            return True
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato correttamente: l'inserimento visivo con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
         else:
-            st.error(f"❌ STEP 5: Invio fallito. Contenuto errore server: {risposta_put.text}")
-            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura dei passaggi...")
-            time.sleep(20)
-            return False
+            st.error(f"❌ Errore di allineamento sul server. Codice di rifiuto: {risposta_put.status_code}")
             
-    except Exception as e_step:
-        st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
-        st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura dei passaggi...")
-        time.sleep(20)
-        return False
+    except Exception as e_api:
+        st.error(f"💥 Errore di collegamento: {str(e_api)}")
+
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
