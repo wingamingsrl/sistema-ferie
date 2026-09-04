@@ -208,7 +208,7 @@ def esegui_sincronizzazione_robot_snai():
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # Invia l'impulso elettrico a GitHub Actions chiedendo di lanciare Chrome adesso
+        # 🛡️ ROTTA API UFFICIALE DISPATCH: Punta al canale generico del repository senza bloccarci sui singoli file .yml
         url_dispatch = "https://github.com"
         
         headers_dispatch = {
@@ -217,16 +217,19 @@ def esegui_sincronizzazione_robot_snai():
             "User-Agent": "WinGaming-Cloud-App"
         }
         
+        # 🛡️ PAROLA D'ORDINE CONVALIDATA: Dice a GitHub di attivare il trigger manuale configurato nell'orologio
         payload_dispatch = {
-            "ref": "main"
+            "event_type": "manual_trigger",
+            "client_payload": {}
         }
         
         risposta_remota = requests.post(url_dispatch, json=payload_dispatch, headers=headers_dispatch, timeout=10)
         
+        # GitHub risponde con lo Stato 204 quando accetta l'ordine di far partire Chrome in background
         if risposta_remota.status_code == 204:
             st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
         else:
-            st.error(f"❌ Impossibile attivare il robot remoto. Errore API: {risposta_remota.status_code}")
+            st.error(f"❌ Impossibile attivare il robot remoto. Errore API: {risposta_remota.status_code}. Dettaglio: {risposta_remota.text}")
     except Exception as e_api:
         st.error(f"💥 Errore di collegamento: {str(e_api)}")
 
