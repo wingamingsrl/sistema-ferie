@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E DIAGNOSTICA STEP-BY-STEP CON DELAY
-# VERSIONE DI SPEZIONE AMBIENTE SANDBOX — RILEVAZIONE RIGIDA ESITI DI RETE GITHUB
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL, AUTOCREAZIONE E PULIZIA AUTOMATICA SCADUTI
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — CANCELLA DA SOLA LE FERIE GIÀ TRASCORSE
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -66,9 +66,8 @@ def scarica_file_da_github_se_esiste(nome_file):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
         
-        prefisso_api = "https://github.com"
-        percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
-        url_git = prefisso_api + "/" + percorso_cartella + "/" + str(nome_file) + "?_nonce=" + c_time
+        indirizzo_base = "https://github.com"
+        url_git = indirizzo_base + "/" + str(nome_file) + "?_nonce=" + c_time
         
         h = {
             "Authorization": f"token {t_git}", 
@@ -94,6 +93,44 @@ def carica_database_locale():
             df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+    
+    # 🛡️ PULIZIA AUTOMATICA RIGIDA CHIUSURE SCADUTE (ESEGUTTA AD OGNI AVVIO/F5)
+    righe_valide = []
+    oggi_ora = datetime.now()
+    file_modificato_pulizia = False
+    
+    for _, row in df_s.iterrows():
+        testo_fine = str(row.get("FINE_FERIE", "")).strip()
+        if testo_fine:
+            try:
+                # Parsa la data e l'ora estesa (es: 17-09-2026 12:00)
+                data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
+                # Se la fine delle ferie è passata rispetto ad oggi, la scarta (elimina da Excel)
+                if data_fine_valida < oggi_ora:
+                    file_modificato_pulizia = True
+                    continue
+            except Exception:
+                try:
+                    # Controlla se per caso è inserita come data semplice senza ora
+                    data_fine_valida = datetime.strptime(testo_fine.split(" ")[0], "%d-%m-%Y")
+                    if data_fine_valida.date() < oggi_ora.date():
+                        file_modificato_pulizia = True
+                        continue
+                except Exception:
+                    pass
+        righe_valide.append(row)
+        
+    if righe_valide:
+        df_s = pd.DataFrame(righe_valide)
+    else:
+        df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+        
+    df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+    
+    # Se ha rimosso dei record scaduti, salva immediatamente il file pulito su GitHub in background
+    if file_modificato_pulizia:
+        push_excel_su_github(df_s)
+        
     return df_l, df_t, df_s
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
@@ -104,10 +141,9 @@ if "storico_cloud" not in st.session_state:
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        url_git = f"https://api.github.com/repos/wingamingsrl/sistema-ferie/contents/{FILE_STORICO_PERMANENTE}"
+        url_git = "https://github.com" + "/" + str(FILE_STORICO_PERMANENTE)
         
-        # Costringe forzatamente il database ad allinearsi in formato testo puro (No liste, No array)
-        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
+        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
         
         output_binario = io.BytesIO()
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
@@ -120,31 +156,26 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Interroga GitHub per capire se il file esiste
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        # Invia il messaggio a GitHub convertendo ogni parametro in testo base sicuro
-        payload_git = {"message": "🤖 [App] Aggiornamento registro ferie", "content": str(dati_base64), "branch": "main"}
+        payload_git = {"message": "🤖 [App] Sincronizzazione database ferie", "content": dati_base64, "branch": "main"}
         if sha_file: 
-            payload_git["sha"] = str(sha_file)
+            payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ DISINNESCORO RIGIDO DEL CODICE 422 SE IL FILE È STATO CANCELLATO MANUALMENTE
-        if risposta_put.status_code == 422:
-            if "sha" in payload_git: 
-                del payload_git["sha"]
+        if risposta_put.status_code == 422 and sha_file:
+            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
+            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
+            if "sha" in payload_git: del payload_git["sha"]
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
             return True
         return False
     except Exception:
         return False
-
-
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
