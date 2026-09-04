@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — BLINDATURA TOTALE F5 CONTRO FILE ASSENTI
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA RI-LETTURA REALE (ANTI-F5)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — ELIMINA LA CACHE DI LETTURA SULLO SCHERMO
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -64,6 +64,7 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # 🛡️ BYPASS CACHE: Genera un marcatore di millisecondi sempre diverso ad ogni F5
         c_time = str(int(time.time() * 1000))
         
         base_url = "https://github.com"
@@ -74,6 +75,7 @@ def scarica_file_da_github_se_esiste(nome_file):
             "Accept": "application/vnd.github.v3.raw",
             "User-Agent": "WinGaming-Cloud-App"
         }
+        # Forza una richiesta fresca senza usare i vecchi dati memorizzati dal browser
         r = requests.get(url_git, headers=h, timeout=5)
         if r.status_code == 200:
             return pd.read_excel(io.BytesIO(r.content))
@@ -92,10 +94,11 @@ def carica_database_locale():
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     return df_l, df_t, df_s
 
+# 🛡️ FORZATURA F5: Rilegge fisicamente GitHub ad ogni rinfresco di pagina
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# Costringe la memoria temporanea dello schermo ad allinearsi all'Excel reale di GitHub ad ogni F5
+st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
