@@ -221,7 +221,15 @@ def esegui_sincronizzazione_robot_snai():
         st.info("✅ Nessun locale Snaitech attivo trovato nel registro. Sincronizzazione non necessaria.")
         return
 
-    st.info(f"🤖 Robot avviato! Rilevati {len(df_snai)} locali Snaitech. Apertura connessione protetta...")
+    st.info(f"🤖 Robot avviato! Rilevati {len(df_snai)} locali Snaitech. Controllo configurazione di sistema...")
+
+    # 🛡️ FIX ASSOLUTO CLOUD: Forza l'installazione automatica dei browser di Playwright sul server se mancanti
+    try:
+        import subprocess
+        # Esegue il comando di installazione ufficiale di Playwright per Linux Cloud
+        subprocess.run(["python", "-m", "playwright", "install", "chromium"], check=True)
+    except Exception as e_install:
+        st.warning(f"⚠️ Nota di sistema sull'ambiente virtuale: {str(e_install)}")
 
     with sync_playwright() as p:
         # Avvia Chromium in modalità headless sul cloud per non occupare lo schermo
@@ -266,7 +274,7 @@ def esegui_sincronizzazione_robot_snai():
 
                     target_frame = page
                     if len(page.frames) > 1:
-                        target_frame = page.frames[1]
+                        target_frame = page.frames
 
                     campo_ricerca = "input[id*='Censimento'], input[id*='txtCodice']"
                     if target_frame.locator(campo_ricerca).count() > 0:
@@ -304,9 +312,6 @@ def esegui_sincronizzazione_robot_snai():
             st.error(f"❌ Errore durante la trasmissione a Snaitech: {str(e_snai)}")
         finally:
             browser.close()
-
-
-
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
