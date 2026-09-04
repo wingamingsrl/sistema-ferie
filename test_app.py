@@ -204,59 +204,71 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 DIAGNOSTICA INNESCO - STEP 1: Avvio connessione remota...")
+    st.info("🎯 DIAGNOSTICA INNESCO EXCEL - STEP 1: Lettura credenziali protette...")
     try:
-        # Recupera il token sbloccato dei ragazzi
+        # Sfrutta lo stesso identico token dei ragazzi, testato e sbloccato al 100%
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        st.write("📝 STEP 1a: Token di sicurezza intercettato con successo.")
+        st.write("📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
             
-        url_innesco = "https://github.com"
-        st.write("🔍 STEP 2: Indirizzo di rete del segnale configurato correttamente.")
+        # 🛡️ ROTTA EXCEL CERTIFICATA: Punta direttamente alla sovrascrittura dell'archivio sbloccato
+        url_git = "https://github.com"
+        st.write("🔍 STEP 2: Indirizzo di rete del database agganciato correttamente.")
         
-        # 🧪 STEP 3: Controllo protetto dell'esistenza del file senza crash di formato
+        if "storico_cloud" not in st.session_state or not st.session_state.storico_cloud:
+            st.error("❌ STEP 2a: Nessun dato presente a monitor da allineare.")
+            return
+            
+        # Converte la plancia a schermo in DataFrame Excel
+        df_innesco = pd.DataFrame(st.session_state.storico_cloud)
+        
+        # 🛡️ RIGENERAZIONE BINARIA EXCEL: Forza la scrittura in formato binario nativo .xlsx
+        df_pulito_salva = df_innesco.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
+        output_binario = io.BytesIO()
+        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
+            df_pulito_salva.to_excel(writer, index=False)
+        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+        
         headers_git = {
-            "Authorization": f"token {t_git}",
+            "Authorization": f"token {t_git}", 
             "Accept": "application/vnd.github+json",
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        res_get = requests.get(url_innesco, headers=headers_git, timeout=5)
-        st.write(f"📊 STEP 3: GitHub ha risposto al controllo iniziale con codice {res_get.status_code}")
+        # 🧪 STEP 3: Preleva lo SHA ufficiale dell'Excel direttamente dalla via protetta
+        st.info("🛰️ STEP 3: Recupero lo SHA attuale del file Excel sul server...")
+        res_get = requests.get(url_git, headers=headers_git, timeout=5)
+        st.warning(f"📊 STEP 3 - Risposta GitHub: Codice numerico {res_get.status_code}")
         
         sha_file = ""
-        # 🛡️ FIX ASSOLUTO: Estrae lo json solo ed esclusivamente se il file sul server esiste davvero
         if res_get.status_code == 200:
-            try:
-                sha_file = res_get.json().get("sha", "")
-                st.write(f"📝 STEP 3a: File esistente intercettato. Codice SHA -> {sha_file}")
-            except Exception: pass
+            sha_file = res_get.json().get("sha", "")
+            st.write(f"📝 STEP 3a: SHA recuperato con successo -> {sha_file}")
         else:
-            st.write("📝 STEP 3b: Il file non esiste ancora. Verrà creato da zero in questo istante.")
-        
-        # Prepariamo il pacchetto con l'orario attuale dell'ufficio
-        marcatore_tempo = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        testo_innesco_b64 = base64.b64encode(f"FORZATURA MANUALE MANUELA: {marcatore_tempo}".encode('utf-8')).decode('utf-8')
-        
-        payload_innesco = {
-            "message": f"🚀 [App] Innesco forzatura manuale robot Snaitech - {marcatore_tempo}",
-            "content": str(testo_innesco_b64),
+            st.error(f"❌ STEP 3b: Impossibile leggere lo SHA. Messaggio: {res_get.text}")
+            
+        # Appende il marcatore di forzatura oraria per risvegliare le Actions
+        marcatore_ora = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        payload_git = {
+            "message": f"🤖 [App] Forzatura manuale inserimento Snaitech - {marcatore_ora}", 
+            "content": str(dati_base64), 
             "branch": "main"
         }
-        if sha_file:
-            payload_innesco["sha"] = str(sha_file)
+        if sha_file: 
+            payload_git["sha"] = str(sha_file)
             
-        # 📤 STEP 4: Spedisce l'ordine di scrittura definitivo a GitHub
-        st.info("📤 STEP 4: Invio il segnale di innesco al server remoto...")
-        risposta_put = requests.put(url_innesco, json=payload_innesco, headers=headers_git, timeout=5)
+        # 📤 STEP 4: Spedisce il salvataggio dell'Excel modificato a GitHub
+        st.info("📤 STEP 4: Invio il segnale a GitHub sovrascrivendo l'Excel...")
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        
         st.warning(f"📊 STEP 4a - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
         
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato correttamente: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
-            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
+            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
+            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura...")
             time.sleep(10)
             return True
         else:
-            st.error(f"❌ STEP 5: Invio fallito. Risposta del server: {risposta_put.text}")
+            st.error(f"❌ STEP 5: Allineamento fallito. Risposta server: {risposta_put.text}")
             time.sleep(10)
             return False
             
@@ -264,6 +276,7 @@ def esegui_sincronizzazione_robot_snai():
         st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
         time.sleep(10)
         return False
+
 
 
 # =====================================================================================
