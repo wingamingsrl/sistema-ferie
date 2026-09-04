@@ -137,7 +137,6 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
-
 # =====================================================================================
 # BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE COOKIE DI SESSIONE (VALIDITÀ 2 ORE)
 # =====================================================================================
