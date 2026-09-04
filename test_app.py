@@ -186,13 +186,13 @@ def push_excel_su_github(df_da_salvare):
                     del payload_git["sha"]
                 risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
                 
-        # 🛡️ ALLINEAMENTO PROTETTO: Accetta i codici 200 e 201 inserendo i messaggi generici puliti
         if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.toast("✅ Modifiche salvate correttamente in archivio!", icon="💾")
+            # 🛡️ DISATTIVATO POP-UP: Il file si salva in background senza mostrare finestre volanti
             return True
         return False
     except Exception:
         return False
+
 
 
 
@@ -415,7 +415,7 @@ if submit_button:
                 except Exception as e_mail:
                     invio_ok, risposta_server = False, str(e_mail)
             
-            if invio_ok:
+                        if invio_ok:
                 nuova["STATO_INVIO"] = "Inviato OK"
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
                     st.session_state.storico_cloud.pop(riga_conflitto_idx)
@@ -425,14 +425,14 @@ if submit_button:
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
-                # 🛡️ MESSAGGIO UFFICIALE AZIENDALE PULITO E GENERICO
+                # 🛡️ POSIZIONAMENTO SOTTO IL BOTTONE: Messaggio fisso ed elegante
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
-                time.sleep(0.5)
+                time.sleep(2.0)  # Lascia il tempo di leggere il messaggio prima di aggiornare lo schermo
                 st.rerun()
-
             else:
-                st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
+                st.error("❌ Spedizione e-mail fallita. Controlla la connessione di rete dell'ufficio.")
+
 # =====================================================================================
 # BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
 # =====================================================================================
