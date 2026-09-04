@@ -50,10 +50,6 @@ st.markdown("""
 
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FIX FINALE CON BARRE DI DIVISIONE VISIBILI
-# =====================================================================================
-# =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E ALLINEAMENTO MEMORIA CLOUD (.XLSX)
 # VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — BLINDATURA TOTALE F5 CONTRO FILE ASSENTI
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
@@ -70,7 +66,6 @@ def scarica_file_da_github_se_esiste(nome_file):
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         c_time = str(int(time.time() * 1000))
         
-        # 🛡️ FIX CHIRURGICO URL F5: Ricomposizione protetta con barra di divisione visibile
         base_url = "https://github.com"
         url_git = base_url + "/" + nome_file + "?_nonce=" + c_time
         
@@ -91,9 +86,6 @@ def carica_database_locale():
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    
-    # 🛡️ BLINDATURA INTEGRALE F5: Se il file non c'è su GitHub (404), NON svuotare lo schermo!
-    # Genera una tabella vuota ma con le 9 colonne corrette, pronta a ricevere i dati
     if df_s is None or df_s.empty:
         df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
@@ -106,13 +98,10 @@ if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
-    st.info("🎯 STEP 1: Avvio della funzione di salvataggio parallela...")
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        
-        prefisso_api = "https://api.github.com"
-        percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
-        url_git = prefisso_api + "/" + percorso_cartella + "/" + str(FILE_STORICO_PERMANENTE)
+        base_url = "https://github.com"
+        url_git = base_url + "/" + FILE_STORICO_PERMANENTE
         
         df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
         
@@ -127,71 +116,44 @@ def push_excel_su_github(df_da_salvare):
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        st.info("🛰️ STEP 3: Interrogazione remota a GitHub per verificare se il file esiste già...")
         res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        st.warning(f"📊 STEP 3 - Esito: GitHub ha risposto con codice numerico {res_get.status_code}")
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
-        sha_file = ""
-        if res_get.status_code == 200:
-            sha_file = res_get.json().get("sha", "")
-            st.write(f"📝 STEP 3a: Il file esiste sul sito. Recuperato marcatore SHA: {sha_file}")
-            payload_git = {"message": "🤖 [Test-App] Modifica registro", "content": dati_base64, "branch": "main", "sha": sha_file}
-            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        else:
-            st.write("🆕 STEP 3b: Il file non esiste su GitHub (Stato 404). Configuro la creazione da zero.")
-            payload_git = {"message": "🚀 [Test-App] Autocreazione file Excel iniziale", "content": dati_base64, "branch": "main"}
-            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+        payload_git = {"message": "🤖 [App] Aggiornamento database ferie", "content": dati_base64, "branch": "main"}
+        if sha_file: payload_git["sha"] = sha_file
             
-        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice numerico {risposta_server.status_code}")
+        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        # 🛡️ DISINNESCORO RIGIDO DEL CODICE 422: Se GitHub rifiuta la modifica, forza la creazione iniziale immediata
-        if risposta_server.status_code == 422:
-            st.error("⚠️ STEP 4a: Rilevato blocco 422. Forzo la sovrascrittura di autocreazione iniziale su GitHub...")
-            if "sha" in payload_git:
-                del payload_git["sha"]
-            risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            st.warning(f"📊 STEP 4b - Esito Forzatura: Il server ha risposto con codice numerico {risposta_server.status_code}")
-                
-        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
+        if risposta_put.status_code == 422 and sha_file:
+            p_del = {"message": "🧹 Sblocco conflitto", "sha": sha_file, "branch": "main"}
+            requests.delete(url_git, json=p_del, headers=headers_git, timeout=5)
+            if "sha" in payload_git: del payload_git["sha"]
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
-            st.success("🎉 STEP 5: Operazione conclusa con successo! Scrittura registrata.")
-            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
-            time.sleep(20)
             return True
-        else:
-            st.error(f"❌ STEP 5: GitHub ha rifiutato lo sblocco. Messaggio del server: {risposta_server.text}")
-            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
-            time.sleep(20)
-            return False
-            
-    except Exception as e_step:
-        st.error(f"💥 STEP FALLITO: Errore di esecuzione interna -> {str(e_step)}")
-        st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
-        time.sleep(20)
+        return False
+    except Exception:
         return False
 
 
 # =====================================================================================
-# BLOCCO 3: AUTENTICAZIONE CON MEMORIZZAZIONE COOKIE DI SESSIONE (VALIDITÀ 2 ORE)
+# BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
 # =====================================================================================
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
 
-# Sistema di controllo cookie nativo per Streamlit
 if "token_sessione" in st.query_params:
-    token_salvato = st.query_params["token_sessione"]
+    token_salvato = str(st.query_params["token_sessione"]).strip()
     if "_" in token_salvato:
         try:
-            ora_token = float(token_salvato.split("_")[1])
-            if time.time() - ora_token < 7200:  # Validità 2 ore
-                st.session_state.autenticato = True
-                if "user_email" not in st.session_state:
-                    st.session_state.user_email = token_salvato.split("_")[0]
-                if "user_nome" not in st.session_state:
-                    # Cerca il nome corrispondente all'email
-                    ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == st.session_state.user_email]
-                    if not ut.empty:
-                        st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
+            email_t = token_salvato.split("_")[0].strip().lower()
+            st.session_state.autenticato = True
+            st.session_state.user_email = email_t
+            ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == email_t]
+            if not ut.empty:
+                st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
         except Exception:
             pass
 
@@ -208,8 +170,6 @@ if not st.session_state.autenticato:
                 st.session_state.user_email = input_email
                 nome_grezzo = str(utente_valido["NOME"].values[0]).strip()
                 st.session_state.user_nome = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
-                
-                # Inietta il token temporaneo nell'URL del browser per resistere all'F5
                 st.query_params["token_sessione"] = f"{input_email}_{int(time.time())}"
                 st.rerun()
             else:
@@ -221,6 +181,7 @@ esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
+
 
 
 # =====================================================================================
