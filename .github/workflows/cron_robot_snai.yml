@@ -2,15 +2,10 @@ name: 🤖 Robot Automatico Inserimento Ferie Snaitech
 
 on:
   schedule:
-    # ⏰ SCATTA IN AUTOMATICO OGNI SERA ALLE 20:00 ITALIANE
+    # ⏰ SCATTA IN AUTOMATICO OGNI SERA ALLE 20:00 GENTILMENTE (18:00 UTC)
     - cron: '0 18 * * *'
-  push:
-    # 🚀 SCATTA ALL'ISTANTE QUANDO PREMI IL PULSANTE BLU E SI AGGIORNA L'EXCEL
-    paths:
-      - 'storico_ferie.xlsx'
   workflow_dispatch:
-
-
+    # 🚀 RICEVE L'IMPULSO ELETTRICO ISTANTANEO DAL PULSANTE DI MANUELA
 
 jobs:
   run-robot:
