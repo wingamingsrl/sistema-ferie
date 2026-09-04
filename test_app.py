@@ -204,34 +204,56 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 Connessione remota con il server di automazione grafica in corso...")
+    st.info("🎯 DIAGNOSTICA INNESCO - STEP 1: Avvio connessione remota...")
     try:
-        # Recupera il token sdoppiato e dedicato al robot dai Secrets di Streamlit
-        t_git_robot = str(st.secrets["github"]["token_robot_snai"]).strip()
+        # Recupera il token sbloccato che usi già per l'Excel dei ragazzi
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        st.write("📝 STEP 1a: Token di sicurezza intercettato con successo.")
+            
+        # 🛡️ VIA D'ACCESSO FILE SBLOCCATA: Punta alla scrittura del file di innesco sul repository
+        url_innesco = "https://github.com"
+        st.write("🔍 STEP 2: Indirizzo di rete del segnale configurato correttamente.")
         
-        # 🛡️ ROTTA API ACTIONS CERTIFICATA: Canale ufficiale sbloccato per comandare i flussi di lavoro
-        url_workflow = "https://github.com"
+        # 🧪 STEP 3: Chiediamo a GitHub se esiste un innesco precedente per prendere lo SHA
+        res_get = requests.get(url_innesco, headers={"Authorization": f"token {t_git}"}, timeout=5)
+        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+        st.write(f"📊 STEP 3: Controllo storico precedente superato (Stato {res_get.status_code}).")
         
-        headers_dispatch = {
-            "Authorization": f"token {t_git_robot}",
-            "Accept": "application/vnd.github.v3+json",
+        # Prepariamo il pacchetto con l'orario attuale dell'ufficio
+        marcatore_tempo = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        testo_innesco_b64 = base64.b64encode(f"FORZATURA MANUALE MANUELA: {marcatore_tempo}".encode('utf-8')).decode('utf-8')
+        
+        payload_innesco = {
+            "message": f"🚀 [App] Innesco forzatura manuale robot Snaitech - {marcatore_tempo}",
+            "content": str(testo_innesco_b64),
+            "branch": "main"
+        }
+        if sha_file:
+            payload_innesco["sha"] = str(sha_file)
+            
+        # 📤 STEP 4: Spedisce il file di testo per svegliare il robot esterno
+        headers_git = {
+            "Authorization": f"token {t_git}",
+            "Accept": "application/vnd.github+json",
             "User-Agent": "WinGaming-Cloud-App"
         }
+        risposta_put = requests.put(url_innesco, json=payload_innesco, headers=headers_git, timeout=5)
+        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
         
-        # Indica al server di attivare la branca principale (main) su cui risiede il robot
-        payload_dispatch = {
-            "ref": "main"
-        }
-        
-        risposta_remota = requests.post(url_workflow, json=payload_dispatch, headers=headers_dispatch, timeout=10)
-        
-        # GitHub risponde con il Codice 204 quando accetta l'ordine e accende Chrome sul server
-        if risposta_remota.status_code == 204:
-            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
+            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minutes le ferie saranno salvate sul portale Snaitech.")
+            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
+            time.sleep(10)
+            return True
         else:
-            st.error(f"❌ Impossibile attivare il robot remoto. Codice errore API: {risposta_remota.status_code}. Dettaglio: {risposta_remota.text}")
-    except Exception as e_api:
-        st.error(f"💥 Errore di collegamento: {str(e_api)}")
+            st.error(f"❌ STEP 5: Invio fallito. Contenuto errore server: {risposta_put.text}")
+            time.sleep(10)
+            return False
+            
+    except Exception as e_step:
+        st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
+        time.sleep(10)
+        return False
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
