@@ -222,9 +222,18 @@ def esegui_sincronizzazione_robot_snai():
 
         st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali. Avvio del motore di navigazione Chromium...")
 
+        # Forza l'ambiente di sistema a cercare Chrome nella cartella aperta di Linux
+        os.environ["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
+
         with sync_playwright() as p:
-            # 🛡️ PUNTO DI ANCORAGGIO CLOUD: Forza l'avvio usando il browser nativo pre-installato nel container
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]) 
+            # 🛡️ BLINDATURA REALE: Punta direttamente all'eseguibile stabile di Chrome installato sul server Linux
+            percorso_chrome_sistema = "/usr/bin/chromium" if os.path.exists("/usr/bin/chromium") else "/usr/bin/chromium-browser"
+            
+            browser = p.chromium.launch(
+                executable_path=percorso_chrome_sistema,
+                headless=True, 
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            ) 
             context = browser.new_context()
             page = context.new_page()
 
