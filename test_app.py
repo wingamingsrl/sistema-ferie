@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL, AUTOCREAZIONE E SCRITTURA PURA FORZATA (SIGILLATO)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — BLINDA LE MODIFICHE E LE CANCELLAZIONI
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E PARSAMENTO REALE CONTRACCOSMICO
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — BLINDATURA CANCELLAZIONI E MODIFICHE REALI
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -64,6 +64,7 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # Genera un marcatore di millisecondi per costringere GitHub a ignorare la cache vecchia
         c_time = str(int(time.time() * 1000))
         
         indirizzo_base = "https://github.com"
@@ -85,16 +86,23 @@ def carica_database_locale():
     df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
-    df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-    if df_s is None or df_s.empty:
-        if os.path.exists(FILE_STORICO_PERMANENTE):
-            df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+    # Se abbiamo appena fatto una cancellazione o modifica, impedisce a GitHub di sovrascrivere la RAM con i dati vecchi di rete
+    if st.session_state.get("congelamento_sincro_attivo", False):
+        if "storico_cloud" in st.session_state:
+            df_s = pd.DataFrame(st.session_state.storico_cloud)
         else:
             df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+    else:
+        df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
+        if df_s is None or df_s.empty:
+            if os.path.exists(FILE_STORICO_PERMANENTE):
+                df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+            else:
+                df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # 🛡️ PULIZIA AUTOMATICA RIGIDA SCADUTI ALL'AVVIO
+    # Pulizia automatica rigida delle ferie già trascorse rispetto ad oggi
     righe_valide = []
     oggi_ora = datetime.now()
     file_modificato_pulizia = False
@@ -109,7 +117,7 @@ def carica_database_locale():
                     continue
             except Exception:
                 try:
-                    data_fine_valida = datetime.strptime(testo_fine.split(" ")[0], "%d-%m-%Y")
+                    data_fine_valida = datetime.strptime(testo_fine.split(" "), "%d-%m-%Y")
                     if data_fine_valida.date() < oggi_ora.date():
                         file_modificato_pulizia = True
                         continue
@@ -123,7 +131,7 @@ def carica_database_locale():
         
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    if file_modificato_pulizia:
+    if file_modificato_pulizia and not st.session_state.get("congelamento_sincro_attivo", False):
         push_excel_su_github(df_s)
         
     return df_l, df_t, df_s
@@ -139,7 +147,6 @@ def push_excel_su_github(df_da_salvare):
         indirizzo_base = "https://github.com"
         url_git = indirizzo_base + "/" + str(FILE_STORICO_PERMANENTE)
         
-        # 🛡️ FIX PURA STRUTTURA: Converte in stringhe pulite per bypassare i firewall di GitHub
         df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
         
         output_binario = io.BytesIO()
@@ -173,6 +180,7 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
+
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
@@ -468,7 +476,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 idx_iscolato_str = sub_stringa.split(" |")[0]
                 idx_da_eliminare = int(idx_iscolato_str)
                 
-                if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+                               if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+                    st.session_state.congelamento_sincro_attivo = True  # 🛡️ COSTRUTTORE DI PROTEZIONE RAM CANCELLAZIONI
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
@@ -476,6 +485,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.success("🗑️ Chiusura rimossa con successo!")
                     time.sleep(0.5)
                     st.rerun()
+
         except Exception: pass
         
     st.markdown("---")
