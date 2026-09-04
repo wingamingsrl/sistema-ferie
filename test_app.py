@@ -49,8 +49,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================================
-# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E SEPARAZIONE RIGIDA MEMORIA (ANTI-RESET)
-# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FIX FINALE CONVIVENZA INTEGRALE F5 ED UPLOAD
+# BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E FORZATURA REALE INTEGRALE (ANTI-F5)
+# VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — FUNZIONE GITHUB RIPRISTINATA E CONGELATA
 # =====================================================================================
 FILE_LOCALI = "elenco_locali.xlsx"
 FILE_TECNICI = "elenco_tecnici.xlsx"
@@ -64,10 +64,9 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # 🛡️ BYPASS CACHE INTEGRALE: Costringe GitHub a sputare il file fresco ad ogni F5
         c_time = str(int(time.time() * 1000))
-        
-        base_url = "https://github.com"
-        url_git = base_url + "/" + nome_file + "?_nonce=" + c_time
+        url_git = f"https://github.com{nome_file}?_nonce={c_time}"
         
         h = {
             "Authorization": f"token {t_git}", 
@@ -87,29 +86,27 @@ def carica_database_locale():
     
     df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
     if df_s is None or df_s.empty:
-        df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+        if os.path.exists(FILE_STORICO_PERMANENTE):
+            df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+        else:
+            df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     return df_l, df_t, df_s
 
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-# 🛡️ BLINDATURA INTEGRALE ANCORAGGIO MEMORIA (RISOLVE F5 E SOVRASCRITTURE):
-# Carica lo storico da GitHub SOLO la primissima volta che si accende l'app.
-# Da quel momento in poi, lo schermo obbedisce solo alle modifiche fatte in tempo reale
-# (sia upload che a mano), senza mai farsi azzerare o ingannare dai ritardi del server.
-if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# 🛡️ ANCORAGGIO FISSO ANTI-RESET: Costringe lo schermo a mostrare l'Excel di GitHub ad ogni rinfresco
+st.session_state.storico_cloud = df_storico_file.to_dict('records')
 
 def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        base_url = "https://github.com"
-        url_git = base_url + "/" + FILE_STORICO_PERMANENTE
-        
-        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+        url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         
         output_binario = io.BytesIO()
+        df_pulito_salva = df_da_salvare.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+        
         with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
             df_pulito_salva.to_excel(writer, index=False)
         dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
@@ -140,6 +137,7 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
+
 
 
 # =====================================================================================
