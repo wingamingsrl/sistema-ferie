@@ -204,79 +204,34 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 DIAGNOSTICA INNESCO EXCEL - STEP 1: Avvio connessione remota...")
+    st.info("🎯 Connessione remota con il server di automazione grafica in corso...")
     try:
-        t_git = ""
-        if "github" in st.secrets and "token_accesso" in st.secrets["github"]:
-            t_git = str(st.secrets["github"]["token_accesso"]).strip()
-            st.write("📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
-        else:
-            st.error("❌ STEP 1b: Impossibile leggere il token dalle impostazioni protette.")
-            
-        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per lettera con tutti gli slash al loro posto
-        url_git = "https://github.com"
-        st.write(f"🔍 STEP 2: Verifico l'indirizzo di rete per il segnale -> `{url_git}`")
+        # Recupera il token sdoppiato e dedicato al robot dai Secrets di Streamlit
+        t_git_robot = str(st.secrets["github"]["token_robot_snai"]).strip()
         
-        if "storico_cloud" not in st.session_state or not st.session_state.storico_cloud:
-            st.error("❌ STEP 2a: Nessun dato presente a monitor da allineare.")
-            return
-            
-        df_innesco = pd.DataFrame(st.session_state.storico_cloud)
-        df_pulito_salva = df_innesco.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
-        output_binario = io.BytesIO()
-        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
-            df_pulito_salva.to_excel(writer, index=False)
-        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+        # 🛡️ ROTTA API ACTIONS CERTIFICATA: Canale ufficiale sbloccato per comandare i flussi di lavoro
+        url_workflow = "https://github.com"
         
-        headers_git = {
-            "Authorization": f"token {t_git}", 
-            "Accept": "application/vnd.github+json",
+        headers_dispatch = {
+            "Authorization": f"token {t_git_robot}",
+            "Accept": "application/vnd.github.v3+json",
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # 🧪 STEP 3: Recupero lo SHA dell'Excel reale sul server usando la rotta sbloccata
-        st.info("🛰️ STEP 3: Chiedo a GitHub lo SHA attuale del database Excel...")
-        res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        st.warning(f"📊 STEP 3 - Risposta GitHub: Codice numerico {res_get.status_code}")
-        
-        sha_file = ""
-        if res_get.status_code == 200:
-            sha_file = res_get.json().get("sha", "")
-            st.write(f"📝 STEP 3a: SHA recuperato con successo -> {sha_file}")
-        else:
-            st.error(f"❌ STEP 3b: Impossibile leggere lo SHA. Messaggio: {res_get.text}")
-            
-        marcatore_ora = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        payload_git = {
-            "message": f"🤖 [App] Forzatura manuale inserimento Snaitech - {marcatore_ora}", 
-            "content": str(dati_base64), 
-            "branch": "main"
+        # Indica al server di attivare la branca principale (main) su cui risiede il robot
+        payload_dispatch = {
+            "ref": "main"
         }
-        if sha_file: 
-            payload_git["sha"] = str(sha_file)
-            
-        # 🧪 STEP 4: Spedizione forzata del comando tramite sovrascrittura Excel
-        st.info("📤 STEP 4: Invio l'aggiornamento dell'Excel a GitHub per far scattare il timer...")
-        risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         
-        st.warning(f"📊 STEP 4 - Esito Scrittura: Il server ha risposto con codice {risposta_put.status_code}")
+        risposta_remota = requests.post(url_workflow, json=payload_dispatch, headers=headers_dispatch, timeout=10)
         
-        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl segnale è passato: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
-            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura...")
-            time.sleep(20)
-            return True
+        # GitHub risponde con il Codice 204 quando accetta l'ordine e accende Chrome sul server
+        if risposta_remota.status_code == 204:
+            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
         else:
-            st.error(f"❌ STEP 5: Invio fallito. Contenuto errore server: {risposta_put.text}")
-            st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura...")
-            time.sleep(20)
-            return False
-            
-    except Exception as e_step:
-        st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
-        st.warning("⏱️ Schermo congelato per 20 secondi per consentire la lettura...")
-        time.sleep(20)
-        return False
+            st.error(f"❌ Impossibile attivare il robot remoto. Codice errore API: {risposta_remota.status_code}. Dettaglio: {risposta_remota.text}")
+    except Exception as e_api:
+        st.error(f"💥 Errore di collegamento: {str(e_api)}")
 
 # =====================================================================================
 # BLOCCO 3: ACCESSO UTENTI CON MEMORIZZAZIONE SESSIONE FISSA (VALIDITÀ 2 ORE)
