@@ -206,8 +206,14 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 Collegamento con il server di automazione grafica in corso...")
     try:
-        # 🛡️ PROTEZIONE EXCEL: Usa il nuovo token dedicato lasciando intatto quello dei ragazzi
-        t_git_robot = str(st.secrets["github"]["token_robot_snai"]).strip()
+        # 🛡️ LETTURA REALE PROTETTA: Cerca il token dedicato al robot sia nella radice che sotto [github]
+        if "token_robot_snai" in st.secrets:
+            t_git_robot = str(st.secrets["token_robot_snai"]).strip()
+        elif "github" in st.secrets and "token_robot_snai" in st.secrets["github"]:
+            t_git_robot = str(st.secrets["github"]["token_robot_snai"]).strip()
+        else:
+            # Se non trova il token specifico, usa quello generale come backup d'emergenza
+            t_git_robot = str(st.secrets["github"]["token_accesso"]).strip()
         
         url_dispatch = "https://github.com"
         
@@ -225,9 +231,9 @@ def esegui_sincronizzazione_robot_snai():
         risposta_remota = requests.post(url_dispatch, json=payload_dispatch, headers=headers_dispatch, timeout=10)
         
         if risposta_remota.status_code == 204:
-            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito in questo istante. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
+            st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
         elif risposta_remota.status_code == 404:
-            st.error("❌ Impossibile attivare il robot remoto (Errore API: 404).\n\n📌 **Verifica:** Controlla di aver scritto correttamente la voce 'token_robot_snai' all'interno dei Secrets di Streamlit e che il codice inserito sia quello nuovo con le caselle repo e workflow spuntate.")
+            st.error("❌ Errore API: 404 (Canale bloccato).\n\n📌 **Soluzione immediata:** Nei Secrets di Streamlit hai incollato la riga dentro il blocco sbagliato. Assicurati che sia scritta **subito sotto** a `token_accesso`, all'interno della sezione `[github]`, esattamente così:\n\n```toml\n[github]\ntoken_accesso = \"ghp_...\"\ntoken_robot_snai = \"ghp_...\"\n```")
         else:
             st.error(f"❌ Risposta anomala da GitHub. Codice errore API: {risposta_remota.status_code}")
             
