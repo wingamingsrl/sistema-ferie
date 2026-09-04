@@ -237,7 +237,7 @@ if not st.session_state.autenticato:
 esecutore_nome = st.session_state.user_nome
 esecutore_email = st.session_state.user_email
 
-st.markdown("<h1>🛡️ SATELLITE FERIE GESTORI</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🧳 PORTALE FERIE GESTORI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
 
 
@@ -326,9 +326,7 @@ if submit_button:
     elif datetime.combine(data_riapertura, ora_riapertura) <= datetime.combine(data_chiusura, ora_chiusura):
         st.error("Errore: La data di riapertura deve essere successiva alla chiusura.")
     else:
-    # 🛡️ FIX DATE ALL'ITALIANA: Forza il formato Giorno-Mese-Anno Ore:Minuti ovunque
-        str_c = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}"
-        str_r = f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
+        str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
         testo_pvd = str(scelta_pvd)
         
         sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
@@ -338,7 +336,6 @@ if submit_button:
         for idx, row in enumerate(st.session_state.storico_cloud):
             if str(row.get("NOME_LOCALE", "")).strip() in testo_pvd or testo_pvd.strip() in str(row.get("NOME_LOCALE", "")):
                 try:
-                    # Legge il formato italiano standard per il controllo doppioni
                     old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
                     old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
                     if (data_inizio_nuova <= old_f) and (data_fine_nuova >= old_i):
@@ -347,14 +344,13 @@ if submit_button:
                         break
                 except Exception:
                     try:
-                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
-                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ")[0].strip(), "%d-%m-%Y")
+                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
+                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
                         if (data_chiusura <= old_f.date()) and (data_riapertura >= old_i.date()):
                             sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                             dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
                             break
                     except Exception: continue
-
 
         if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
             st.error("Rilevato elemento non conforme nella stringa di testo.")
@@ -379,9 +375,11 @@ if submit_button:
             else:
                 nome_puro_locale = resto_s
                 concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+            # 🛡️ FIX DATA INSERIMENTO ALL'ITALIANA: Formato Giorno-Mese-Anno con secondi reali
+            data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
             nuova = {
-                "DATA_INSERIMENTO": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                "DATA_INSERIMENTO": str(data_inserimento_it),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
                 "CODICE_LOCALE": str(codice_estratto),
                 "NOME_LOCALE": str(nome_puro_locale),
@@ -391,6 +389,7 @@ if submit_button:
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "In attesa"
             }
+
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
@@ -441,7 +440,7 @@ if submit_button:
 
 
 # =====================================================================================
-# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI ALLINEATI AL FORMATO ITALIANO
+# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
 # =====================================================================================
 st.markdown("---")
 st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
@@ -449,7 +448,6 @@ oggi = datetime.now().date()
 alert_c, alert_r = [], []
 for row in st.session_state.storico_cloud:
     try:
-        # Parsa correttamente la data italiana separando lo spazio orario
         d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
         d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
         if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
@@ -457,7 +455,6 @@ for row in st.session_state.storico_cloud:
     except Exception: continue
 for a in alert_c: st.error(a)
 for r in alert_r: st.warning(r)
-
 
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
@@ -509,10 +506,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     st.success("🗑️ Chiusura rimossa con successo!")
-                    time.sleep(1.5)
+                    time.sleep(1.0)
                     st.rerun()
         except Exception: pass
-        
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
@@ -521,17 +517,29 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             df_caricato = pd.read_excel(file_caricato).fillna("")
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
+                    
+                    # 🛡️ FIX DATA INSERIMENTO IN UPLOAD: Raddrizza anche la data di registrazione all'italiana
+                    for col_data in ["DATA_INSERIMENTO", "INIZIO_FERIE", "FINE_FERIE"]:
+                        if col_data in df_caricato.columns:
+                            try:
+                                # Se ha l'orario esteso con i secondi, mantiene la struttura pulita italiana
+                                if col_data == "DATA_INSERIMENTO":
+                                    df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M:%S')
+                                else:
+                                    df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M')
+                            except Exception:
+                                df_caricato[col_data] = df_caricato[col_data].astype(str).str.strip()
+                    
                     st.session_state.storico_cloud = df_caricato.to_dict('records')
                     df_caricato.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_caricato)
-                    # 🛡️ TEXT FIX: Messaggio amministrativo pulito
                     st.success("✅ Database aziendale aggiornato e sincronizzato con successo!")
-                    time.sleep(1.5)
+                    time.sleep(2.0)
                     st.rerun()
-
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
 
 # PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
 st.markdown("<br>", unsafe_allow_html=True)
