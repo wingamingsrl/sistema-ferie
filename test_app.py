@@ -103,7 +103,6 @@ def push_excel_su_github(df_da_salvare):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         
-        # 🛡️ ROUTING FIX CHIRURGICO: Inserite le barre / e i punti api. e .com/repos/ corretti in modo isolato
         prefisso_api = "https://github.com"
         percorso_cartella = "repos/wingamingsrl/sistema-ferie/contents"
         url_git = prefisso_api + "/" + percorso_cartella + "/" + str(FILE_STORICO_PERMANENTE)
@@ -152,13 +151,21 @@ def push_excel_su_github(df_da_salvare):
         if risposta_server.status_code == 200 or risposta_server.status_code == 201:
             st.toast("✅ File Excel salvato correttamente su GitHub!", icon="💾")
             st.success("🎉 STEP 5: Operazione conclusa con successo! Scrittura registrata.")
+            
+            # 🛡️ DELAY DI SICUREZZA: Blocca la pagina per 20 secondi reali prima di fare il refresh
+            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
+            time.sleep(20)
             return True
         else:
             st.error(f"❌ STEP 5: GitHub ha rifiutato lo sblocco. Messaggio del server: {risposta_server.text}")
+            st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
+            time.sleep(20)
             return False
             
     except Exception as e_step:
         st.error(f"💥 STEP FALLITO: Errore di esecuzione interna -> {str(e_step)}")
+        st.warning("⏱️ Portale congelato per 20 secondi per permettere la lettura dei registri...")
+        time.sleep(20)
         return False
 
 
