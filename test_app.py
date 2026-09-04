@@ -206,13 +206,13 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 Collegamento con il server di automazione grafica in corso...")
     try:
-        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        # 🛡️ PROTEZIONE EXCEL: Usa il nuovo token dedicato lasciando intatto quello dei ragazzi
+        t_git_robot = str(st.secrets["github"]["token_robot_snai"]).strip()
         
-        # 🛡️ COSTRUZIONE CERTIFICATA DELLA ROTTA CON TUTTI GLI SLASH AL LORO POSTO
         url_dispatch = "https://github.com"
         
         headers_dispatch = {
-            "Authorization": f"token {t_git}",
+            "Authorization": f"token {t_git_robot}",
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "WinGaming-Cloud-App"
         }
@@ -227,7 +227,7 @@ def esegui_sincronizzazione_robot_snai():
         if risposta_remota.status_code == 204:
             st.success("🚀 ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito in questo istante. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
         elif risposta_remota.status_code == 404:
-            st.error("❌ Impossibile attivare il robot remoto (Errore API: 404).\n\n📌 **Nota per l'Ufficio:** Il percorso è corretto, ma il token di accesso salvato nei Secrets di Streamlit non ha i permessi di scrittura 'repo' o 'workflow' attivi per comandare le Actions di GitHub. Rigenera il token spuntando quelle voci e incollalo nei Secrets.")
+            st.error("❌ Impossibile attivare il robot remoto (Errore API: 404).\n\n📌 **Verifica:** Controlla di aver scritto correttamente la voce 'token_robot_snai' all'interno dei Secrets di Streamlit e che il codice inserito sia quello nuovo con le caselle repo e workflow spuntate.")
         else:
             st.error(f"❌ Risposta anomala da GitHub. Codice errore API: {risposta_remota.status_code}")
             
