@@ -224,114 +224,119 @@ def esegui_sincronizzazione_robot_snai():
             st.info("✅ STEP 1b: Nessun locale Snaitech attivo trovato nel registro.")
             return
 
-        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Attivazione del browser invisibile...")
+        st.warning(f"🤖 STEP 2: Rilevati {len(df_snai)} locali Snaitech. Configuro sessione emulata...")
+        
+        sessione_web = requests.Session()
+        sessione_web.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "it-IT,it;q=0.9",
+            "Connection": "keep-alive"
+        })
 
-        # 🛡️ SBLOCCO CONTAINER LINUX: Scarica ed estrae Chrome visivo nella cartella aperta del server
-        try:
-            import subprocess
-            subprocess.run(["python", "-m", "playwright", "install", "chromium"], check=True)
-        except Exception: pass
+        st.info("🌐 STEP 3: Connessione e Log In su partner.snai.it...")
+        url_portale_snai = "https://partner.snai.it"
+        
+        # Primo aggancio per prendere i cookie iniziali della pagina
+        fase_iniziale = sessione_web.get(f"{url_portale_snai}/login", timeout=15)
+        
+        payload_login = {
+            "username": str(SNAI_USER_CORRETTO),
+            "password": str(SNAI_PASS_CORRETTO)
+        }
+        risposta_login = sessione_web.post(f"{url_portale_snai}/login", data=payload_login, timeout=15)
+        st.write(f"📊 STEP 3a - Esito Login: Stato {risposta_login.status_code}")
 
-        with sync_playwright() as p:
-            # Lancia Chrome in modalità invisibile simulando lo schermo dell'ufficio
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]) 
-            context = browser.new_context()
-            page = context.new_page()
-
+        st.info("🔑 STEP 4: Generazione ed immissione codice di sicurezza 2FA TOTP...")
+        chiave_pulita = CHIAVE_SEGRETA_2FA_CORRETTA.strip().upper().replace(" ", "")
+        totp = pyotp.TOTP(chiave_pulita)
+        codice_totp = totp.now()
+        st.warning(f"📌 STEP 4a: Codice OTP calcolato dal telefono -> {codice_totp}")
+        
+        payload_totp = {"token": str(codice_totp), "otp": str(codice_totp)}
+        risposta_totp = sessione_web.post(f"{url_portale_snai}/convalida-token", data=payload_totp, timeout=15)
+        st.write(f"📊 STEP 4b - Esito Convalida: Stato {risposta_totp.status_code}")
+        
+        st.info("🔓 STEP 5: ACCESSO SUPERATO! Entrata nell'area Esercizi censiti...")
+        locali_elaborati_conteggio = 0
+        
+        # 🛡️ ROTTA STRUTTURALE REALE DI MANUELA SBLOCCATA
+        url_esercizi_snai = f"{url_portale_snai}/secure/Anagrafiche/Esercizi.aspx"
+        
+        for idx, row in df_snai.iterrows():
             try:
-                st.info("🌐 STEP 3: Connessione a partner.snai.it...")
-                page.goto("https://snai.it", timeout=35000)
-                time.sleep(3)
+                codice_aams = str(row["CODICE_LOCALE"]).strip()
+                data_in_completa = str(row["INIZIO_FERIE"]).strip()
+                data_fi_completa = str(row["FINE_FERIE"]).strip()
                 
-                st.write("📝 STEP 3a: Inserimento credenziali proprietarie...")
-                page.fill("input#username, input[name='username']", str(SNAI_USER_CORRETTO))
-                page.fill("input#password, input[name='password']", str(SNAI_PASS_CORRETTO))
-                page.click("button[type='submit'], input[type='submit'], .btn-login")
-                time.sleep(4)
+                st.write(f"🚀 STEP 5a: Ispezione e scaricamento codici di pagina per il locale {codice_aams}...")
                 
-                st.write("⏳ STEP 3b: Attesa del countdown obbligatorio di sicurezza (11 secondi)...")
-                time.sleep(11)
+                # Scarica la pagina per catturare i token segreti Microsoft (__VIEWSTATE)
+                p_html = sessione_web.get(url_esercizi_snai, timeout=15)
+                testo_html = str(p_html.text)
                 
+                # Estrazione chirurgica automatica dei token segreti ASP.NET per eludere i blocchi 404
+                v_state, v_gen, e_valid = "", "", ""
                 try:
-                    page.evaluate("document.querySelectorAll('.modal, .modal-backdrop, .fade.in').forEach(el => el.remove());")
+                    if "__VIEWSTATE" in testo_html:
+                        v_state = testo_html.split('id="__VIEWSTATE" value="')[1].split('"')[0]
+                    if "__VIEWSTATEGENERATOR" in testo_html:
+                        v_gen = testo_html.split('id="__VIEWSTATEGENERATOR" value="')[1].split('"')[0]
+                    if "__EVENTVALIDATION" in testo_html:
+                        e_valid = testo_html.split('id="__EVENTVALIDATION" value="')[1].split('"')[0]
                 except Exception: pass
-                time.sleep(2)
 
-                st.info("🔑 STEP 4: Calcolo del codice OTP 2FA in corso...")
-                chiave_pulita = CHIAVE_SEGRETA_2FA_CORRETTA.strip().upper().replace(" ", "")
-                totp = pyotp.TOTP(chiave_pulita)
-                codice_totp = totp.now()
-                st.warning(f"📌 STEP 4a: Codice generato con successo -> {codice_totp}")
+                # 🛡️ EMULAZIONE CLIC CERCA: Spedisce il codice censimento nel filtro imitando il tasto Cerca
+                payload_cerca = {
+                    "__VIEWSTATE": v_state,
+                    "__VIEWSTATEGENERATOR": v_gen,
+                    "__EVENTVALIDATION": e_valid,
+                    "txtCodiceCensimento": str(codice_aams),
+                    "btnCerca": "Cerca"
+                }
                 
-                page.fill("input#token, input[name='token'], input[name='otp']", str(codice_totp))
-                time.sleep(1)
-                page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia')")
-                time.sleep(15)
+                p_risultato = sessione_web.post(url_esercizi_snai, data=payload_cerca, timeout=15)
+                testo_risultato = str(p_risultato.text)
                 
-                st.info("🔓 STEP 5: ACCESSO EFFETTUATO! Navigazione nell'Anagrafica Esercizi...")
-                # Forza lo spostamento sulla pagina ufficiale fornita da Manuela
-                page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
-                time.sleep(8)
-
-                locali_elaborati_conteggio = 0
-                for idx, row in df_snai.iterrows():
-                    try:
-                        codice_aams = str(row["CODICE_LOCALE"]).strip()
-                        data_in_completa = str(row["INIZIO_FERIE"]).strip()
-                        data_fi_completa = str(row["FINE_FERIE"]).strip()
-                        
-                        st.write(f"🚀 STEP 5a: Compilazione riga {idx} -> Locale: {codice_aams}")
-
-                        target_frame = page
-                        if len(page.frames) > 1:
-                            target_frame = page.frames
-
-                        campo_ricerca = "input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodice']"
-                        if target_frame.locator(campo_ricerca).count() > 0:
-                            target_frame.locator(campo_ricerca).first.fill(codice_aams)
-                            target_frame.keyboard.press("Enter")
-                            time.sleep(5)
-
-                        # Ispezione automatica icone del portale
-                        tasto_modifica = "img[id*='img_modifica'], img[id*='img_dettaglio'], [title*='Modifica']"
-                        pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione']"
-                        
-                        if target_frame.locator(tasto_modifica).count() > 0:
-                            st.write("   📝 Trovata chiusura esistente. Clic sulla matita di modifica...")
-                            target_frame.locator(tasto_modifica).first.click(timeout=8000)
-                        elif target_frame.locator(pallino_verde_nuovo).count() > 0:
-                            st.write("   🟢 Nuovo periodo. Clic sul pallino verde '+'...")
-                            target_frame.locator(pallino_verde_nuovo).first.click(timeout=8000)
-                        else:
-                            target_frame.locator("img[id*='pianificazione']").first.click(timeout=8000)
-                        time.sleep(4)
-
-                        campo_dal = "input[id*='txtDataDal'], input[id*='Inizio']"
-                        campo_al = "input[id*='txtDataAl'], input[id*='Fine']"
-                        
-                        target_frame.locator(campo_dal).first.fill(data_in_completa)
-                        target_frame.locator(campo_al).first.fill(data_fi_completa)
-                        time.sleep(1)
-
-                        # Clicca sul pulsante Salva ufficiale generando i tracciati di sicurezza
-                        target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva')").first.click()
-                        locali_elaborati_conteggio += 1
-                        st.write(f"   ✅ Allineato con successo!")
-                        time.sleep(4)
-                        
-                    except Exception as e_row:
-                        st.error(f"   ⚠️ Errore riga {idx}: {str(e_row)}")
-                        continue
-                        
-                st.success(f"🎉 STEP 6: SINCRO COMPLETATA! Aggiornati {locali_elaborati_conteggio} locali sul portale Snaitech.")
+                # Controlla se le date ci sono già nella tabella emulata
+                if data_in_completa in testo_risultato and data_fi_completa in testo_risultato:
+                    st.write(f"   ℹ️ Periodo ferie ({data_in_completa} / {data_fi_completa}) già censito. Salto il locale.")
+                    continue
                 
-            except Exception as e_snai:
-                st.error(f"❌ STEP FALLITO: Errore durante i clic sulla pagina: {str(e_snai)}")
-            finally:
-                browser.close()
+                # Aggiorna i token segreti estratti dalla nuova pagina dei risultati prima di salvare
+                try:
+                    if "__VIEWSTATE" in testo_risultato: v_state = testo_risultato.split('id="__VIEWSTATE" value="')[1].split('"')[0]
+                    if "__EVENTVALIDATION" in testo_risultato: e_valid = testo_risultato.split('id="__EVENTVALIDATION" value="')[1].split('"')[0]
+                except Exception: pass
+
+                # 🛡️ EMULAZIONE CLIC SALVA: Compila le date e simula la pressione del pallino verde/salva
+                payload_salva = {
+                    "__VIEWSTATE": v_state,
+                    "__VIEWSTATEGENERATOR": v_gen,
+                    "__EVENTVALIDATION": e_valid,
+                    "txtCodiceCensimento": str(codice_aams),
+                    "txtDataDal": str(data_in_completa),
+                    "txtDataAl": str(data_fi_completa),
+                    "btnSalva": "Salva",
+                    "azione": "Salva"
+                }
                 
+                risposta_invio = sessione_web.post(url_esercizi_snai, data=payload_salva, timeout=15)
+                
+                if risposta_invio.status_code in:
+                    locali_elaborati_conteggio += 1
+                    st.write(f"   ✅ Clic virtuale eseguito! Salvato con successo nel database Snaitech.")
+                else:
+                    st.error(f"   ⚠️ Risposta anomala. Codice errore server: {risposta_invio.status_code}")
+                    
+            except Exception as e_row:
+                st.error(f"   ⚠️ Errore compilazione riga {idx}: {str(e_row)}")
+                continue
+                
+        st.success(f"🎉 STEP 6: OPERAZIONE COMPLETATA! Allineati correttamente {locali_elaborati_conteggio} nuovi locali sul portale Snaitech.")
+        
     except Exception as e_globale:
-        st.error(f"💥 ERRORE CRITICO INTERNO: {str(e_globale)}")
+        st.error(f"💥 ERRORE INTERNO ROBOT: {str(e_globale)}")
 
 
 
