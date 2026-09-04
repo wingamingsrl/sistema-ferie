@@ -129,18 +129,19 @@ def push_excel_su_github(df_da_salvare):
             payload_git = {"message": "🚀 [Test-App] Autocreazione", "content": dati_base64, "branch": "main"}
             risposta_server = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             
-        # 🧪 PASSO 2: Esito della scrittura
+        # 🧪 PASSO 2: Esito della scrittura (Sintassi corretta e blindata)
         st.warning(f"Diagnostica - Risposta Scrittura: Codice {risposta_server.status_code}")
-        if risposta_server.status_code not in:
+        if risposta_server.status_code != 200 and risposta_server.status_code != 201:
             st.error(f"Dettaglio Errore GitHub: {risposta_server.text}")
             
-        if risposta_server.status_code in:
+        if risposta_server.status_code == 200 or risposta_server.status_code == 201:
             st.toast("✅ Database allineato e scritto su GitHub!", icon="💾")
             return True
         return False
     except Exception as e_diagnostica:
         st.error(f"💥 Errore di esecuzione interna: {str(e_diagnostica)}")
         return False
+
 
 
 
