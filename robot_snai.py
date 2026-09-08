@@ -53,7 +53,7 @@ def avvia_sincronizzazione_automatica():
 
         try:
             print("🌐 Connessione a partner.snai.it...")
-            page.goto("https://snai.it", timeout=45000)
+            page.goto("https://partner.snai.it", timeout=45000)
             time.sleep(5)
             
             print("📝 Inserimento credenziali sul portale...")
@@ -151,5 +151,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
 
