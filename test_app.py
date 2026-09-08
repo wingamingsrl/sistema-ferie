@@ -204,14 +204,20 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    # 🛡️ ESCA DI SCRITTURA: Cambiato il testo iniziale per costringere il Cloud a distruggere la cache fallimentare
-    st.info("🎯 TELECOMANDO CLOUD — Fase 1: Verifica credenziali d'ufficio...")
+    # 🛡️ BLINDATURA TOTALE: Cambiamo il testo in 'Fase Finale' per verificare l'effettivo aggiornamento del file
+    st.info("🎯 TELECOMANDO CLOUD — Fase Finale: Verifica credenziali...")
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         st.write("📝 Fase 1a: Gettone di sicurezza rintracciato in memoria.")
             
-        # 🛡️ INDIRIZZO STRADALE ESTESO E RIGIDO SCRITTO LETTERA PER LETTERA
-        url_workflow = "https://github.com"
+        # 🛡️ COSTRUZIONE STRUTTURALE PEZZO PER PEZZO: Impedisce la sovrascrittura o il troncamento della cache di Streamlit
+        protocollo = "https://"
+        dominio_api = "api.github.com"
+        percorso_repo = "/repos/wingamingsrl/sistema-ferie"
+        percorso_workflow = "/actions/workflows/cron_robot_snai.yml/dispatches"
+        
+        # Unisce i blocchi creando la stringa estesa senza rischiare tagli
+        url_workflow = f"{protocollo}{dominio_api}{percorso_repo}{percorso_workflow}"
         st.write(f"🔍 Fase 2: Indirizzo di rete del Workflow configurato -> `{url_workflow}`")
         
         headers_dispatch = {
@@ -229,14 +235,14 @@ def esegui_sincronizzazione_robot_snai():
         
         st.warning(f"📊 Fase 4: Riscontro del server di automazione. Codice numerico -> {risposta_remota.status_code}")
         
-        if risposta_remota.status_code == 204:
+        if risposta_remota.status_code == 204 or risposta_remota.status_code == 202:
             st.success("🚀 Fase 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl server esterno si è acceso correttamente ed ha avviato Chrome. Tra circa due minuti le ferie inserite saranno visibili sul portale Snaitech.")
             st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura...")
             time.sleep(10)
             return True
         else:
             st.error(f"❌ Fase 5: Attivazione respinta dal server. Dettaglio: {risposta_remota.text}")
-            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura...")
+            st.warning("⏱️ Schermo congelato per 10 secondi...")
             time.sleep(10)
             return False
             
@@ -245,8 +251,6 @@ def esegui_sincronizzazione_robot_snai():
         st.warning("⏱️ Schermo congelato per 10 secondi...")
         time.sleep(10)
         return False
-
-
 
 
 # =====================================================================================
