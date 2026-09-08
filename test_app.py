@@ -15,7 +15,6 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 from datetime import datetime, timedelta, time as dtime
-from playwright.sync_api import sync_playwright  # 🛡️ INTEGRATO PER IL MOTORE AUTOMATICO CHROME
 
 icona_app = "logo.png" if os.path.exists("logo.png") else "📅"
 
@@ -49,6 +48,7 @@ st.markdown("""
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
+
 
 
 # =====================================================================================
