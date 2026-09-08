@@ -14,25 +14,16 @@ SNAI_PASS = "Salmi123!"
 CHIAVE_ACCESSO_GIT = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
 
 def preleva_storico_diretto_da_cloud():
-    print("📡 [Robot] Estrazione database Excel direttamente in RAM da GitHub...")
+    print("📡 [Robot] Lettura del database Excel locale sul server Actions...")
     try:
-        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per lettera con tutti gli slash al loro posto
-        url_git = "https://github.com"
-        
-        headers_diretti = {
-            "Accept": "application/vnd.github.v3+raw", 
-            "User-Agent": "WinGaming-Cloud-App"
-        }
-        if CHIAVE_ACCESSO_GIT:
-            headers_diretti["Authorization"] = f"token {CHIAVE_ACCESSO_GIT}"
-            
-        risposta = requests.get(url_git, headers=headers_diretti, timeout=15)
-        if risposta.status_code == 200:
-            return pd.read_excel(io.BytesIO(risposta.content)).fillna("")
+        # 🛡️ FIX DEFINITIVO: Legge il file dall'hard disk virtuale locale senza chiamate di rete (Evita il 406)
+        nome_file_locale = "storico_ferie.xlsx"
+        if os.path.exists(nome_file_locale):
+            return pd.read_excel(nome_file_locale).fillna("")
         else:
-            print(f"❌ Rifiuto GitHub. Codice stato: {risposta.status_code}")
+            print(f"❌ File {nome_file_locale} non trovato sul server.")
     except Exception as e:
-        print(f"⚠️ Errore di rete: {str(e)}")
+        print(f"⚠️ Errore lettura file: {str(e)}")
     return pd.DataFrame()
 
 
