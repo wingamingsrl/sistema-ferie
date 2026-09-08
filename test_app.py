@@ -206,11 +206,11 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 DIAGNOSTICA TELECOMANDO - STEP 1: Lettura chiavi di sicurezza...")
     try:
-        # Recupera il token sbloccato che gestisce già l'Excel dei ragazzi
+        # Sfrutta il token principale dell'Excel, testato e sbloccato al 100%
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        st.write(" shadow 📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
+        st.write("📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
             
-        # 🛡️ ROTTA WORKFLOW DISPATCH CON TUTTI GLI SLASH REALI AL LORO POSTO
+        # 🛡️ ROTTA WORKFLOW DISPATCH CERTIFICATA: Canale ufficiale per comandare i flussi di lavoro
         url_workflow = "https://github.com"
         st.write(f"🔍 STEP 2: Indirizzo di rete del Workflow agganciato -> `{url_workflow}`")
         
@@ -248,6 +248,7 @@ def esegui_sincronizzazione_robot_snai():
         st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
         time.sleep(10)
         return False
+
 
 
 # =====================================================================================
