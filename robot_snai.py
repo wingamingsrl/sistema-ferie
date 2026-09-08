@@ -44,7 +44,7 @@ def avvia_sincronizzazione_automatica():
         print("✅ Nessun locale Snaitech attivo trovato nel registro.")
         return
 
-    print(f"🤖 Rilevati {len(df_snai)} locales Snaitech. Avvio Chrome con SCHERMATURA ANTI-BOT...")
+    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome con SCHERMATURA ANTI-BOT...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
@@ -88,14 +88,16 @@ def avvia_sincronizzazione_automatica():
             codice_totp = genera_codice_otp_automatico()
             print(f"🔑 Codice OTP calcolato -> {codice_totp}")
             
-            # 🛡️ PUNTATORE OTP BLINDATO: Seleziona solo gli input visibili che contengono la parola 'otp' o 'code', escludendo i token nascosti
             input_token = page.locator("input[id*='otp']:not([type='hidden']), input[name*='otp']:not([type='hidden']), input[id*='code']:not([type='hidden']), input[type='text']:not([type='hidden'])").first
             input_token.click(timeout=15000)
             input_token.fill(str(codice_totp))
-            time.sleep(1)
+            time.sleep(2)
             
-            page.locator("input[id*='Invia'], button:has-text('Invia'), input[type='submit'], button[type='submit']").first.click()
-            print("⏳ Caricamento area riservata (15 secondi)...")
+            print("📤 Pressione del pulsante di convalida OTP...")
+            # 🛡️ PILOTAGGIO PULSANTE BLINDATO: Cerca btnInvia, btnAccedi, submit o qualsiasi bottone attivo nella scheda token
+            page.locator("input[id*='Invia'], input[id*='Accedi'], input[id*='btn'], button:has-text('Invia'), button:has-text('Accedi'), input[type='submit'], button[type='submit']").first.click(timeout=15000)
+            
+            print("⏳ Caricamento area riservata partner.snai.it (15 secondi)...")
             time.sleep(15)
             
             print("📬 Spostamento sulla pagina degli Esercizi censiti...")
@@ -168,4 +170,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
