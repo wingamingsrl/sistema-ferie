@@ -29,8 +29,10 @@ jobs:
       run: |
         python -m playwright install chromium
 
-    - name: 🚀 ESECUZIONE ROBOT - INSERIMENTO CLIC REALI SU PARTNER.SNAI.IT
+        - name: 🚀 ESECUZIONE ROBOT - INSERIMENTO CLIC REALI SU PARTNER.SNAI.IT
       env:
         TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        python robot_snai.py
+        # 🛡️ INIEZIONE SCHERMO VIRTUALE: Avvia il camuffamento visivo simulando il monitor d'ufficio in RAM
+        xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" python robot_snai.py
+
