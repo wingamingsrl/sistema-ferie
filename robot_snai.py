@@ -16,7 +16,6 @@ CHIAVE_ACCESSO_GIT = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] Lettura del database Excel locale sul server Actions...")
     try:
-        # 🛡️ FIX DEFINITIVO: Legge il file dall'hard disk virtuale locale senza chiamate di rete (Evita il 406)
         nome_file_locale = "storico_ferie.xlsx"
         if os.path.exists(nome_file_locale):
             return pd.read_excel(nome_file_locale).fillna("")
@@ -25,7 +24,6 @@ def preleva_storico_diretto_da_cloud():
     except Exception as e:
         print(f"⚠️ Errore lettura file: {str(e)}")
     return pd.DataFrame()
-
 
 def genera_codice_otp_automatico():
     totp = pyotp.TOTP(CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", ""))
@@ -55,12 +53,17 @@ def avvia_sincronizzazione_automatica():
 
         try:
             print("🌐 Connessione a partner.snai.it...")
-            page.goto("https://partner.snai.it", timeout=45000)
-            time.sleep(4)
+            page.goto("https://snai.it", timeout=45000)
+            time.sleep(5)
             
-            page.fill("input#username, input[name='username']", SNAI_USER)
-            page.fill("input#password, input[name='password']", SNAI_PASS)
-            page.click("button[type='submit'], input[type='submit'], .btn-login")
+            print("📝 Inserimento credenziali sul portale...")
+            # 🛡️ PUNTATORI UNIVERSALI: Cerca ID, Nomi, Classi o caselle generiche di tipo testo/password
+            page.locator("input[id*='user'], input[name*='user'], input[type='text']").first.fill(SNAI_USER)
+            page.locator("input[id*='pass'], input[name*='pass'], input[type='password']").first.fill(SNAI_PASS)
+            time.sleep(1)
+            
+            # Clicca sul primo pulsante disponibile per inviare il login
+            page.locator("button[type='submit'], input[type='submit'], button[id*='login'], .btn-login, .button").first.click()
             time.sleep(5)
             
             print("⏳ Attesa del countdown di sicurezza Snaitech (11 secondi)...")
@@ -71,14 +74,13 @@ def avvia_sincronizzazione_automatica():
 
             codice_totp = genera_codice_otp_automatico()
             print(f"🔑 Codice OTP calcolato -> {codice_totp}")
-            page.fill("input#token, input[name='token'], input[name='otp']", codice_totp)
+            page.locator("input[id*='token'], input[name*='token'], input[id*='otp'], input[name*='otp'], input[type='text']").first.fill(codice_totp)
             time.sleep(1)
             
-            page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia')")
+            page.locator("input[id*='Invia'], button:has-text('Invia'), input[type='submit'], button[type='submit']").first.click()
             print("⏳ Caricamento area riservata (15 secondi)...")
             time.sleep(15)
             
-            # 🛡️ NAVIGAZIONE SULLA PAGINA DEGLI ESERCIZI DI MANUELA
             print("📬 Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=40000)
             time.sleep(10)
@@ -100,7 +102,6 @@ def avvia_sincronizzazione_automatica():
                         target_frame.keyboard.press("Enter")
                         time.sleep(6)
 
-                    # 🛡️ LOGICA SBLOCCATA DI MANUELA (RICERCA ICONE AGENDA / MATITA / PALLINO)
                     icona_agenda_matita = "img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='agenda'], img[src*='edit'], [title*='Modifica']"
                     pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione'], img[src*='plus']"
                     
@@ -115,32 +116,26 @@ def avvia_sincronizzazione_automatica():
                         target_frame.locator("td img").first.click(timeout=10000)
                     time.sleep(6)
 
-                    # Compilazione dei campi della data interni al sotto-pannello sbloccato
                     campo_dal = "input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']"
                     campo_al = "input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']"
                     
-                    # Legge se i campi hanno già lo stesso valore per non sovrascrivere a vuoto
                     valore_attuale_dal = target_frame.locator(campo_dal).first.input_value() if target_frame.locator(campo_dal).count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
-                        print(f"   ℹ️ Le date inserite coincido già ({data_in_completa}). Salto il salvataggio per sicurezza.")
-                        # Clicca sul tasto Annulla o torna indietro se presente, altrimenti ricarica la pagina principale
+                        print(f"   ℹ️ Le date inserite coincidono già ({data_in_completa}). Salto il salvataggio per sicurezza.")
                         page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                         time.sleep(5)
                         continue
 
-                    # Se sono diverse o vuote, digita ed allinea
                     target_frame.locator(campo_dal).first.fill(data_in_completa)
                     time.sleep(1)
                     target_frame.locator(campo_al).first.fill(data_fi_completa)
                     time.sleep(1)
 
-                    # Clicca sul salvataggio visivo ufficiale di Snaitech sbloccando la tabella
                     tasto_salva = "input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']"
                     target_frame.locator(tasto_salva).first.click(timeout=10000)
                     print(f"   ✅ Allineato e salvato correttamente nel database Snaitech!")
                     time.sleep(5)
                     
-                    # Torna alla pagina di ricerca per il locale successivo
                     page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(5)
                     
@@ -156,4 +151,5 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
 
