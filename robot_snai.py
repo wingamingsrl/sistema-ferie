@@ -64,7 +64,7 @@ def avvia_sincronizzazione_automatica():
             time.sleep(15)
             
             print("📬 Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle", timeout=50000)
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle", timeout=50000)
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
