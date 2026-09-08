@@ -82,7 +82,7 @@ def avvia_sincronizzazione_automatica():
             time.sleep(15)
             
             print("📬 Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=40000)
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=40000)
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -122,7 +122,7 @@ def avvia_sincronizzazione_automatica():
                     valore_attuale_dal = target_frame.locator(campo_dal).first.input_value() if target_frame.locator(campo_dal).count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
                         print(f"   ℹ️ Le date inserite coincidono già ({data_in_completa}). Salto il salvataggio per sicurezza.")
-                        page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                         time.sleep(5)
                         continue
 
@@ -136,12 +136,12 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ Allineato e salvato correttamente nel database Snaitech!")
                     time.sleep(5)
                     
-                    page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(5)
                     
                 except Exception as e_row:
                     print(f"⚠️ Errore riga: {str(e_row)}")
-                    page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(5)
                     continue
         except Exception as e:
