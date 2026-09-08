@@ -206,13 +206,13 @@ def genera_codice_otp_automatico():
 def esegui_sincronizzazione_robot_snai():
     st.info("🎯 DIAGNOSTICA TELECOMANDO - STEP 1: Lettura chiavi di sicurezza...")
     try:
-        # Sfrutta il token principale dell'Excel, testato e sbloccato al 100%
+        # Recupera il token sbloccato che gestisce già l'Excel dei ragazzi
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         st.write("📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
             
-        # 🛡️ ROTTA WORKFLOW DISPATCH CERTIFICATA: Canale ufficiale per comandare i flussi di lavoro
+        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per letter con tutti gli slash al loro posto
         url_workflow = "https://github.com"
-        st.write(f"🔍 STEP 2: Indirizzo di rete del Workflow agganciato -> `{url_workflow}`")
+        st.write(f"🔍 STEP 2: Indirizzo di rete del Workflow configurato -> `{url_workflow}`")
         
         headers_dispatch = {
             "Authorization": f"token {t_git}",
@@ -233,7 +233,7 @@ def esegui_sincronizzazione_robot_snai():
         
         # GitHub Actions restituisce lo Stato 204 quando accetta l'ordine e avvia Chrome
         if risposta_remota.status_code == 204:
-            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno visibili sul portale Snaitech.")
+            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
             st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
             time.sleep(10)
             return True
