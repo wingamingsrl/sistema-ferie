@@ -210,7 +210,7 @@ def esegui_sincronizzazione_robot_snai():
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
         st.write("📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
             
-        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per letter con tutti gli slash al loro posto
+        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per lettera con tutti gli slash al loro posto
         url_workflow = "https://github.com"
         st.write(f"🔍 STEP 2: Indirizzo di rete del Workflow configurato -> `{url_workflow}`")
         
