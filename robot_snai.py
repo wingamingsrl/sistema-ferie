@@ -111,26 +111,25 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 Ispezione visiva Locale Snaitech -> {codice_aams}")
 
-                    # 🛡️ ISPEZIONE FRAME: Cerca se gli input sono dentro un sotto-schermo Microsoft
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input[id*='Censimento'], input[id*='txtCodice']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("input").count() > 0:
                             target_frame = f
                             break
 
-                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[id*='txtCodice'], input[id*='Codice'], input[name*='Codice']").first
-                    campo_ricerca.click(timeout=10000)
+                    # 🛡️ PUNTATORE RETTIFICATO DA MANUELA: Cerca l'input abbinato al testo visibile 'Codice Censimento'
+                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[placeholder*='Censimento'], input[type='text']").first
+                    campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
                     time.sleep(1)
                     
-                    # 🛡️ PRESSIONE TASTO CERCA REALE: Forza il clic sul bottone Filtra/Cerca di Snaitech
+                    # Forza la ricerca cliccando sul tasto reale Cerca/Filtra del pannello Microsoft
                     tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], button[id*='Cerca'], input[value*='Filtra']").first
                     if tasto_cerca.count() > 0:
                         tasto_cerca.click()
                     else:
                         target_frame.keyboard.press("Enter")
                     
-                    # Pausa obbligatoria per far comparire la riga a schermo
                     print("   ⏳ Attesa caricamento riga esercizio (5 secondi)...")
                     time.sleep(5)
 
@@ -183,4 +182,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
