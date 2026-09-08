@@ -70,7 +70,7 @@ def avvia_sincronizzazione_automatica():
             input_user.fill(SNAI_USER)
             time.sleep(1)
             
-            input_pass = page.locator("input[id*='password'], input[name='password'], input[type='password']").first
+            input_pass = page.locator("input#password, input[name='password'], input[type='password']").first
             input_pass.click(timeout=15000)
             input_pass.fill(SNAI_PASS)
             time.sleep(1)
@@ -93,7 +93,7 @@ def avvia_sincronizzazione_automatica():
             input_token.fill(str(codice_totp))
             time.sleep(2)
             
-            print("⌨️ Pressione del tasto Enter da tastiera...")
+            print("⌨专 Pressione del tasto Enter da tastiera...")
             page.keyboard.press("Enter")
             
             print("⏳ Caricamento area riservata partner.snai.it (15 secondi)...")
@@ -117,18 +117,17 @@ def avvia_sincronizzazione_automatica():
                             target_frame = f
                             break
 
-                    # 🛡️ PUNTATORE RETTIFICATO DA MANUELA: Cerca l'input abbinato al testo visibile 'Codice Censimento'
                     campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[placeholder*='Censimento'], input[type='text']").first
                     campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
                     time.sleep(1)
                     
-                    # Forza la ricerca cliccando sul tasto reale Cerca/Filtra del pannello Microsoft
-                    tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], button[id*='Cerca'], input[value*='Filtra']").first
+                    # 🛡️ FIX TASTO CERCA CON TASTIERA GLOBALE CORRETTA
+                    tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], button[id*='Cerca'], input[value*='Filtra'], input[value*='Cerca']").first
                     if tasto_cerca.count() > 0:
                         tasto_cerca.click()
                     else:
-                        target_frame.keyboard.press("Enter")
+                        page.keyboard.press("Enter")
                     
                     print("   ⏳ Attesa caricamento riga esercizio (5 secondi)...")
                     time.sleep(5)
