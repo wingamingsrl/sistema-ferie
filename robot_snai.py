@@ -55,7 +55,7 @@ def avvia_sincronizzazione_automatica():
 
         try:
             print("🌐 Connessione a partner.snai.it...")
-            page.goto("https://snai.it", timeout=45000)
+            page.goto("https://parner.snai.it", timeout=45000)
             time.sleep(4)
             
             page.fill("input#username, input[name='username']", SNAI_USER)
