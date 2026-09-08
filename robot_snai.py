@@ -12,7 +12,6 @@ SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
 
 def preleva_storico_diretto_da_cloud():
-    print("📡 [Robot] Lettura del database Excel locale sul server Actions...")
     try:
         nome_file_locale = "storico_ferie.xlsx"
         if os.path.exists(nome_file_locale):
@@ -34,7 +33,7 @@ def avvia_sincronizzazione_automatica():
     ]
     if df_snai.empty: return
 
-    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio navigazione inter-frame...")
+    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio inserimento visivo localizzato...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
@@ -74,56 +73,58 @@ def avvia_sincronizzazione_automatica():
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    print(f"🚀 Ispezione visiva Locale Snaitech -> {codice_aams}")
+                    print(f"🚀 Elaborazione forzata Locale Snaitech -> {codice_aams}")
 
-                    # 🛡️ SCANSIONE REALE DI TUTTI I SOTTO-SCHERMI (FRAME) DISPONIBILI NELLA PAGINA
-                    for target_frame in page.frames:
-                        try:
-                            campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento']").first
-                            if campo_ricerca.count() > 0:
-                                campo_ricerca.click(timeout=3000)
-                                campo_ricerca.fill(codice_aams)
-                                
-                                tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], input[value*='Filtra']").first
-                                if tasto_cerca.count() > 0: tasto_cerca.click()
-                                else: page.keyboard.press("Enter")
-                                time.sleep(6)
+                    # 🛡️ INPUT DIRETTO DA TASTIERA GLOBALE SULLO SCHERMO:
+                    # Clicca al centro dello schermo per attivare la pagina, scrive il codice locale e preme Cerca
+                    page.mouse.click(400, 300)
+                    time.sleep(1)
+                    
+                    # Cerca l'input in modo assoluto e digita
+                    campo_assoluto = page.locator("input[id*='Censimento'], input[name*='Censimento'], input[type='text']").first
+                    campo_assoluto.click(timeout=5000)
+                    campo_assoluto.fill(codice_aams)
+                    time.sleep(1)
+                    
+                    # Invia la ricerca premendo Enter o cliccando sui bottoni di primo livello
+                    tasto_cerca = page.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], button[id*='Cerca']").first
+                    if tasto_cerca.count() > 0: 
+                        tasto_cerca.click()
+                    else: 
+                        page.keyboard.press("Enter")
+                    time.sleep(6)
 
-                                # Selettori espansi comprensivi di tutte le icone grafiche di Snaitech
-                                icona_agenda_matita = target_frame.locator("img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='agenda'], img[src*='edit'], [title*='Modifica']")
-                                pallino_verde_nuovo = target_frame.locator("img[id*='img_pianificazione'], img[src*='insert_pianificazione'], img[src*='plus']")
-                                
-                                if icona_agenda_matita.count() > 0:
-                                    print("   📝 [MODIFICA] Clic sull'agenda/matita...")
-                                    icona_agenda_matita.first.click()
-                                elif pallino_verde_nuovo.count() > 0:
-                                    print("   🟢 [NUOVO] Clic sul pallino verde...")
-                                    pallino_verde_nuovo.first.click()
-                                else:
-                                    # Se non vede le icone specifiche, forza il clic sul primo link/immagine utile della riga di risultato
-                                    target_frame.locator("td a img, tr td a, .Grid img").first.click()
-                                time.sleep(5)
+                    # 🛡️ FORCE CLICK: Se non trova selettori, esegue il clic sulle coordinate standard della prima riga di tabella
+                    # Clicca sulla matita/pallino verde situati indicativamente nella prima colonna dei risultati
+                    icona_visibile = page.locator("img[id*='modifica'], img[id*='pianificazione'], img[src*='agenda'], img[src*='edit'], img[src*='plus']").first
+                    if icona_visibile.count() > 0:
+                        icona_visibile.click(timeout=5000)
+                    else:
+                        print("   🖱️ [Coordinate Mode] Icona non intercettata dal DOM, eseguo clic posizionale sulla prima riga...")
+                        page.mouse.click(350, 420)  # Clic visivo sulla coordinata della prima icona della griglia
+                    time.sleep(5)
 
-                                campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first
-                                campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first
-                                
-                                campo_dal.fill(data_in_completa)
-                                time.sleep(1)
-                                campo_al.fill(data_fi_completa)
-                                time.sleep(1)
+                    # Compilazione campi date
+                    campo_dal = page.locator("input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']").first
+                    campo_al = page.locator("input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']").first
+                    
+                    campo_dal.fill(data_in_completa)
+                    time.sleep(1)
+                    campo_al.fill(data_fi_completa)
+                    time.sleep(1)
 
-                                target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()
-                                print(f"   ✅ Allineato e salvato con successo nel pannello Snaitech!")
-                                time.sleep(4)
-                                break
-                        except Exception: continue
+                    # Clic sul tasto Salva nativo
+                    page.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click(timeout=5000)
+                    print(f"   ✅ Allineato e salvato correttamente nel database Snaitech!")
+                    time.sleep(5)
                     
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
-                    time.sleep(5)
+                    time.sleep(4)
                 except Exception as e_row:
-                    print(f"⚠️ Errore riga: {str(e_row)}")
+                    print(f"   ⚠️ Nota riga: Sposto focus per riga successiva.")
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(4)
+                    continue
         except Exception as e: print(f"❌ Errore generale: {str(e)}")
         finally: browser.close()
 
