@@ -16,17 +16,25 @@ CHIAVE_ACCESSO_GIT = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] Estrazione database Excel direttamente in RAM da GitHub...")
     try:
-        c_time = str(int(time.time() * 1000))
-        url_git = f"https://github.com{c_time}"
-        headers_diretti = {"Accept": "application/vnd.github.v3.raw", "User-Agent": "WinGaming-Cloud-App"}
+        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per lettera con tutti gli slash al loro posto
+        url_git = "https://github.com"
+        
+        headers_diretti = {
+            "Accept": "application/vnd.github.v3+raw", 
+            "User-Agent": "WinGaming-Cloud-App"
+        }
         if CHIAVE_ACCESSO_GIT:
             headers_diretti["Authorization"] = f"token {CHIAVE_ACCESSO_GIT}"
+            
         risposta = requests.get(url_git, headers=headers_diretti, timeout=15)
         if risposta.status_code == 200:
             return pd.read_excel(io.BytesIO(risposta.content)).fillna("")
+        else:
+            print(f"❌ Rifiuto GitHub. Codice stato: {risposta.status_code}")
     except Exception as e:
         print(f"⚠️ Errore di rete: {str(e)}")
     return pd.DataFrame()
+
 
 def genera_codice_otp_automatico():
     totp = pyotp.TOTP(CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", ""))
