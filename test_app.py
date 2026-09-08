@@ -204,15 +204,15 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def esegui_sincronizzazione_robot_snai():
-    st.info("🎯 DIAGNOSTICA TELECOMANDO - STEP 1: Lettura chiavi di sicurezza...")
+    # 🛡️ ESCA DI SCRITTURA: Cambiato il testo iniziale per costringere il Cloud a distruggere la cache fallimentare
+    st.info("🎯 TELECOMANDO CLOUD — Fase 1: Verifica credenziali d'ufficio...")
     try:
-        # Recupera il token sbloccato che gestisce già l'Excel dei ragazzi
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
-        st.write("📝 STEP 1a: Token di sicurezza intercettato correttamente in memoria.")
+        st.write("📝 Fase 1a: Gettone di sicurezza rintracciato in memoria.")
             
-        # 🛡️ FIX PERCORSO INTEGRALE RIGIDO: Scritto a mano lettera per lettera con tutti gli slash al loro posto
+        # 🛡️ INDIRIZZO STRADALE ESTESO E RIGIDO SCRITTO LETTERA PER LETTERA
         url_workflow = "https://github.com"
-        st.write(f"🔍 STEP 2: Indirizzo di rete del Workflow configurato -> `{url_workflow}`")
+        st.write(f"🔍 Fase 2: Indirizzo di rete del Workflow configurato -> `{url_workflow}`")
         
         headers_dispatch = {
             "Authorization": f"token {t_git}",
@@ -220,34 +220,32 @@ def esegui_sincronizzazione_robot_snai():
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Indica al server di attivare la branca principale (main) su cui risiede il robot
         payload_dispatch = {
             "ref": "main"
         }
         
-        # 🧪 STEP 3: Spedizione dell'impulso di accensione remota
-        st.info("🛰️ STEP 3: Invio l'impulso elettrico a GitHub per accendere il server virtuale...")
+        st.info("🛰️ Fase 3: Spedizione del segnale di innesco a GitHub Actions...")
         risposta_remota = requests.post(url_workflow, json=payload_dispatch, headers=headers_dispatch, timeout=10)
         
-        st.warning(f"📊 STEP 4: Il server di GitHub ha risposto con codice numerico {risposta_remota.status_code}")
+        st.warning(f"📊 Fase 4: Riscontro del server di automazione. Codice numerico -> {risposta_remota.status_code}")
         
-        # GitHub Actions restituisce lo Stato 204 quando accetta l'ordine e avvia Chrome
         if risposta_remota.status_code == 204:
-            st.success("🚀 STEP 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl server grafico si è acceso: l'inserimento con i clic reali su partner.snai.it è partito. Tra circa due minuti le ferie saranno salvate sul portale Snaitech.")
-            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
+            st.success("🚀 Fase 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl server esterno si è acceso correttamente ed ha avviato Chrome. Tra circa due minuti le ferie inserite saranno visibili sul portale Snaitech.")
+            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura...")
             time.sleep(10)
             return True
         else:
-            st.error(f"❌ STEP 5: Attivazione fallita. Contenuto errore server: {risposta_remota.text}")
-            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
+            st.error(f"❌ Fase 5: Attivazione respinta dal server. Dettaglio: {risposta_remota.text}")
+            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura...")
             time.sleep(10)
             return False
             
     except Exception as e_step:
-        st.error(f"💥 STEP FALLITO: Errore interno al programma -> {str(e_step)}")
-        st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura dei passaggi...")
+        st.error(f"💥 FASE FALLITA: Errore interno di sistema -> {str(e_step)}")
+        st.warning("⏱️ Schermo congelato per 10 secondi...")
         time.sleep(10)
         return False
+
 
 
 
