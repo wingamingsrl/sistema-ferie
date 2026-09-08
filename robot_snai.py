@@ -11,18 +11,13 @@ CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
 
-CHIAVE_ACCESSO_GIT = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
-
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] Lettura del database Excel locale sul server Actions...")
     try:
         nome_file_locale = "storico_ferie.xlsx"
         if os.path.exists(nome_file_locale):
             return pd.read_excel(nome_file_locale).fillna("")
-        else:
-            print(f"❌ File {nome_file_locale} non trovato sul server.")
-    except Exception as e:
-        print(f"⚠️ Errore lettura file: {str(e)}")
+    except Exception: pass
     return pd.DataFrame()
 
 def genera_codice_otp_automatico():
@@ -31,20 +26,15 @@ def genera_codice_otp_automatico():
 
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
-    if df_ferie.empty:
-        print("❌ Database vuoto o non accessibile.")
-        return
+    if df_ferie.empty: return
 
     df_snai = df_ferie[
         df_ferie["CONCESSIONARIO"].astype(str).str.lower().str.contains("snai|snaitech", regex=True) |
         df_ferie["NOME_LOCALE"].astype(str).str.lower().str.contains("snai", regex=True)
     ]
+    if df_snai.empty: return
 
-    if df_snai.empty:
-        print("✅ Nessun locale Snaitech attivo trovato nel registro.")
-        return
-
-    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome con MACCHINA FOTOGRAFICA...")
+    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio navigazione inter-frame...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
@@ -56,47 +46,22 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         try:
-            print("🌐 Connessione schermata a partner.snai.it...")
             page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
-            time.sleep(6)
-            
-            try: page.mouse.click(100, 100)
-            except Exception: pass
-            time.sleep(2)
-            
-            print("📝 Inserimento credenziali sul portale...")
-            input_user = page.locator("input[id*='username'], input[name='username'], input[type='text']").first
-            input_user.click(timeout=15000)
-            input_user.fill(SNAI_USER)
-            time.sleep(1)
-            
-            input_pass = page.locator("input#password, input[name='password'], input[type='password']").first
-            input_pass.click(timeout=15000)
-            input_pass.fill(SNAI_PASS)
-            time.sleep(1)
-            
-            print("🚀 Invio moduli di accesso...")
-            page.locator("button[type='submit'], input[type='submit'], .btn-login, .button").first.click()
             time.sleep(5)
             
-            print("⏳ Attesa del countdown di sicurezza Snaitech (11 secondi)...")
+            page.locator("input[id*='username'], input[name='username'], input[type='text']").first.fill(SNAI_USER)
+            page.locator("input#password, input[name='password'], input[type='password']").first.fill(SNAI_PASS)
+            page.locator("button[type='submit'], input[type='submit'], .btn-login").first.click()
             time.sleep(11)
+            
             try: page.evaluate("document.querySelectorAll('.modal, .modal-backdrop, .fade.in').forEach(el => el.remove());")
             except Exception: pass
-            time.sleep(2)
 
             codice_totp = genera_codice_otp_automatico()
-            print(f"🔑 Codice OTP calcolato -> {codice_totp}")
-            
-            input_token = page.locator("input[id*='otp']:not([type='hidden']), input[name*='otp']:not([type='hidden']), input[id*='code']:not([type='hidden']), input[type='text']:not([type='hidden'])").first
-            input_token.click(timeout=15000)
+            input_token = page.locator("input[id*='otp']:not([type='hidden']), input[name*='otp']:not([type='hidden']), input[type='text']").first
             input_token.fill(str(codice_totp))
-            time.sleep(2)
-            
-            print("⌨️ Pressione del tasto Enter da tastiera...")
+            time.sleep(1)
             page.keyboard.press("Enter")
-            
-            print("⏳ Caricamento area riservata partner.snai.it (15 secondi)...")
             time.sleep(15)
             
             print("📬 Spostamento sulla pagina degli Esercizi censiti...")
@@ -111,77 +76,56 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 Ispezione visiva Locale Snaitech -> {codice_aams}")
 
-                    target_frame = page
-                    for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input").count() > 0:
-                            target_frame = f
-                            break
+                    # 🛡️ SCANSIONE REALE DI TUTTI I SOTTO-SCHERMI (FRAME) DISPONIBILI NELLA PAGINA
+                    for target_frame in page.frames:
+                        try:
+                            campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento']").first
+                            if campo_ricerca.count() > 0:
+                                campo_ricerca.click(timeout=3000)
+                                campo_ricerca.fill(codice_aams)
+                                
+                                tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], input[value*='Filtra']").first
+                                if tasto_cerca.count() > 0: tasto_cerca.click()
+                                else: page.keyboard.press("Enter")
+                                time.sleep(6)
 
-                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[placeholder*='Censimento'], input[type='text']").first
-                    campo_ricerca.click(timeout=15000)
-                    campo_ricerca.fill(codice_aams)
-                    time.sleep(2)
-                    
-                    tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], button[id*='Cerca'], input[value*='Filtra'], input[value*='Cerca']").first
-                    if tasto_cerca.count() > 0:
-                        tasto_cerca.click()
-                    else:
-                        page.keyboard.press("Enter")
-                    
-                    print("   ⏳ Attesa caricamento riga esercizio (8 secondi)...")
-                    time.sleep(8)
+                                # Selettori espansi comprensivi di tutte le icone grafiche di Snaitech
+                                icona_agenda_matita = target_frame.locator("img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='agenda'], img[src*='edit'], [title*='Modifica']")
+                                pallino_verde_nuovo = target_frame.locator("img[id*='img_pianificazione'], img[src*='insert_pianificazione'], img[src*='plus']")
+                                
+                                if icona_agenda_matita.count() > 0:
+                                    print("   📝 [MODIFICA] Clic sull'agenda/matita...")
+                                    icona_agenda_matita.first.click()
+                                elif pallino_verde_nuovo.count() > 0:
+                                    print("   🟢 [NUOVO] Clic sul pallino verde...")
+                                    pallino_verde_nuovo.first.click()
+                                else:
+                                    # Se non vede le icone specifiche, forza il clic sul primo link/immagine utile della riga di risultato
+                                    target_frame.locator("td a img, tr td a, .Grid img").first.click()
+                                time.sleep(5)
 
-                    # 📸 SCATTO FOTOGRAFICO DI EMERGENZA: Salva l'immagine esatta di cosa vede il robot a schermo
-                    page.screenshot(path="errore_tabella.png")
-                    print("   📸 [FOTO SCATTATA] Ho salvato l'immagine dello schermo come 'errore_tabella.png'!")
+                                campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first
+                                campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first
+                                
+                                campo_dal.fill(data_in_completa)
+                                time.sleep(1)
+                                campo_al.fill(data_fi_completa)
+                                time.sleep(1)
 
-                    icona_agenda_matita = "img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='agenda'], img[src*='edit'], [title*='Modifica'], img[id*='Pianificazione']"
-                    pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione'], img[src*='plus']"
-                    
-                    if target_frame.locator(icona_agenda_matita).count() > 0:
-                        print("   📝 [AGENDA/MATITA DETECTED] Chiusura già presente. Clic per entrare in modifica...")
-                        target_frame.locator(icona_agenda_matita).first.click(timeout=10000)
-                    elif target_frame.locator(pallino_verde_nuovo).count() > 0:
-                        print("   🟢 [PALLINO VERDE DETECTED] Nuovo locale vuoto. Clic per inserire da zero...")
-                        target_frame.locator(pallino_verde_nuovo).first.click(timeout=10000)
-                    else:
-                        print("   ⚠️ Icona specifica non vista, salto alla riga successiva.")
-                        continue
-                    time.sleep(6)
-
-                    campo_dal = "input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']"
-                    campo_al = "input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']"
-                    
-                    valore_attuale_dal = target_frame.locator(campo_dal).first.input_value() if target_frame.locator(campo_dal).count() > 0 else ""
-                    if valore_attuale_dal == data_in_completa:
-                        print(f"   ℹ nudge ️Le date inserite coincidono già. Salto.")
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
-                        time.sleep(5)
-                        continue
-
-                    target_frame.locator(campo_dal).first.fill(data_in_completa)
-                    time.sleep(1)
-                    target_frame.locator(campo_al).first.fill(data_fi_completa)
-                    time.sleep(1)
-
-                    tasto_salva = "input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']"
-                    target_frame.locator(tasto_salva).first.click(timeout=10000)
-                    print(f"   ✅ Allineato e salvato correttamente nel database Snaitech!")
-                    time.sleep(5)
+                                target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()
+                                print(f"   ✅ Allineato e salvato con successo nel pannello Snaitech!")
+                                time.sleep(4)
+                                break
+                        except Exception: continue
                     
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(5)
-                    
                 except Exception as e_row:
                     print(f"⚠️ Errore riga: {str(e_row)}")
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
-                    time.sleep(5)
-                    continue
-        except Exception as e:
-            print(f"❌ Errore generale di navigazione: {str(e)}")
-        finally:
-            browser.close()
+                    time.sleep(4)
+        except Exception as e: print(f"❌ Errore generale: {str(e)}")
+        finally: browser.close()
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
