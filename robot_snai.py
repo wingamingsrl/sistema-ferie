@@ -65,12 +65,12 @@ def avvia_sincronizzazione_automatica():
             time.sleep(2)
             
             print("📝 Inserimento credenziali sul portale...")
-            input_user = page.locator("input#username, input[name='username'], input[type='text']").first
+            input_user = page.locator("input[id*='username'], input[name='username'], input[type='text']").first
             input_user.click(timeout=15000)
             input_user.fill(SNAI_USER)
             time.sleep(1)
             
-            input_pass = page.locator("input#password, input[name='password'], input[type='password']").first
+            input_pass = page.locator("input[id*='password'], input[name='password'], input[type='password']").first
             input_pass.click(timeout=15000)
             input_pass.fill(SNAI_PASS)
             time.sleep(1)
@@ -93,9 +93,9 @@ def avvia_sincronizzazione_automatica():
             input_token.fill(str(codice_totp))
             time.sleep(2)
             
-            print("📤 Pressione del pulsante di convalida OTP...")
-            # 🛡️ PILOTAGGIO PULSANTE BLINDATO: Cerca btnInvia, btnAccedi, submit o qualsiasi bottone attivo nella scheda token
-            page.locator("input[id*='Invia'], input[id*='Accedi'], input[id*='btn'], button:has-text('Invia'), button:has-text('Accedi'), input[type='submit'], button[type='submit']").first.click(timeout=15000)
+            print("⌨️ [INVIO AUTOMATICO] Pressione del tasto Enter da tastiera...")
+            # 🛡️ FIX DEFINITIVO: Simula la pressione dell'invio fisico sulla casella di testo dell'OTP, superando i blocchi dei bottoni
+            page.keyboard.press("Enter")
             
             print("⏳ Caricamento area riservata partner.snai.it (15 secondi)...")
             time.sleep(15)
