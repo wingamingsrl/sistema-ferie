@@ -57,7 +57,7 @@ def avvia_sincronizzazione_automatica():
 
         try:
             print("🌐 Connessione schermata a partner.snai.it...")
-            page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
+            page.goto("https://snai.it", wait_until="networkidle", timeout=60000)
             time.sleep(6)
             
             try: page.mouse.click(100, 100)
@@ -93,15 +93,14 @@ def avvia_sincronizzazione_automatica():
             input_token.fill(str(codice_totp))
             time.sleep(2)
             
-            print("⌨️ [INVIO AUTOMATICO] Pressione del tasto Enter da tastiera...")
-            # 🛡️ FIX DEFINITIVO: Simula la pressione dell'invio fisico sulla casella di testo dell'OTP, superando i blocchi dei bottoni
+            print("⌨️ Pressione del tasto Enter da tastiera...")
             page.keyboard.press("Enter")
             
             print("⏳ Caricamento area riservata partner.snai.it (15 secondi)...")
             time.sleep(15)
             
             print("📬 Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle", timeout=50000)
+            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle", timeout=50000)
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -112,16 +111,30 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 Ispezione visiva Locale Snaitech -> {codice_aams}")
 
+                    # 🛡️ ISPEZIONE FRAME: Cerca se gli input sono dentro un sotto-schermo Microsoft
                     target_frame = page
-                    if len(page.frames) > 1: target_frame = page.frames
+                    for f in page.frames:
+                        if "Esercizi" in f.url or f.locator("input[id*='Censimento'], input[id*='txtCodice']").count() > 0:
+                            target_frame = f
+                            break
 
-                    campo_ricerca = "input[id*='Censimento'], input[id*='txtCodice'], input[name*='Codice']"
-                    if target_frame.locator(campo_ricerca).count() > 0:
-                        target_frame.locator(campo_ricerca).first.fill(codice_aams)
+                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[id*='txtCodice'], input[id*='Codice'], input[name*='Codice']").first
+                    campo_ricerca.click(timeout=10000)
+                    campo_ricerca.fill(codice_aams)
+                    time.sleep(1)
+                    
+                    # 🛡️ PRESSIONE TASTO CERCA REALE: Forza il clic sul bottone Filtra/Cerca di Snaitech
+                    tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], button[id*='Cerca'], input[value*='Filtra']").first
+                    if tasto_cerca.count() > 0:
+                        tasto_cerca.click()
+                    else:
                         target_frame.keyboard.press("Enter")
-                        time.sleep(6)
+                    
+                    # Pausa obbligatoria per far comparire la riga a schermo
+                    print("   ⏳ Attesa caricamento riga esercizio (5 secondi)...")
+                    time.sleep(5)
 
-                    icona_agenda_matita = "img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='agenda'], img[src*='edit'], [title*='Modifica']"
+                    icona_agenda_matita = "img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='agenda'], img[src*='edit'], [title*='Modifica'], img[id*='Pianificazione']"
                     pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione'], img[src*='plus']"
                     
                     if target_frame.locator(icona_agenda_matita).count() > 0:
@@ -131,8 +144,8 @@ def avvia_sincronizzazione_automatica():
                         print("   🟢 [PALLINO VERDE DETECTED] Nuovo locale vuoto. Clic per inserire da zero...")
                         target_frame.locator(pallino_verde_nuovo).first.click(timeout=10000)
                     else:
-                        print("   ⚠️ Icona non identificata, tento il clic d'emergenza sulla prima riga...")
-                        target_frame.locator("td img").first.click(timeout=10000)
+                        print("   ⚠️ Icona specifica non vista, tento il clic sulla prima immagine utile della riga...")
+                        target_frame.locator("td img, tr img, table img").first.click(timeout=10000)
                     time.sleep(6)
 
                     campo_dal = "input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']"
@@ -141,7 +154,7 @@ def avvia_sincronizzazione_automatica():
                     valore_attuale_dal = target_frame.locator(campo_dal).first.input_value() if target_frame.locator(campo_dal).count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
                         print(f"   ℹ️ Le date inserite coincidono già ({data_in_completa}). Salto il salvataggio per sicurezza.")
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
+                        page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                         time.sleep(5)
                         continue
 
@@ -155,12 +168,12 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ Allineato e salvato correttamente nel database Snaitech!")
                     time.sleep(5)
                     
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
+                    page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(5)
                     
                 except Exception as e_row:
                     print(f"⚠️ Errore riga: {str(e_row)}")
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
+                    page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(5)
                     continue
         except Exception as e:
@@ -170,3 +183,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
