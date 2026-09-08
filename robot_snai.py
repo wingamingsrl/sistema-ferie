@@ -44,7 +44,7 @@ def avvia_sincronizzazione_automatica():
         print("✅ Nessun locale Snaitech attivo trovato nel registro.")
         return
 
-    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome con SCHERMATURA ANTI-BOT...")
+    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome con MACCHINA FOTOGRAFICA...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
@@ -93,7 +93,7 @@ def avvia_sincronizzazione_automatica():
             input_token.fill(str(codice_totp))
             time.sleep(2)
             
-            print("⌨专 Pressione del tasto Enter da tastiera...")
+            print("⌨️ Pressione del tasto Enter da tastiera...")
             page.keyboard.press("Enter")
             
             print("⏳ Caricamento area riservata partner.snai.it (15 secondi)...")
@@ -120,17 +120,20 @@ def avvia_sincronizzazione_automatica():
                     campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[placeholder*='Censimento'], input[type='text']").first
                     campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
-                    time.sleep(1)
+                    time.sleep(2)
                     
-                    # 🛡️ FIX TASTO CERCA CON TASTIERA GLOBALE CORRETTA
                     tasto_cerca = target_frame.locator("input[type='submit'][value*='Cerca'], input[id*='Cerca'], button[id*='Cerca'], input[value*='Filtra'], input[value*='Cerca']").first
                     if tasto_cerca.count() > 0:
                         tasto_cerca.click()
                     else:
                         page.keyboard.press("Enter")
                     
-                    print("   ⏳ Attesa caricamento riga esercizio (5 secondi)...")
-                    time.sleep(5)
+                    print("   ⏳ Attesa caricamento riga esercizio (8 secondi)...")
+                    time.sleep(8)
+
+                    # 📸 SCATTO FOTOGRAFICO DI EMERGENZA: Salva l'immagine esatta di cosa vede il robot a schermo
+                    page.screenshot(path="errore_tabella.png")
+                    print("   📸 [FOTO SCATTATA] Ho salvato l'immagine dello schermo come 'errore_tabella.png'!")
 
                     icona_agenda_matita = "img[id*='img_modifica'], img[id*='img_dettaglio'], img[src*='agenda'], img[src*='edit'], [title*='Modifica'], img[id*='Pianificazione']"
                     pallino_verde_nuovo = "img[id*='img_pianificazione'], img[src*='insert_pianificazione'], img[src*='plus']"
@@ -142,8 +145,8 @@ def avvia_sincronizzazione_automatica():
                         print("   🟢 [PALLINO VERDE DETECTED] Nuovo locale vuoto. Clic per inserire da zero...")
                         target_frame.locator(pallino_verde_nuovo).first.click(timeout=10000)
                     else:
-                        print("   ⚠️ Icona specifica non vista, tento il clic sulla prima immagine utile della riga...")
-                        target_frame.locator("td img, tr img, table img").first.click(timeout=10000)
+                        print("   ⚠️ Icona specifica non vista, salto alla riga successiva.")
+                        continue
                     time.sleep(6)
 
                     campo_dal = "input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']"
@@ -151,7 +154,7 @@ def avvia_sincronizzazione_automatica():
                     
                     valore_attuale_dal = target_frame.locator(campo_dal).first.input_value() if target_frame.locator(campo_dal).count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
-                        print(f"   ℹ️ Le date inserite coincidono già ({data_in_completa}). Salto il salvataggio per sicurezza.")
+                        print(f"   ℹ nudge ️Le date inserite coincidono già. Salto.")
                         page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                         time.sleep(5)
                         continue
@@ -181,3 +184,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
