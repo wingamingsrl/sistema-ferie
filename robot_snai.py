@@ -44,13 +44,10 @@ def avvia_sincronizzazione_automatica():
         print("✅ Nessun locale Snaitech attivo trovato nel registro.")
         return
 
-    print(f"🤖 Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome con SCHERMATURA ANTI-BOT...")
+    print(f"🤖 Rilevati {len(df_snai)} locales Snaitech. Avvio Chrome con SCHERMATURA ANTI-BOT...")
 
     with sync_playwright() as p:
-        # 🛡️ CONTROMISURA 1: headless=False attiva lo schermo grafico reale del server GitHub, aggirando i blocchi stupidi
         browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
-        
-        # 🛡️ CONTROMISURA 2: Inietta l'identità di un computer d'ufficio italiano Windows 10 per ingannare i firewall
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             locale="it-IT",
@@ -63,13 +60,11 @@ def avvia_sincronizzazione_automatica():
             page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
             time.sleep(6)
             
-            # Clicca sullo sfondo della pagina per attivare la sessione visiva
             try: page.mouse.click(100, 100)
             except Exception: pass
             time.sleep(2)
             
             print("📝 Inserimento credenziali sul portale...")
-            # 🛡️ CONTROMISURA 3: Cerca le caselle usando prima i tag espliciti 'input' e poi gli attributi flessibili
             input_user = page.locator("input#username, input[name='username'], input[type='text']").first
             input_user.click(timeout=15000)
             input_user.fill(SNAI_USER)
@@ -92,12 +87,14 @@ def avvia_sincronizzazione_automatica():
 
             codice_totp = genera_codice_otp_automatico()
             print(f"🔑 Codice OTP calcolato -> {codice_totp}")
-            input_token = page.locator("input[id*='token'], input[name*='token'], input[id*='otp'], input[name*='otp']").first
+            
+            # 🛡️ PUNTATORE OTP BLINDATO: Seleziona solo gli input visibili che contengono la parola 'otp' o 'code', escludendo i token nascosti
+            input_token = page.locator("input[id*='otp']:not([type='hidden']), input[name*='otp']:not([type='hidden']), input[id*='code']:not([type='hidden']), input[type='text']:not([type='hidden'])").first
             input_token.click(timeout=15000)
             input_token.fill(str(codice_totp))
             time.sleep(1)
             
-            page.locator("input[id*='Invia'], button:has-text('Invia'), input[type='submit']").first.click()
+            page.locator("input[id*='Invia'], button:has-text('Invia'), input[type='submit'], button[type='submit']").first.click()
             print("⏳ Caricamento area riservata (15 secondi)...")
             time.sleep(15)
             
