@@ -131,7 +131,7 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            # 🛡️ ROTTA DIRETTA PROTETTA: Forza il caricamento della pagina esercizi mantenendo vivi i cookie del login
+            # 🛡️ FIX ASSOLUTO DI MANUELA: Ripristinato l'URL partner.snai.it per non uscire dalla sessione protetta
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
@@ -148,7 +148,7 @@ def avvia_sincronizzazione_automatica():
                     # Ispeziona tutti i frame interni alla ricerca della tabella protetta di Snaitech
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='Censimento']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
                             target_frame = f
                             break
 
@@ -218,4 +218,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
