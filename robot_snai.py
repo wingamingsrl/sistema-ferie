@@ -15,7 +15,6 @@ CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
 
-
 # =====================================================================================
 # BLOCCO 2: MOTORE DI LETTURA LIVE IN MEMORIA RAM DEL REPOSITORY EXCEL LOCALE
 # =====================================================================================
@@ -26,10 +25,7 @@ def preleva_storico_diretto_da_cloud():
         if os.path.exists(nome_file_locale):
             print("✅ [Robot] STEP 1a: Database Excel intercettato con successo!")
             return pd.read_excel(nome_file_locale).fillna("")
-        else:
-            print(f"❌ [Robot] STEP 1b: File {nome_file_locale} non trovato sul server.")
-    except Exception as e_file:
-        print(f"⚠️ [Robot] STEP 1c: Errore lettura file Excel: {str(e_file)}")
+    except Exception: pass
     return pd.DataFrame()
 
 def genera_codice_otp_automatico():
@@ -38,24 +34,19 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 # =====================================================================================
-# BLOCCO 3: AVVIO CHROME CON CAMUFFAMENTO ED IMMISSIONE CREDENZIALI
+# BLOCCO 3: AVVIO CHROME CON SCHERMATURA ANTI-BOT ED INSERIMENTO CREDENZIALI
 # =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
-    if df_ferie.empty:
-        print("❌ [Robot] STEP 2: Il database delle ferie è vuoto o bloccato.")
-        return
+    if df_ferie.empty: return
 
     df_snai = df_ferie[
         df_ferie["CONCESSIONARIO"].astype(str).str.lower().str.contains("snai|snaitech", regex=True) |
         df_ferie["NOME_LOCALE"].astype(str).str.lower().str.contains("snai", regex=True)
     ]
+    if df_snai.empty: return
 
-    if df_snai.empty:
-        print("✅ [Robot] STEP 2a: Nessun locale Snaitech attivo nel registro. Fine.")
-        return
-
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome Camuffato...")
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome Schermato...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=[
@@ -74,22 +65,21 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it con tolleranza di rete...")
+            print("🌐 [Robot] STEP 4: Connessione schermata a partner.snai.it...")
             page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
             time.sleep(6)
             
-            try: page.mouse.move(200, 200)
+            try: page.mouse.move(150, 150)
             except Exception: pass
-            time.sleep(2)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
             campo_user = page.locator("input#username, input[name='username'], input[type='text']").first
-            campo_user.click(timeout=20000)
+            campo_user.click(timeout=15000)
             campo_user.fill(SNAI_USER)
             time.sleep(1)
             
             campo_pass = page.locator("input#password, input[name='password'], input[type='password']").first
-            campo_pass.click(timeout=20000)
+            campo_pass.click(timeout=15000)
             campo_pass.fill(SNAI_PASS)
             time.sleep(1)
             
@@ -103,16 +93,14 @@ def avvia_sincronizzazione_automatica():
             try:
                 page.evaluate("""
                     document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"], .fade.in').forEach(el => el.remove());
-                    document.body.classList.remove('modal-open');
-                    document.body.style.overflow = 'auto';
                 """)
-                print("✅ [Robot] STEP 4d: Codice pop-up eliminato con successo!")
+                print("✅ [Robot] STEP 4d: Codice pop-up eliminato.")
             except Exception: pass
             time.sleep(2)
 
             print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP...")
             codice_totp = genera_codice_otp_automatico()
-            print(f"📌 [Robot] STEP 4f: Codice generato inviato a schermo: {codice_totp}")
+            print(f"📌 [Robot] STEP 4f: Codice generated inviato a schermo: {codice_totp}")
             
             campo_token = page.locator("input#token, input[name='token'], input[name='otp'], input[type='text']").first
             campo_token.click(timeout=15000)
@@ -131,8 +119,7 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            # 🛡️ FIX ASSOLUTO DI MANUELA: Ripristinato l'URL partner.snai.it per non uscire dalla sessione protetta
-            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
 
@@ -145,7 +132,6 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # Ispeziona tutti i frame interni alla ricerca della tabella protetta di Snaitech
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
@@ -153,13 +139,12 @@ def avvia_sincronizzazione_automatica():
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ PUNTATORE DI MANUELA BLINDATO: Cerca l'input esatto del Codice Censimento
-                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
+                    # 🛡️ IL CAPOLAVORO DI MANUELA: Puntatore laser sull'ID esatto e reale estratto dal codice della pagina
+                    campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio'], input[id*='txtCodiceCensimento']").first
                     campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    # Clicca sul pulsante Ricerca reale estratto dal codice sorgente della foto
                     tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[value='Filtra'], input[id*='Ricerca']").first
                     tasto_ricerca.click(timeout=10000)
                     
@@ -169,18 +154,17 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 # BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA) ALLINEATO ALL'HTML DI MANUELA E CHIUSURA
 # =====================================================================================
-                    # Mappa sensoriale HTML certificata dai frammenti sorgente di Manuela
                     icona_nuovo_inserimento = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
                     if icona_modifica_esistente.count() > 0:
-                        print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE DETECTED] Chiusura esistente! Clic sull'icona di Modifica...")
+                        print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE DETECTED] Clic sull'icona di Modifica...")
                         icona_modifica_esistente.click(timeout=10000)
                     elif icona_nuovo_inserimento.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Nuovo locale vuoto, inserisco da zero...")
+                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Nuovo locale vuoto, inserisco...")
                         icona_nuovo_inserimento.click(timeout=10000)
                     else:
-                        print("   ⚠️ [Robot] STEP 8b: Icone specifiche non isolate dal DOM. Tento il clic sulla cella td Microsoft...")
+                        print("   ⚠️ [Robot] STEP 8b: Icone specifiche non isolate dal DOM. Tento il clic td...")
                         target_frame.locator("td[onclick*='Pianificazione']").first.click(timeout=10000)
                     time.sleep(6)
 
@@ -188,7 +172,6 @@ def avvia_sincronizzazione_automatica():
                     campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first
                     campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first
                     
-                    # Controlla se il valore inserito coincide già per non fare salvataggi a vuoto
                     valore_attuale_dal = campo_dal.input_value() if campo_dal.count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
                         print(f"   ℹ️ [Robot] STEP 9a: Le date ({data_in_completa}) coincidono già sul portale. Salto.")
@@ -200,8 +183,7 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(1)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
-                    target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()
-                    
+                    target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()                
                     print(f"✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo nel database Snaitech!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
