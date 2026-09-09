@@ -135,11 +135,10 @@ def carica_database_locale():
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
     if file_modificato_pulizia and not st.session_state.get("congelamento_sincro_attivo", False):
-            try:
+       try:
         push_excel_su_github(df_s)
     except Exception as e_push_init:
         st.warning("⚠️ Sincronizzazione iniziale in background in coda...")
-
         
     return df_l, df_t, df_s
 
