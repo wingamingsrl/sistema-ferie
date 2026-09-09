@@ -127,7 +127,6 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
             print("----------------------------------------------------------------------")
 
-
 # =====================================================================================
 # BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
@@ -219,3 +218,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
