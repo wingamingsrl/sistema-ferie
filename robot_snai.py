@@ -104,11 +104,11 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner./secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
+            page.goto("https://patner.snai.it", wait_until="load", timeout=40000)
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_errows():
+            for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
@@ -119,18 +119,18 @@ def avvia_sincronizzazione_automatica():
 
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0 or f.locator("input[id*='Censimento']").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ IL CAPOLAVORO DI MANUELA: Puntatore laser sull'ID esatto e reale estratto dal codice della pagina
-                    campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio'], input[id*='txtCodiceCensimento']").first
+                    # Puntatore laser sul campo esatto fornito da Manuela
+                    campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio']").first
                     campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[value='Filtra'], input[id*='Ricerca']").first
+                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca']").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
