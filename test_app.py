@@ -134,10 +134,15 @@ def carica_database_locale():
         
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
+    # Blocco finale corretto ed allineato al millimetro
     if file_modificato_pulizia and not st.session_state.get("congelamento_sincro_attivo", False):
-          push_excel_su_github(df_s)
+        try:
+            push_excel_su_github(df_s)
+        except Exception:
+            pass
   
     return df_l, df_t, df_s
+
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
