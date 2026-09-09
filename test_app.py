@@ -138,7 +138,8 @@ def carica_database_locale():
            push_excel_su_github(df_s)   
     return df_l, df_t, df_s
     
-df_locali, df_tecnici, df_storico_file = base_locale()
+df_locali, df_tecnici, df_storico_file = carica_da_base_locale()
+
 
 if "storico_cloud" not in st.session_state:
     st.session_state.storico_cloud = df_storico_file.to_dict('records')
