@@ -129,17 +129,12 @@ def avvia_sincronizzazione_automatica():
 
 
 # =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE MENU ANAGRAFICA E FILTRAGGIO CODICI CENSIMENTO
+# BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
-            print("📦 [Robot] STEP 6: Apertura del menu Anagrafica Locali...")
-            # 🛡️ BLINDATURA DI SESSONE: Clicca sul menu reale per mantenere attiva la sessione senza subire espulsioni
-            page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), a:has-text('Anagrafica')").first.click(timeout=25000)
-            print("   ✅ [Robot] STEP 6a: Clic sul menu principale eseguito con successo.")
-            time.sleep(5)
-            
-            # Entra nel sotto-menu specifico degli Esercizi per far caricare la griglia
-            page.locator("a:has-text('Esercizi'), span:has-text('Esercizi'), [id*='btnMnuItem']").first.click(timeout=15000)
-            print("   ⏳ [Robot] STEP 6b: Attesa stabilizzazione caricamento griglia Microsoft (10 secondi)...")
+            print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
+            # 🛡️ ROTTA DIRETTA PROTETTA: Forza il caricamento della pagina esercizi mantenendo vivi i cookie del login
+            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
+            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -154,40 +149,36 @@ def avvia_sincronizzazione_automatica():
                     # Ispeziona tutti i frame interni alla ricerca della tabella protetta di Snaitech
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='Censimento']").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ FIX PUNTATORE DI MANUELA: Cerca l'input abbinato alla dicitura esatta di portale 'Codice Censimento'
-                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[placeholder*='Censimento']").first
+                    # 🛡️ PUNTATORE DI MANUELA BLINDATO: Cerca l'input esatto del Codice Censimento
+                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
                     campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    # Clicca sul pulsante Ricerca reale estratto dal codice sorgente
+                    # Clicca sul pulsante Ricerca reale estratto dal codice sorgente della foto
                     tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[value='Filtra'], input[id*='Ricerca']").first
-                    if tasto_ricerca.count() > 0:
-                        tasto_ricerca.click()
-                    else:
-                        page.keyboard.press("Enter")
-                        
+                    tasto_ricerca.click(timeout=10000)
+                    
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
                     time.sleep(6)
-
 
 # =====================================================================================
 # BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA) ALLINEATO ALL'HTML DI MANUELA E CHIUSURA
 # =====================================================================================
-                    # 🛡️ FIX ASSOLUTO: Puntatori millimetrici estratti direttamente dal codice HTML di Manuela
+                    # Mappa sensoriale HTML certificata dai frammenti sorgente di Manuela
                     icona_nuovo_inserimento = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
                     if icona_modifica_esistente.count() > 0:
-                        print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE DETECTED] Clic sull'icona di Modifica...")
+                        print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE DETECTED] Chiusura esistente! Clic sull'icona di Modifica...")
                         icona_modifica_esistente.click(timeout=10000)
                     elif icona_nuovo_inserimento.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Clic sul pulsante verde '+' estratto da Manuela...")
+                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Nuovo locale vuoto, inserisco da zero...")
                         icona_nuovo_inserimento.click(timeout=10000)
                     else:
                         print("   ⚠️ [Robot] STEP 8b: Icone specifiche non isolate dal DOM. Tento il clic sulla cella td Microsoft...")
@@ -198,6 +189,7 @@ def avvia_sincronizzazione_automatica():
                     campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first
                     campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first
                     
+                    # Controlla se il valore inserito coincide già per non fare salvataggi a vuoto
                     valore_attuale_dal = campo_dal.input_value() if campo_dal.count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
                         print(f"   ℹ️ [Robot] STEP 9a: Le date ({data_in_completa}) coincidono già sul portale. Salto.")
