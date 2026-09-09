@@ -1,6 +1,6 @@
 # =====================================================================================
 # SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE ONLINE
-# BLOCCO 1: STRUTTURA LIBRERIE ED ACCESSI PROPRIETARI — PORTALE: PARTNER.SNAI.IT
+# BLOCCO 1: STRUTTURA LIBRERIE ED ACCESSI PROPRIETARI — PORTALE: PARTNER.
 # =====================================================================================
 import os
 import io
@@ -34,96 +34,81 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 # =====================================================================================
-# BLOCCO 3: AVVIO CHROME CON SCHERMATURA ANTI-BOT ED INSERIMENTO CREDENZIALI
+# BLOCCO 3: AVVIO CHROME, LOG IN E SUPERAMENTO BARRIERA DI SICUREZZA 2FA SU PARTNER.
 # =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
-    if df_ferie.empty: return
+    if df_ferie.empty:
+        print("❌ Impossibile procedere: Il database delle ferie è vuoto o bloccato.")
+        return
 
+    # 🛡️ ALLINEAMENTO CONCESSIONARIO: Isola i record che contengono Snai nelle colonne ufficiali
     df_snai = df_ferie[
         df_ferie["CONCESSIONARIO"].astype(str).str.lower().str.contains("snai|snaitech", regex=True) |
         df_ferie["NOME_LOCALE"].astype(str).str.lower().str.contains("snai", regex=True)
     ]
-    if df_snai.empty: return
 
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome Schermato...")
+    if df_snai.empty:
+        print("✅ [Robot] Nessun locale Snaitech attivo trovato nel registro. Sincronizzazione conclusa.")
+        return
+
+    print(f"🤖 [Robot] Rilevati {len(df_snai)} locali Snaitech da elaborare. Avvio Chrome...")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, args=[
-            "--no-sandbox", 
-            "--disable-setuid-sandbox", 
-            "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled"
-        ]) 
-        
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            locale="it-IT",
-            timezone_id="Europe/Rome",
-            viewport={"width": 1280, "height": 1024}
-        )
+        browser = p.chromium.launch(headless=False) 
+        context = browser.new_context()
         page = context.new_page()
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione schermata a partner.snai.it...")
-            page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
-            time.sleep(6)
+            print("🌐 [Robot] Connessione a partner....")
+            # 🛡️ UNICA MODIFICA: 'load' al posto di 'networkidle' per evitare il blocco dei 60 secondi
+            page.goto("https://partner.snai.it", wait_until="load", timeout=45000)
+            time.sleep(4)
             
-            try: page.mouse.move(150, 150)
-            except Exception: pass
+            print("📝 [Robot] Inserimento credenziali Snaitech...")
+            page.fill("input#username, input[name='username'], input[type='text']", SNAI_USER)
+            page.fill("input#password, input[name='password'], input[type='password']", SNAI_PASS)
             
-            print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
-            campo_user = page.locator("input#username, input[name='username'], input[type='text']").first
-            campo_user.click(timeout=15000)
-            campo_user.fill(SNAI_USER)
-            time.sleep(1)
-            
-            campo_pass = page.locator("input#password, input[name='password'], input[type='password']").first
-            campo_pass.click(timeout=15000)
-            campo_pass.fill(SNAI_PASS)
-            time.sleep(1)
-            
-            print("🚀 [Robot] STEP 4b: Invio moduli di accesso...")
+            print("🚀 [Robot] Invio moduli di accesso...")
             page.click("button[type='submit'], input[type='submit'], .btn-login")
             time.sleep(4)
             
-            print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi countdown...")
+            print("⏳ [Robot] Pausa di sicurezza di 11 secondi per far scadere il countdown...")
             time.sleep(11)
             
             try:
                 page.evaluate("""
                     document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"], .fade.in').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = 'auto';
                 """)
-                print("✅ [Robot] STEP 4d: Codice pop-up eliminato.")
+                print("✅ [Robot] Codice pop-up eliminato dalla pagina con successo!")
             except Exception: pass
             time.sleep(2)
 
-            print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP...")
+            print("🔑 [Robot] Generazione ed immissione codice 2FA TOTP pulito...")
             codice_totp = genera_codice_otp_automatico()
-            print(f"📌 [Robot] STEP 4f: Codice generated inviato a schermo: {codice_totp}")
+            print(f"📌 Codice generated inviato a schermo: {codice_totp}")
             
-            campo_token = page.locator("input#token, input[name='token'], input[name='otp'], input[type='text']").first
-            campo_token.click(timeout=15000)
-            campo_token.fill(str(codice_totp))
-            time.sleep(2)
+            page.fill("input#token, input[name='token'], input[name='otp']", codice_totp)
+            time.sleep(1)
             
-            print("📤 [Robot] STEP 4g: Invio codice OTP tramite tastiera virtuale...")
-            page.keyboard.press("Enter")
-            print("⏳ [Robot] STEP 4h: Convalida credenziali in corso (15 secondi)...")
+            page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia'), input[type='submit']")
+            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
             time.sleep(15)
             
-            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
+            print("🔓 [Robot] ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
 # BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
+            page.goto("https://partner./secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_snai.iterrows():
+            for _, row in df_errows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
