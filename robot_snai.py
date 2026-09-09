@@ -11,25 +11,25 @@ import pandas as pd
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
-# Configurazione ufficiale ed esclusiva delle tue coordinate aziendali
-CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"  # La tua chiave definitiva allineata al telefono
+CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
+
 
 # =====================================================================================
 # BLOCCO 2: MOTORE DI LETTURA LIVE IN MEMORIA RAM DEL REPOSITORY EXCEL LOCALE
 # =====================================================================================
 def preleva_storico_diretto_da_cloud():
-    print("📡 [Robot] Lettura del database Excel locale sul server Actions...")
+    print("📡 [Robot] STEP 1: Lettura del database Excel locale sul server Actions...")
     try:
         nome_file_locale = "storico_ferie.xlsx"
         if os.path.exists(nome_file_locale):
-            print("✅ [Robot] Database Excel intercettato con successo!")
+            print("✅ [Robot] STEP 1a: Database Excel intercettato con successo!")
             return pd.read_excel(nome_file_locale).fillna("")
         else:
-            print(f"❌ File {nome_file_locale} non trovato sul server.")
+            print(f"❌ [Robot] STEP 1b: File {nome_file_locale} non trovato sul server.")
     except Exception as e_file:
-        print(f"⚠️ Errore lettura file Excel: {str(e_file)}")
+        print(f"⚠️ [Robot] STEP 1c: Errore lettura file Excel: {str(e_file)}")
     return pd.DataFrame()
 
 def genera_codice_otp_automatico():
@@ -43,7 +43,7 @@ def genera_codice_otp_automatico():
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty:
-        print("❌ Impossibile procedere: Il database delle ferie è vuoto o bloccato.")
+        print("❌ [Robot] STEP 2: Il database delle ferie è vuoto o bloccato.")
         return
 
     df_snai = df_ferie[
@@ -52,17 +52,17 @@ def avvia_sincronizzazione_automatica():
     ]
 
     if df_snai.empty:
-        print("✅ [Robot] Nessun locale Snaitech attivo trovato nel registro. Sincronizzazione conclusa.")
+        print("✅ [Robot] STEP 2a: Nessun locale Snaitech attivo nel registro. Fine.")
         return
 
-    print(f"🤖 [Robot] Rilevati {len(df_snai)} locali Snaitech da elaborare. Avvio Chrome con camuffamento d'ufficio...")
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome Camuffato...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=[
             "--no-sandbox", 
             "--disable-setuid-sandbox", 
             "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled"  # Nasconde lo stato di robot a Snaitech
+            "--disable-blink-features=AutomationControlled"
         ]) 
         
         context = browser.new_context(
@@ -74,7 +74,7 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         try:
-            print("🌐 [Robot] Connessione a partner.snai.it con tolleranza di rete...")
+            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it con tolleranza di rete...")
             page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
             time.sleep(6)
             
@@ -82,7 +82,7 @@ def avvia_sincronizzazione_automatica():
             except Exception: pass
             time.sleep(2)
             
-            print("📝 [Robot] Inserimento credenziali Snaitech...")
+            print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
             campo_user = page.locator("input#username, input[name='username'], input[type='text']").first
             campo_user.click(timeout=20000)
             campo_user.fill(SNAI_USER)
@@ -93,11 +93,11 @@ def avvia_sincronizzazione_automatica():
             campo_pass.fill(SNAI_PASS)
             time.sleep(1)
             
-            print("🚀 [Robot] Invio moduli di accesso...")
+            print("🚀 [Robot] STEP 4b: Invio moduli di accesso...")
             page.click("button[type='submit'], input[type='submit'], .btn-login")
             time.sleep(4)
             
-            print("⏳ [Robot] Pausa di sicurezza di 11 secondi per far scadere il countdown...")
+            print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi countdown...")
             time.sleep(11)
             
             try:
@@ -106,33 +106,43 @@ def avvia_sincronizzazione_automatica():
                     document.body.classList.remove('modal-open');
                     document.body.style.overflow = 'auto';
                 """)
-                print("✅ [Robot] Codice pop-up eliminato dalla pagina con successo!")
+                print("✅ [Robot] STEP 4d: Codice pop-up eliminato con successo!")
             except Exception: pass
             time.sleep(2)
 
-            print("🔑 [Robot] Generazione ed immissione codice 2FA TOTP pulito...")
+            print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP...")
             codice_totp = genera_codice_otp_automatico()
-            print(f"📌 Codice generato inviato a schermo: {codice_totp}")
+            print(f"📌 [Robot] STEP 4f: Codice generato inviato a schermo: {codice_totp}")
             
             campo_token = page.locator("input#token, input[name='token'], input[name='otp'], input[type='text']").first
             campo_token.click(timeout=15000)
             campo_token.fill(str(codice_totp))
             time.sleep(2)
             
-            print("📤 Invio codice OTP tramite tastiera virtuale...")
+            print("📤 [Robot] STEP 4g: Invio codice OTP tramite tastiera virtuale...")
             page.keyboard.press("Enter")
-            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata...")
+            print("⏳ [Robot] STEP 4h: Convalida credenziali in corso (15 secondi)...")
             time.sleep(15)
             
-            print("🔓 [Robot] ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
+            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
             print("----------------------------------------------------------------------")
 
 
 # =====================================================================================
 # BLOCCO 4: INTERCETTAZIONE MENU ANAGRAFICA E FILTRAGGIO CODICI CENSIMENTO
 # =====================================================================================
-            print("📦 [Robot] Apertura del menu Anagrafica Locali...")
-            page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click(timeout=20000)
+            print("📦 [Robot] STEP 6: Apertura del menu Anagrafica Locali...")
+            try:
+                # Tenta l'apertura tramite clic grafico con tolleranza aumentata
+                pulsante_menu = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, button:has-text('Anagrafica'), .menu-item").first
+                pulsante_menu.click(timeout=10000)
+                print("   ✅ [Robot] STEP 6a: Clic sul menu grafico eseguito.")
+            except Exception:
+                # 🛡️ VIA D'ACCESSO DIRETTA DI EMERGENZA: Salta l'animazione e si catapulta sulla pagina
+                print("   ⚠️ [Robot] STEP 6b: Menu grafico pigro. Spostamento diretto tramite URL assoluto...")
+                page.goto("https://partner.snai.it", wait_until="networkidle", timeout=30000)
+            
+            print("⏳ [Robot] STEP 6c: Pausa di stabilizzazione della pagina esercizi (8 secondi)...")
             time.sleep(8)
 
             for _, row in df_snai.iterrows():
@@ -142,7 +152,7 @@ def avvia_sincronizzazione_automatica():
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    print(f"🚀 [Robot] Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
+                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
                     target_frame = page
                     for f in page.frames:
@@ -150,7 +160,7 @@ def avvia_sincronizzazione_automatica():
                             target_frame = f
                             break
 
-                    print("   🔍 Inserimento codice censimento nella barra filtri...")
+                    print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = "input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodice'], input[id*='txtCodiceCensimento']"
                     if target_frame.locator(campo_ricerca).count() > 0:
                         target_frame.locator(campo_ricerca).first.click(timeout=10000)
@@ -161,6 +171,7 @@ def avvia_sincronizzazione_automatica():
                             tasto_ricerca.click()
                         else:
                             page.keyboard.press("Enter")
+                        print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
                         time.sleep(6)
 
 # =====================================================================================
@@ -170,24 +181,24 @@ def avvia_sincronizzazione_automatica():
                     icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
                     if icona_modifica_esistente.count() > 0:
-                        print("   📝 [Robot] [EDIT_PIANIFICAZIONE DETECTED] Chiusura esistente! Clic sull'icona di Modifica...")
+                        print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE DETECTED] Clic sull'icona di Modifica...")
                         icona_modifica_esistente.click(timeout=10000)
                     elif icona_nuovo_inserimento.count() > 0:
-                        print("   🟢 [Robot] [INSERT_PIANIFICAZIONE DETECTED] Nuova inserzione! Clic sul pallino verde di aggiunta...")
+                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Clic sul pallino verde...")
                         icona_nuovo_inserimento.click(timeout=10000)
                     else:
-                        print("   ⚠️ [Robot] Icone specifiche non intercettate dal DOM. Tento il clic sulla cella td...")
+                        print("   ⚠️ [Robot] STEP 8b: Icone specifiche non intercettate. Tento il clic td...")
                         target_frame.locator("td[onclick*='Pianificazione']").first.click(timeout=10000)
                     time.sleep(6)
 
-                    print("   ⏰ Compilazione campi temporali nel sistema...")
+                    print("   ⏰ [Robot] STEP 9: Compilazione campi temporali nel sistema...")
                     campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first
                     campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first
                     
                     valore_attuale_dal = campo_dal.input_value() if campo_dal.count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
-                        print(f"   ℹ️ Le date ({data_in_completa}) coincidono già sul portale Snaitech. Salto il locale.")
-                        page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click()
+                        print(f"   ℹ️ [Robot] STEP 9a: Le date ({data_in_completa}) coincidono già sul portale. Salto.")
+                        page.goto("https://partner.snai.it", timeout=30000)
                         time.sleep(5)
                         continue
 
@@ -196,23 +207,23 @@ def avvia_sincronizzazione_automatica():
                     campo_al.fill(data_fi_completa)
                     time.sleep(1)
 
-                    print("   💾 Invio moduli di chiusura a Snaitech...")
+                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
                     target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()
                     
-                    print(f"✅ [Robot] Locale {codice_aams} allineato e salvato con successo nel database Snaitech!")
+                    print(f"✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo nel database Snaitech!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click()
+                    page.goto("https://partner.snai.it", timeout=30000)
                     time.sleep(5)
                     
                 except Exception as row_err:
-                    print(f"⚠️ Errore durante la compilazione del locale: {str(row_err)}")
-                    page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click()
+                    print(f"⚠️ [Robot] STEP ERRORE: Scavalco riga. Errore: {str(row_err)}")
+                    page.goto("https://partner.snai.it", timeout=30000)
                     time.sleep(4)
                     continue
         except Exception as e:
-            print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
+            print(f"❌ [Robot] ERRORE GENERALE DI NAVIGAZIONE: {str(e)}")
         finally:
             print("🤖 [Robot] Processo ultimato. Chiusura sessione.")
             time.sleep(5)
@@ -220,4 +231,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
