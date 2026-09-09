@@ -132,16 +132,15 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 4: INTERCETTAZIONE MENU ANAGRAFICA E FILTRAGGIO CODICI CENSIMENTO
 # =====================================================================================
             print("📦 [Robot] STEP 6: Apertura del menu Anagrafica Locali...")
-            try:
-                pulsante_menu = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, button:has-text('Anagrafica'), .menu-item").first
-                pulsante_menu.click(timeout=10000)
-                print("   ✅ [Robot] STEP 6a: Clic sul menu grafico eseguito.")
-            except Exception:
-                print("   ⚠️ [Robot] STEP 6b: Spostamento diretto tramite URL assoluto...")
-                page.goto("https://partner.snai.it", wait_until="networkidle", timeout=30000)
+            # 🛡️ BLINDATURA DI SESSONE: Clicca sul menu reale per mantenere attiva la sessione senza subire espulsioni
+            page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), a:has-text('Anagrafica')").first.click(timeout=25000)
+            print("   ✅ [Robot] STEP 6a: Clic sul menu principale eseguito con successo.")
+            time.sleep(5)
             
-            print("⏳ [Robot] STEP 6c: Pausa di stabilizzazione della pagina esercizi (8 secondi)...")
-            time.sleep(8)
+            # Entra nel sotto-menu specifico degli Esercizi per far caricare la griglia
+            page.locator("a:has-text('Esercizi'), span:has-text('Esercizi'), [id*='btnMnuItem']").first.click(timeout=15000)
+            print("   ⏳ [Robot] STEP 6b: Attesa stabilizzazione caricamento griglia Microsoft (10 secondi)...")
+            time.sleep(10)
 
             for _, row in df_snai.iterrows():
                 try:
@@ -152,7 +151,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ FIX FRAME: Identifica il foglio reale della tabella tra tutti i sotto-schermi della pagina
+                    # Ispeziona tutti i frame interni alla ricerca della tabella protetta di Snaitech
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
@@ -160,13 +159,14 @@ def avvia_sincronizzazione_automatica():
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
-                    campo_ricerca.click(timeout=10000)
+                    # 🛡️ FIX PUNTATORE DI MANUELA: Cerca l'input abbinato alla dicitura esatta di portale 'Codice Censimento'
+                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[placeholder*='Censimento']").first
+                    campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
-                    time.sleep(1)
+                    time.sleep(2)
                     
-                    # 🛡️ FIX TASTO RICERCA: Clicca sul pulsante esplicito della foto di Manuela
-                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], button:has-text('Ricerca'), input[id*='Ricerca']").first
+                    # Clicca sul pulsante Ricerca reale estratto dal codice sorgente
+                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[value='Filtra'], input[id*='Ricerca']").first
                     if tasto_ricerca.count() > 0:
                         tasto_ricerca.click()
                     else:
@@ -174,6 +174,7 @@ def avvia_sincronizzazione_automatica():
                         
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
                     time.sleep(6)
+
 
 # =====================================================================================
 # BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA) ALLINEATO ALL'HTML DI MANUELA E CHIUSURA
