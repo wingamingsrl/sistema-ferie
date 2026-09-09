@@ -133,13 +133,11 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
             print("📦 [Robot] STEP 6: Apertura del menu Anagrafica Locali...")
             try:
-                # Tenta l'apertura tramite clic grafico con tolleranza aumentata
                 pulsante_menu = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, button:has-text('Anagrafica'), .menu-item").first
                 pulsante_menu.click(timeout=10000)
                 print("   ✅ [Robot] STEP 6a: Clic sul menu grafico eseguito.")
             except Exception:
-                # 🛡️ VIA D'ACCESSO DIRETTA DI EMERGENZA: Salta l'animazione e si catapulta sulla pagina
-                print("   ⚠️ [Robot] STEP 6b: Menu grafico pigro. Spostamento diretto tramite URL assoluto...")
+                print("   ⚠️ [Robot] STEP 6b: Spostamento diretto tramite URL assoluto...")
                 page.goto("https://partner.snai.it", wait_until="networkidle", timeout=30000)
             
             print("⏳ [Robot] STEP 6c: Pausa di stabilizzazione della pagina esercizi (8 secondi)...")
@@ -154,6 +152,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # 🛡️ FIX FRAME: Identifica il foglio reale della tabella tra tutti i sotto-schermi della pagina
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
@@ -161,22 +160,25 @@ def avvia_sincronizzazione_automatica():
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    campo_ricerca = "input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodice'], input[id*='txtCodiceCensimento']"
-                    if target_frame.locator(campo_ricerca).count() > 0:
-                        target_frame.locator(campo_ricerca).first.click(timeout=10000)
-                        target_frame.locator(campo_ricerca).first.fill(codice_aams)
+                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
+                    campo_ricerca.click(timeout=10000)
+                    campo_ricerca.fill(codice_aams)
+                    time.sleep(1)
+                    
+                    # 🛡️ FIX TASTO RICERCA: Clicca sul pulsante esplicito della foto di Manuela
+                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], button:has-text('Ricerca'), input[id*='Ricerca']").first
+                    if tasto_ricerca.count() > 0:
+                        tasto_ricerca.click()
+                    else:
+                        page.keyboard.press("Enter")
                         
-                        tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[value='Filtra']").first
-                        if tasto_ricerca.count() > 0:
-                            tasto_ricerca.click()
-                        else:
-                            page.keyboard.press("Enter")
-                        print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
-                        time.sleep(6)
+                    print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
+                    time.sleep(6)
 
 # =====================================================================================
 # BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA) ALLINEATO ALL'HTML DI MANUELA E CHIUSURA
 # =====================================================================================
+                    # 🛡️ FIX ASSOLUTO: Puntatori millimetrici estratti direttamente dal codice HTML di Manuela
                     icona_nuovo_inserimento = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
@@ -184,10 +186,10 @@ def avvia_sincronizzazione_automatica():
                         print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE DETECTED] Clic sull'icona di Modifica...")
                         icona_modifica_esistente.click(timeout=10000)
                     elif icona_nuovo_inserimento.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Clic sul pallino verde...")
+                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Clic sul pulsante verde '+' estratto da Manuela...")
                         icona_nuovo_inserimento.click(timeout=10000)
                     else:
-                        print("   ⚠️ [Robot] STEP 8b: Icone specifiche non intercettate. Tento il clic td...")
+                        print("   ⚠️ [Robot] STEP 8b: Icone specifiche non isolate dal DOM. Tento il clic sulla cella td Microsoft...")
                         target_frame.locator("td[onclick*='Pianificazione']").first.click(timeout=10000)
                     time.sleep(6)
 
@@ -198,8 +200,6 @@ def avvia_sincronizzazione_automatica():
                     valore_attuale_dal = campo_dal.input_value() if campo_dal.count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
                         print(f"   ℹ️ [Robot] STEP 9a: Le date ({data_in_completa}) coincidono già sul portale. Salto.")
-                        page.goto("https://partner.snai.it", timeout=30000)
-                        time.sleep(5)
                         continue
 
                     campo_dal.fill(data_in_completa)
@@ -214,13 +214,8 @@ def avvia_sincronizzazione_automatica():
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    page.goto("https://partner.snai.it", timeout=30000)
-                    time.sleep(5)
-                    
                 except Exception as row_err:
                     print(f"⚠️ [Robot] STEP ERRORE: Scavalco riga. Errore: {str(row_err)}")
-                    page.goto("https://partner.snai.it", timeout=30000)
-                    time.sleep(4)
                     continue
         except Exception as e:
             print(f"❌ [Robot] ERRORE GENERALE DI NAVIGAZIONE: {str(e)}")
