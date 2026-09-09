@@ -101,15 +101,23 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE MENU ANAGRAFICA E FILTRAGGIO CODICI CENSIMENTO
+# BLOCCO 4: NAVIGAZIONE UMANA TRAMITE MENU GRAFICO ED INSERIMENTO CENSIMENTO
 # =====================================================================================
-            print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
-            # 🛡️ FIX CONTENITORE ESTRATTO DA MANUELA: Attende la comparsa reale dell'UpdatePanel dinamico di Snaitech
-            print("   ⏳ [Robot] STEP 6a: Attesa rendering del pannello Microsoft UpdatePanel...")
-            pannello_ricerca = page.locator("#ctl00_Cp1_updPnlSearchResult, div[id*='updPnlSearchResult']").first
-            pannello_ricerca.wait_for(state="visible", timeout=20000)
-            time.sleep(5)
+            print("📦 [Robot] STEP 6: Apertura del menu principale Anagrafica...")
+            # 🛡️ NAVIGAZIONE REALE DI MANUELA: Clicca sulla voce del menu superiore per non far saltare la sessione
+            menu_anagrafica = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), span:has-text('Anagrafica')").first
+            menu_anagrafica.wait_for(state="visible", timeout=15000)
+            menu_anagrafica.click()
+            time.sleep(3)
+            
+            print("📬 [Robot] STEP 6a: Selezione della voce Sotto-Menu Esercizi...")
+            # Clicca sulla voce specifica del sotto-menu per far apparire la tabella dei filtri
+            sotto_menu_esercizi = page.locator("a[href*='Esercizi.aspx'], span:has-text('Esercizi'), td:has-text('Esercizi')").first
+            sotto_menu_esercizi.wait_for(state="visible", timeout=15000)
+            sotto_menu_esercizi.click()
+            
+            print("   ⏳ [Robot] STEP 6b: Attesa caricamento del pannello Microsoft UpdatePanel (10 secondi)...")
+            time.sleep(10)
 
             for _, row in df_snai.iterrows():
                 try:
@@ -120,14 +128,11 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # Puntiamo al pannello di ricerca estratto da Manuela
                     target_frame = page
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # Puntatore laser sul campo txtCodiceCensimentoesercizio che vive dentro l'UpdatePanel
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio'], input[name*='txtCodiceCensimentoesercizio']").first
-                    
-                    # Forza l'attesa di stabilità della casella di testo
+                    # Puntatore laser sul campo txtCodiceCensimentoesercizio sbloccato dal tuo codice sorgente
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
                     campo_ricerca.wait_for(state="visible", timeout=15000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
@@ -139,6 +144,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
                     time.sleep(6)
+
 # =====================================================================================
 # BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA) ALLINEATO ALL'HTML DI MANUELA E CHIUSURA
 # =====================================================================================
