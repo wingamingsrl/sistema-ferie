@@ -101,7 +101,7 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
+# BLOCCO 4: INTERCETTAZIONE MENU ANAGRAFICA E FILTRAGGIO CODICI CENSIMENTO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
@@ -119,14 +119,18 @@ def avvia_sincronizzazione_automatica():
 
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0 or f.locator("input[id*='Censimento']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("[id*='txtCodiceCensimentoesercizio']").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # Puntatore laser sul campo esatto fornito da Manuela
-                    campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio']").first
-                    campo_ricerca.click(timeout=15000)
+                    
+                    # 🛡️ MIRINO LASER SULL'ID DI MANUELA: Forza l'attesa visiva dell'elemento nel Contenitore Microsoft
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio'], input[name*='txtCodiceCensimentoesercizio']").first
+                    
+                    # Attende che la casella sia effettivamente apparsa e stabile sullo schermo prima di cliccare
+                    campo_ricerca.wait_for(state="visible", timeout=20000)
+                    campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
@@ -135,7 +139,6 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
                     time.sleep(6)
-
 # =====================================================================================
 # BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA) ALLINEATO ALL'HTML DI MANUELA E CHIUSURA
 # =====================================================================================
