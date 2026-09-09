@@ -2,10 +2,13 @@ name: 🤖 Robot Automatico Inserimento Ferie Snaitech
 
 on:
   schedule:
-    # ⏰ SCATTA IN AUTOMATICO OGNI SERA ALLE 20:00 ITALIANE (18:00 UTC)
     - cron: '0 18 * * *'
   workflow_dispatch:
-    # 🚀 RICEVE L'IMPULSO ELETTRICO ISTANTANEO DAL PULSANTE DI MANUELA
+
+# 🛡️ CONTROMISURA PERMESSI: Sblocca la porta per salvare lo screenshot e i log su GitHub
+permissions:
+  contents: write
+  actions: write
 
 jobs:
   run-robot:
@@ -33,5 +36,5 @@ jobs:
       env:
         TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # 🛡️ FIX SINTASSI: Unico comando 'run' pulito provvisto di schermo virtuale RAM
         xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" python robot_snai.py
+
