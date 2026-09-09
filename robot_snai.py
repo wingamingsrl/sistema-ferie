@@ -1,5 +1,5 @@
 # =====================================================================================
-# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — ORE 20:00 NATIVO
+# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE ONLINE
 # BLOCCO 1: STRUTTURA LIBRERIE ED ACCESSI PROPRIETARI — PORTALE: PARTNER.SNAI.IT
 # =====================================================================================
 import os
@@ -11,17 +11,17 @@ import pandas as pd
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
-CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
+# Configurazione ufficiale ed esclusiva delle tue coordinate aziendali
+CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"  # La tua chiave definitiva allineata al telefono
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
 
 # =====================================================================================
-# BLOCCO 2: MOTORE DI LETTURA LIVE IN MEMORIA RAM DA REPOSITORY GITHUB (FORMATO EXCEL)
+# BLOCCO 2: MOTORE DI LETTURA LIVE IN MEMORIA RAM DEL REPOSITORY EXCEL LOCALE
 # =====================================================================================
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] Lettura del database Excel locale sul server Actions...")
     try:
-        # 🛡️ FIX 1: Legge il file dall'hard disk virtuale locale del server senza chiamate API bloccate
         nome_file_locale = "storico_ferie.xlsx"
         if os.path.exists(nome_file_locale):
             print("✅ [Robot] Database Excel intercettato con successo!")
@@ -38,7 +38,7 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 # =====================================================================================
-# BLOCCO 3: AVVIO CHROME, LOG IN E SUPERAMENTO BARRIERA DI SICUREZZA 2FA SU PARTNER.SNAI.IT
+# BLOCCO 3: AVVIO CHROME CON CAMUFFAMENTO ED IMMISSIONE CREDENZIALI
 # =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
@@ -55,21 +55,43 @@ def avvia_sincronizzazione_automatica():
         print("✅ [Robot] Nessun locale Snaitech attivo trovato nel registro. Sincronizzazione conclusa.")
         return
 
-    print(f"🤖 [Robot] Rilevati {len(df_snai)} locali Snaitech da elaborare. Avvio Chrome...")
+    print(f"🤖 [Robot] Rilevati {len(df_snai)} locali Snaitech da elaborare. Avvio Chrome con camuffamento d'ufficio...")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False) 
-        context = browser.new_context()
+        browser = p.chromium.launch(headless=False, args=[
+            "--no-sandbox", 
+            "--disable-setuid-sandbox", 
+            "--disable-dev-shm-usage",
+            "--disable-blink-features=AutomationControlled"  # Nasconde lo stato di robot a Snaitech
+        ]) 
+        
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            locale="it-IT",
+            timezone_id="Europe/Rome",
+            viewport={"width": 1280, "height": 1024}
+        )
         page = context.new_page()
 
         try:
-            print("🌐 [Robot] Connessione a partner.snai.it...")
-            page.goto("https://partner.snai.it", timeout=45000)
-            time.sleep(4)
+            print("🌐 [Robot] Connessione a partner.snai.it con tolleranza di rete...")
+            page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
+            time.sleep(6)
+            
+            try: page.mouse.move(200, 200)
+            except Exception: pass
+            time.sleep(2)
             
             print("📝 [Robot] Inserimento credenziali Snaitech...")
-            page.fill("input#username, input[name='username']", SNAI_USER)
-            page.fill("input#password, input[name='password']", SNAI_PASS)
+            campo_user = page.locator("input#username, input[name='username'], input[type='text']").first
+            campo_user.click(timeout=20000)
+            campo_user.fill(SNAI_USER)
+            time.sleep(1)
+            
+            campo_pass = page.locator("input#password, input[name='password'], input[type='password']").first
+            campo_pass.click(timeout=20000)
+            campo_pass.fill(SNAI_PASS)
+            time.sleep(1)
             
             print("🚀 [Robot] Invio moduli di accesso...")
             page.click("button[type='submit'], input[type='submit'], .btn-login")
@@ -92,21 +114,25 @@ def avvia_sincronizzazione_automatica():
             codice_totp = genera_codice_otp_automatico()
             print(f"📌 Codice generato inviato a schermo: {codice_totp}")
             
-            page.fill("input#token, input[name='token'], input[name='otp']", codice_totp)
-            time.sleep(1)
+            campo_token = page.locator("input#token, input[name='token'], input[name='otp'], input[type='text']").first
+            campo_token.click(timeout=15000)
+            campo_token.fill(str(codice_totp))
+            time.sleep(2)
             
-            page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia'), input[type='submit']")
-            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
+            print("📤 Invio codice OTP tramite tastiera virtuale...")
+            page.keyboard.press("Enter")
+            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata...")
             time.sleep(15)
             
             print("🔓 [Robot] ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
+
 # =====================================================================================
 # BLOCCO 4: INTERCETTAZIONE MENU ANAGRAFICA E FILTRAGGIO CODICI CENSIMENTO
 # =====================================================================================
             print("📦 [Robot] Apertura del menu Anagrafica Locali...")
-            page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click(timeout=15000)
+            page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click(timeout=20000)
             time.sleep(8)
 
             for _, row in df_snai.iterrows():
@@ -127,7 +153,7 @@ def avvia_sincronizzazione_automatica():
                     print("   🔍 Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = "input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodice'], input[id*='txtCodiceCensimento']"
                     if target_frame.locator(campo_ricerca).count() > 0:
-                        target_frame.locator(campo_ricerca).first.click()
+                        target_frame.locator(campo_ricerca).first.click(timeout=10000)
                         target_frame.locator(campo_ricerca).first.fill(codice_aams)
                         
                         tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[value='Filtra']").first
@@ -140,7 +166,6 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 # BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA) ALLINEATO ALL'HTML DI MANUELA E CHIUSURA
 # =====================================================================================
-                    # Mirino millimetrico impostato sui file .jpg e .gif forniti da Manuela
                     icona_nuovo_inserimento = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
@@ -159,7 +184,6 @@ def avvia_sincronizzazione_automatica():
                     campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first
                     campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first
                     
-                    # Evita sovrascritture se a portale ci sono già le stesse identiche date dell'ufficio
                     valore_attuale_dal = campo_dal.input_value() if campo_dal.count() > 0 else ""
                     if valore_attuale_dal == data_in_completa:
                         print(f"   ℹ️ Le date ({data_in_completa}) coincidono già sul portale Snaitech. Salto il locale.")
@@ -179,7 +203,6 @@ def avvia_sincronizzazione_automatica():
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    # Ricarica il menu per azzerare i filtri per il locale successivo
                     page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre").first.click()
                     time.sleep(5)
                     
@@ -197,3 +220,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
