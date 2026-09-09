@@ -105,8 +105,11 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
-print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
-            time.sleep(10)
+            # 🛡️ FIX CONTENITORE ESTRATTO DA MANUELA: Attende la comparsa reale dell'UpdatePanel dinamico di Snaitech
+            print("   ⏳ [Robot] STEP 6a: Attesa rendering del pannello Microsoft UpdatePanel...")
+            pannello_ricerca = page.locator("#ctl00_Cp1_updPnlSearchResult, div[id*='updPnlSearchResult']").first
+            pannello_ricerca.wait_for(state="visible", timeout=20000)
+            time.sleep(5)
 
             for _, row in df_snai.iterrows():
                 try:
@@ -117,21 +120,20 @@ print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 seco
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ PENETRAZIONE FRAME: Forza la ricerca su tutti i sotto-fogli interni alla pagina esercizi
+                    # Puntiamo al pannello di ricerca estratto da Manuela
                     target_frame = page
-                    for f in page.frames:
-                        # Se il sotto-foglio contiene la parola Esercizi o l'ID estratto da Manuela, ci si tufferà dentro
-                        if "Esercizi" in f.url or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0 or f.locator("input[id*='Censimento']").count() > 0:
-                            target_frame = f
-                            break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # Puntamento laser assoluto sull'ID esatto di Manuela all'interno del frame identificato
-                    campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio']").first
-                    campo_ricerca.click(timeout=15000)
+                    # Puntatore laser sul campo txtCodiceCensimentoesercizio che vive dentro l'UpdatePanel
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio'], input[name*='txtCodiceCensimentoesercizio']").first
+                    
+                    # Forza l'attesa di stabilità della casella di testo
+                    campo_ricerca.wait_for(state="visible", timeout=15000)
+                    campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
+                    # Pressione del tasto Ricerca visivo
                     tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca']").first
                     tasto_ricerca.click(timeout=10000)
                     
