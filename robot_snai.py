@@ -65,7 +65,9 @@ def avvia_sincronizzazione_automatica():
             
             print("📬 Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle", timeout=50000)
-            time.sleep(10)
+            
+            # 🛡️ CONTROMISURA ANTI-RALLENTAMENTO: Pausa forzata per stabilizzare l'aggancio del form Microsoft
+            time.sleep(6)
 
             for _, row in df_snai.iterrows():
                 try:
@@ -75,20 +77,27 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 Ispezione visiva Locale Snaitech -> {codice_aams}")
 
-                    campo_ricerca = page.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
+                    # Forza la ricerca visiva su ogni frame presente a schermo
+                    target_frame = page
+                    for f in page.frames:
+                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
+                            target_frame = f
+                            break
+
+                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
                     campo_ricerca.click(timeout=10000)
                     campo_ricerca.fill(codice_aams)
-                    time.sleep(1)
+                    time.sleep(2)
                     
-                    tasto_ricerca = page.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], button:has-text('Ricerca'), input[id*='Ricerca']").first
+                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], button:has-text('Ricerca'), input[id*='Ricerca']").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ Attesa caricamento griglia dei risultati (6 secondi)...")
                     time.sleep(6)
 
-                    # 🛡️ MAPPA SENSORIALE HTML CERTIFICATA DA MANUELA:
-                    icona_nuovo_inserimento = page.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
-                    icona_modifica_esistente = page.locator("img[src*='edit_pianificazione']").first
+                    # Mappa sensoriale HTML certificata da Manuela
+                    icona_nuovo_inserimento = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
+                    icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
                     if icona_modifica_esistente.count() > 0:
                         print("   📝 [EDIT_PIANIFICAZIONE DETECTED] Trovata chiusura esistente, entro in modifica...")
@@ -98,12 +107,12 @@ def avvia_sincronizzazione_automatica():
                         icona_nuovo_inserimento.click(timeout=10000)
                     else:
                         print("   ⚠️ Icona specifica non isolata, eseguo il clic sulla cella td della riga...")
-                        page.locator("td[onclick*='Pianificazione']").first.click(timeout=10000)
+                        target_frame.locator("td[onclick*='Pianificazione']").first.click(timeout=10000)
                     time.sleep(6)
 
                     # Compilazione dei campi dal sotto-pannello sbloccato
-                    campo_dal = page.locator("input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']").first
-                    campo_al = page.locator("input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']").first
+                    campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']").first
+                    campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']").first
                     
                     # Controlla se il valore inserito coincide già per non fare salvataggi a vuoto
                     valore_attuale_dal = campo_dal.input_value() if campo_dal.count() > 0 else ""
@@ -113,13 +122,13 @@ def avvia_sincronizzazione_automatica():
                         time.sleep(5)
                         continue
 
-                    campo_dal.fill(data_in_completa)
+                    target_frame.locator(campo_dal).first.fill(data_in_completa)
                     time.sleep(1)
-                    campo_al.fill(data_fi_completa)
+                    target_frame.locator(campo_al).first.fill(data_fi_completa)
                     time.sleep(1)
 
                     # Pressione del tasto Salva reale del portale Snaitech
-                    tasto_salva = page.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first
+                    tasto_salva = target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first
                     tasto_salva.click(timeout=10000)
                     print(f"   ✅ Locale {codice_aams} allineato e salvato con successo nel database Snaitech!")
                     time.sleep(5)
@@ -127,7 +136,7 @@ def avvia_sincronizzazione_automatica():
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(5)
                 except Exception as e_row:
-                    print(f"   ⚠️ Nota compilazione riga: Sposto focus per riga successiva.")
+                    print(f"   ⚠️ Nota compilazione riga: Scavalco. Errore: {str(e_row)}")
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=30000)
                     time.sleep(4)
                     continue
