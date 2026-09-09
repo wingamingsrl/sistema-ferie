@@ -119,12 +119,32 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6c: Attesa caricamento del pannello Microsoft UpdatePanel (10 secondi)...")
             time.sleep(10)
 
-            # 📸 MACCHINA FOTOGRAFICA DI EMERGENZA: Scatta una foto istantanea prima di cercare la casella
+                       # 🛡️ CARICAMENTO FOTO: Scatta la foto e la spinge in chiaro su GitHub per Manuela
             try:
                 page.screenshot(path="screenshot_schermo.png")
-                print("   📸 [TEST VISIVO] Foto dello schermo scattata con successo! Salvata come 'screenshot_schermo.png'")
+                print("   📸 [TEST VISIVO] Foto dello schermo scattata con successo!")
+                
+                # Invia il file visivo alla bacheca principale di GitHub
+                try:
+                    with open("screenshot_schermo.png", "rb") as f_img:
+                        img_data = f_img.read()
+                    import base64
+                    img_b64 = base64.b64encode(img_data).decode('utf-8')
+                    t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
+                    if t_git:
+                        u_git = "https://github.com"
+                        h_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github+json"}
+                        r_get = requests.get(u_git, headers=h_git, timeout=5)
+                        sha = r_get.json().get("sha", "") if r_get.status_code == 200 else ""
+                        p_git = {"message": "📸 Aggiorno screenshot di emergenza", "content": img_b64, "branch": "main"}
+                        if sha: p_git["sha"] = sha
+                        requests.put(u_git, json=p_git, headers=h_git, timeout=5)
+                        print("   ✅ [FOTO CARICATA] Immagine inviata alla cartella principale di GitHub!")
+                except Exception as e_upload:
+                    print(f"   ⚠️ Errore caricamento foto: {str(e_upload)}")
             except Exception as e_snap:
                 print(f"   ⚠️ Impossibile scattare la foto: {str(e_snap)}")
+
 
             for _, row in df_snai.iterrows():
                 try:
