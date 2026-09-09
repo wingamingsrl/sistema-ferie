@@ -101,14 +101,13 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: NAVIGAZIONE TRAMITE MENU GRAFICO ED INSERIMENTO CENSIMENTO CON STABILIZZATORE
+# BLOCCO 4: NAVIGAZIONE TRAMITE MENU GRAFICO CON SCATTO FOTOGRAFICO DI EMERGENZA
 # =====================================================================================
             print("📦 [Robot] STEP 6: Apertura del menu principale Anagrafica...")
             menu_anagrafica = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), span:has-text('Anagrafica')").first
             menu_anagrafica.wait_for(state="visible", timeout=15000)
             menu_anagrafica.click()
             
-            # 🛡️ FIX COORDINAZIONE: Pausa umana per attendere che la tendina Microsoft si stenda completamente a schermo
             print("   ⏳ [Robot] STEP 6a: Attesa stenditura tendina grafica (4 secondi)...")
             time.sleep(4)
             
@@ -119,6 +118,13 @@ def avvia_sincronizzazione_automatica():
             
             print("   ⏳ [Robot] STEP 6c: Attesa caricamento del pannello Microsoft UpdatePanel (10 secondi)...")
             time.sleep(10)
+
+            # 📸 MACCHINA FOTOGRAFICA DI EMERGENZA: Scatta una foto istantanea prima di cercare la casella
+            try:
+                page.screenshot(path="screenshot_schermo.png")
+                print("   📸 [TEST VISIVO] Foto dello schermo scattata con successo! Salvata come 'screenshot_schermo.png'")
+            except Exception as e_snap:
+                print(f"   ⚠️ Impossibile scattare la foto: {str(e_snap)}")
 
             for _, row in df_snai.iterrows():
                 try:
