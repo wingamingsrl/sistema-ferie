@@ -64,7 +64,7 @@ def avvia_sincronizzazione_automatica():
 
         try:
             print("🌐 [Robot] Connessione a partner.snai.it...")
-            page.goto("https://snai.it", timeout=45000)
+            page.goto("https://partner.snai.it", timeout=45000)
             time.sleep(4)
             
             print("📝 [Robot] Inserimento credenziali Snaitech...")
