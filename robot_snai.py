@@ -104,7 +104,7 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 4: REINDIRIZZAMENTO DIRETTO PROTETTO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            page.goto("https://patner.snai.it", wait_until="load", timeout=40000)
+            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
 
