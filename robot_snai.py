@@ -101,26 +101,29 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: NAVIGAZIONE TRAMITE MENU GRAFICO ED INSERIMENTO CENSIMENTO ANTI-PRELOAD
+# BLOCCO 4: NAVIGAZIONE TRAMITE MENU GRAFICO ED INSERIMENTO CENSIMENTO CON STABILIZZATORE
 # =====================================================================================
             print("📦 [Robot] STEP 6: Apertura del menu principale Anagrafica...")
             menu_anagrafica = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), span:has-text('Anagrafica')").first
             menu_anagrafica.wait_for(state="visible", timeout=15000)
             menu_anagrafica.click()
-            time.sleep(3)
             
-            print("📬 [Robot] STEP 6a: Selezione della voce Sotto-Menu Esercizi...")
+            # 🛡️ FIX COORDINAZIONE: Pausa umana per attendere che la tendina Microsoft si stenda completamente a schermo
+            print("   ⏳ [Robot] STEP 6a: Attesa stenditura tendina grafica (4 secondi)...")
+            time.sleep(4)
+            
+            print("📬 [Robot] STEP 6b: Selezione della voce Sotto-Menu Esercizi...")
             sotto_menu_esercizi = page.locator("a[href*='Esercizi.aspx'], span:has-text('Esercizi'), td:has-text('Esercizi')").first
             sotto_menu_esercizi.wait_for(state="visible", timeout=15000)
             sotto_menu_esercizi.click()
             
-            print("   ⏳ [Robot] STEP 6b: Attesa caricamento del pannello Microsoft UpdatePanel (10 secondi)...")
+            print("   ⏳ [Robot] STEP 6c: Attesa caricamento del pannello Microsoft UpdatePanel (10 secondi)...")
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
-                    nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
+                    nome_locale_corrente = str(row["NOME_LOCALE"].get("NOME_LOCALE", row["NOME_LOCALE"]) if isinstance(row.get("NOME_LOCALE"), dict) else row["NOME_LOCALE"]).strip()
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
