@@ -128,7 +128,6 @@ def avvia_sincronizzazione_automatica():
 
                     target_frame = page
 
-                    # 🛡️ CONTROMISURA ANTI-PRELOAD: Distrugge il cerchio rotante trasparente che blocca il mouse
                     try:
                         page.evaluate("""
                             var preloads = document.querySelectorAll('.mainPreload, [id*="ctl00"], .ctrlCreateUtente');
@@ -149,23 +148,22 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
                     time.sleep(6)
 
-                    # 🛡️ SECONDO ABBASSAMENTO PRELOAD DOPO LA RICERCA
                     try: page.evaluate("document.querySelectorAll('.mainPreload').forEach(el => el.remove());")
                     except Exception: pass
 
 # =====================================================================================
-# BLOCCO 5: GESTIONE INTELLIGENTE (NUOVA CHIUSURA / MODIFICA / ELIMINAZIONE) E LOGOUT
+# BLOCCO 5: GESTIONE INTELLIGENTE CON MECCANISMO TRACCIANTE SPIA E LOGOUT
 # =====================================================================================
                     icona_nuovo_inserimento = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
                     # 1. CASO A: MODIFICA O AGGIORNAMENTO DI UNA CHIUSURA ESISTENTE (.GIF)
                     if icona_modifica_esistente.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Rilevata chiusura esistente, entro nel pannello...")
+                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Clic sull'icona di Modifica...")
                         icona_modifica_esistente.click(force=True, timeout=10000)
+                        print("   ✅ [Robot] STEP 8d: Icona Modifica cliccata con successo. Attendo pannello...")
                         time.sleep(4)
                         
-                        # Selettori elastici specifici per il riquadro di modifica/variazione
                         campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='txtDataInizio'], input[name*='Dal']").first
                         campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='txtDataFine'], input[name*='Al']").first
                         
@@ -176,15 +174,16 @@ def avvia_sincronizzazione_automatica():
                         campo_al.click()
                         campo_al.fill(data_fi_completa)
                         time.sleep(1)
+                        print("   ✅ [Robot] STEP 9b: Date caricate nei campi di Modifica. Premo Salva...")
                         
-                        # Clicca sul tasto di convalida modifica
                         target_frame.locator("input[type='submit'][value*='Salva'], input[value*='Modifica'], input[id*='btnSalva']").first.click()
-                        print(f"   ✅ [Robot] STEP 8b: Chiusura esistente modificata ed allineata con successo!")
+                        print("   💾 [Robot] STEP 10a: Impulso di salvataggio Modifica inviato a Snaitech!")
 
                     # 2. CASO B: NUOVA CHIUSURA DA INSERIRE DA ZERO (.JPG)
                     elif icona_nuovo_inserimento.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Locale vuoto, inserisco da zero...")
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
                         icona_nuovo_inserimento.click(force=True, timeout=10000)
+                        print("   ✅ [Robot] STEP 8d: Pallino verde cliccato con successo. Attendo campi...")
                         time.sleep(4)
                         
                         campo_dal = target_frame.locator("input[id*='txtDataDal'], input[name*='Dal'], input[id*='Inizio']").first
@@ -197,14 +196,16 @@ def avvia_sincronizzazione_automatica():
                         campo_al.click()
                         campo_al.fill(data_fi_completa)
                         time.sleep(1)
+                        print("   ✅ [Robot] STEP 9b: Date caricate nei campi Nuova Chiusura. Premo Salva...")
                         
                         target_frame.locator("input[type='submit'][value*='Salva'], input[id*='btnSalva']").first.click()
-                        print(f"   ✅ [Robot] STEP 8c: Nuova pianificazione salvata con successo!")
+                        print("   💾 [Robot] STEP 10a: Impulso di salvataggio Nuova Chiusura inviato a Snaitech!")
                     
                     else:
-                        print("   ⚠️ [Robot] Nessuna icona intercettata, salto il locale per sicurezza.")
+                        print("   ⚠️ [Robot] STEP 8b: Nessuna icona intercettata. Salto per precauzione.")
                         continue
                         
+                    print(f"✅ [Robot] STEP 11: Locale {codice_aams} allineato con successo!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
@@ -212,14 +213,12 @@ def avvia_sincronizzazione_automatica():
                     print(f"⚠️ [Robot] STEP ERRORE RIGA: Scavalco. Dettaglio: {str(row_err)}")
                     continue
 
-            # 🛡️ PULIZIA E LOGOUT DI SICUREZZA RICHIESTO DA MANUELA
             print("🔒 [Robot] STEP 12: Esecuzione LOGOUT formale dal portale partner.snai.it...")
             try:
                 tasto_logout = page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut'], .logout-btn").first
                 tasto_logout.click(timeout=10000)
                 print("✅ [Robot] STEP 12a: Utenza scollegata correttamente. Nessuna sessione appesa!")
             except Exception:
-                print("⚠️ [Robot] Forzo lo svuotamento dei cookie di sicurezza...")
                 try: page.context.clear_cookies()
                 except Exception: pass
 
@@ -232,4 +231,5 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
 
