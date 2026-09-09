@@ -135,7 +135,7 @@ def carica_database_locale():
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
     if file_modificato_pulizia and not st.session_state.get("congelamento_sincro_attivo", False):
-          salva_excel_su_github(df_s)
+          push_excel_su_github(df_s)
   
     return df_l, df_t, df_s
     
