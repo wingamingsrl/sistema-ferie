@@ -135,11 +135,9 @@ def carica_database_locale():
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
     if file_modificato_pulizia and not st.session_state.get("congelamento_sincro_attivo", False):
-           push_excel_su_github(df_s)
-
-        
+           push_excel_su_github(df_s)   
     return df_l, df_t, df_s
-
+    
 df_locali, df_tecnici, df_storico_file = base_locale()
 
 if "storico_cloud" not in st.session_state:
