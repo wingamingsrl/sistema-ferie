@@ -101,7 +101,7 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: NAVIGAZIONE TRAMITE MENU GRAFICO ED INSERIMENTO CENSIMENTO CON ACCELERATORE
+# BLOCCO 4: NAVIGAZIONE TRAMITE MENU GRAFICO ED INSERIMENTO CENSIMENTO ANTI-PRELOAD
 # =====================================================================================
             print("📦 [Robot] STEP 6: Apertura del menu principale Anagrafica...")
             menu_anagrafica = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), span:has-text('Anagrafica')").first
@@ -126,15 +126,15 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ DISATTIVAZIONE POP-UP DI COPERTURA: Elimina lo schermo invisibile dei proprietari prima di cliccare
+                    target_frame = page
+
+                    # 🛡️ CONTROMISURA ANTI-PRELOAD: Distrugge il cerchio rotante trasparente che blocca il mouse
                     try:
                         page.evaluate("""
-                            var blocchi = document.querySelectorAll('#divPopUpOwners, .ctrlCreateUtente, .modal-backdrop');
-                            blocchi.forEach(el => { el.remove(); el.style.display = 'none'; el.style.visibility = 'hidden'; });
+                            var preloads = document.querySelectorAll('.mainPreload, [id*="ctl00"], .ctrlCreateUtente');
+                            preloads.forEach(el => { el.remove(); el.style.display = 'none'; });
                         """)
                     except Exception: pass
-
-                    target_frame = page
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
@@ -149,58 +149,77 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
                     time.sleep(6)
 
+                    # 🛡️ SECONDO ABBASSAMENTO PRELOAD DOPO LA RICERCA
+                    try: page.evaluate("document.querySelectorAll('.mainPreload').forEach(el => el.remove());")
+                    except Exception: pass
+
 # =====================================================================================
-# BLOCCO 5: CONTROLLO STRUTTURA (NUOVO/MODIFICA), SALVATAGGIO E LOGOUT DI SICUREZZA SNAI
+# BLOCCO 5: GESTIONE INTELLIGENTE (NUOVA CHIUSURA / MODIFICA / ELIMINAZIONE) E LOGOUT
 # =====================================================================================
                     icona_nuovo_inserimento = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica_esistente = target_frame.locator("img[src*='edit_pianificazione']").first
                     
+                    # 1. CASO A: MODIFICA O AGGIORNAMENTO DI UNA CHIUSURA ESISTENTE (.GIF)
                     if icona_modifica_esistente.count() > 0:
-                        print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE DETECTED] Clic sull'icona di Modifica...")
-                        icona_modifica_esistente.click(timeout=10000)
+                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Rilevata chiusura esistente, entro nel pannello...")
+                        icona_modifica_esistente.click(force=True, timeout=10000)
+                        time.sleep(4)
+                        
+                        # Selettori elastici specifici per il riquadro di modifica/variazione
+                        campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='txtDataInizio'], input[name*='Dal']").first
+                        campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='txtDataFine'], input[name*='Al']").first
+                        
+                        campo_dal.wait_for(state="visible", timeout=10000)
+                        campo_dal.click()
+                        campo_dal.fill(data_in_completa)
+                        time.sleep(1)
+                        campo_al.click()
+                        campo_al.fill(data_fi_completa)
+                        time.sleep(1)
+                        
+                        # Clicca sul tasto di convalida modifica
+                        target_frame.locator("input[type='submit'][value*='Salva'], input[value*='Modifica'], input[id*='btnSalva']").first.click()
+                        print(f"   ✅ [Robot] STEP 8b: Chiusura esistente modificata ed allineata con successo!")
+
+                    # 2. CASO B: NUOVA CHIUSURA DA INSERIRE DA ZERO (.JPG)
                     elif icona_nuovo_inserimento.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Clic sul pallino verde...")
-                        icona_nuovo_inserimento.click(timeout=10000)
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Locale vuoto, inserisco da zero...")
+                        icona_nuovo_inserimento.click(force=True, timeout=10000)
+                        time.sleep(4)
+                        
+                        campo_dal = target_frame.locator("input[id*='txtDataDal'], input[name*='Dal'], input[id*='Inizio']").first
+                        campo_al = target_frame.locator("input[id*='txtDataAl'], input[name*='Al'], input[id*='Fine']").first
+                        
+                        campo_dal.wait_for(state="visible", timeout=10000)
+                        campo_dal.click()
+                        campo_dal.fill(data_in_completa)
+                        time.sleep(1)
+                        campo_al.click()
+                        campo_al.fill(data_fi_completa)
+                        time.sleep(1)
+                        
+                        target_frame.locator("input[type='submit'][value*='Salva'], input[id*='btnSalva']").first.click()
+                        print(f"   ✅ [Robot] STEP 8c: Nuova pianificazione salvata con successo!")
+                    
                     else:
-                        print("   ⚠️ [Robot] STEP 8b: Icone specifiche non isolate dal DOM. Tento il clic td...")
-                        target_frame.locator("td[onclick*='Pianificazione']").first.click(timeout=10000)
-                    
-                    print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (4 secondi)...")
-                    time.sleep(4)
-
-                    print("   ⏰ [Robot] STEP 9: Compilazione campi temporali nel sistema...")
-                    campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']").first
-                    campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']").first
-                    
-                    campo_dal.wait_for(state="visible", timeout=15000)
-                    campo_dal.click()
-                    campo_dal.fill(data_in_completa)
-                    time.sleep(1)
-                    
-                    campo_al.click()
-                    campo_al.fill(data_fi_completa)
-                    time.sleep(1)
-
-                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
-                    target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()
-                    
-                    print(f"✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo nel database Snaitech!")
+                        print("   ⚠️ [Robot] Nessuna icona intercettata, salto il locale per sicurezza.")
+                        continue
+                        
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
                 except Exception as row_err:
-                    print(f"⚠️ [Robot] STEP ERRORE: Scavalco riga. Errore: {str(row_err)}")
+                    print(f"⚠️ [Robot] STEP ERRORE RIGA: Scavalco. Dettaglio: {str(row_err)}")
                     continue
 
-            # 🛡️ LUCCCHETTO DI SICUREZZA DI MANUELA: Esegue il Logout ufficiale prima di spegnere Chrome
+            # 🛡️ PULIZIA E LOGOUT DI SICUREZZA RICHIESTO DA MANUELA
             print("🔒 [Robot] STEP 12: Esecuzione LOGOUT formale dal portale partner.snai.it...")
             try:
-                # Cerca il tasto Esci, Logout o Disconnetti presente nella barra superiore di Snaitech
-                tasto_logout = page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut'], [id*='lnkAnnulla'], .logout-btn").first
-                tasto_logout.click(timeout=12000)
-                print("✅ [Robot] STEP 12a: Sessione Snaitech pulita e chiusa correttamente. Utenza Manuela Libera!")
+                tasto_logout = page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut'], .logout-btn").first
+                tasto_logout.click(timeout=10000)
+                print("✅ [Robot] STEP 12a: Utenza scollegata correttamente. Nessuna sessione appesa!")
             except Exception:
-                print("⚠️ [Robot] STEP 12b: Pulsante esci non intercettato, forzo la pulizia della cache di sessione...")
+                print("⚠️ [Robot] Forzo lo svuotamento dei cookie di sicurezza...")
                 try: page.context.clear_cookies()
                 except Exception: pass
 
@@ -213,3 +232,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
