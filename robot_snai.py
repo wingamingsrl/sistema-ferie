@@ -105,7 +105,7 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
-            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
+print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -117,20 +117,18 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # 🛡️ PENETRAZIONE FRAME: Forza la ricerca su tutti i sotto-fogli interni alla pagina esercizi
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("[id*='txtCodiceCensimentoesercizio']").count() > 0:
+                        # Se il sotto-foglio contiene la parola Esercizi o l'ID estratto da Manuela, ci si tufferà dentro
+                        if "Esercizi" in f.url or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0 or f.locator("input[id*='Censimento']").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    
-                    # 🛡️ MIRINO LASER SULL'ID DI MANUELA: Forza l'attesa visiva dell'elemento nel Contenitore Microsoft
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio'], input[name*='txtCodiceCensimentoesercizio']").first
-                    
-                    # Attende che la casella sia effettivamente apparsa e stabile sullo schermo prima di cliccare
-                    campo_ricerca.wait_for(state="visible", timeout=20000)
-                    campo_ricerca.click()
+                    # Puntamento laser assoluto sull'ID esatto di Manuela all'interno del frame identificato
+                    campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio']").first
+                    campo_ricerca.click(timeout=15000)
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
