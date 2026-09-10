@@ -573,14 +573,19 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 idx_da_eliminare = int(idx_iscolato_str)
                 
                 if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                    st.session_state.congelamento_sincro_attivo = True  # 🛡️ COSTRUTTORE DI PROTEZIONE RAM CANCELLAZIONI
+                    st.session_state.congelamento_sincro_attivo = True  # 🛡️ Attiva la protezione RAM
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
+                    
+                    # 🛡️ FIX DI SICUREZZA: Spegne il congelamento e sblocca la sincronizzazione cloud per i prossimi inserimenti
+                    st.session_state.congelamento_sincro_attivo = False  
+                    
                     st.success("🗑️ Chiusura rimossa con successo!")
                     time.sleep(1.0)
                     st.rerun()
+
         except Exception: pass
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
