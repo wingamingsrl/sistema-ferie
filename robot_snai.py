@@ -46,7 +46,6 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         try:
-            # 🛡️ COPIA CONFORME ACCESSO COLLAUDATO ORIGINALE
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
             time.sleep(3)
@@ -87,18 +86,18 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_partner.snai.iterrows():
+            for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    # 🛡️ PULIZIA DATE CONVERSIONE STRINGA PER INPUTBOX
+                    # 🛡️ FIX DEFINITIVO: Stringhe pulite senza variabili orfane o errate
                     data_inizio_pulita = str(data_in_completa).split(" ")[0] if " " in str(data_in_completa) else str(data_in_completa)
                     data_fine_pulita = str(data_fi_completa).split(" ")[0] if " " in str(data_fi_completa) else str(data_fi_completa)
                     
@@ -140,7 +139,7 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    # Inserimento nei campi estratti dal popup ChiusuraEsercizio.aspx
+                    # Campi reali di input estratti dalla pagina ChiusuraEsercizio.aspx
                     campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura']").first
                     campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura']").first
                     
