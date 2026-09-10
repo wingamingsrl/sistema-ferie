@@ -64,6 +64,7 @@ def push_excel_su_github(df_da_salvare):
         requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
         print("   📥 [Excel Cloud] Registro aggiornato e riga rimossa da GitHub.")
     except Exception: pass
+
 # =====================================================================================
 # BLOCCO 3: ACCESSO COLLAUDATO ORIGINALE SUL PORTALE PARTNER SNAITECH
 # =====================================================================================
@@ -85,9 +86,6 @@ def avvia_sincronizzazione_automatica():
         ]) 
         context = browser.new_context()
         page = context.new_page()
-
-        # Accetta in automatico i pop-up di conferma del browser
-        page.on("dialog", lambda dialog: dialog.accept())
 
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
@@ -128,8 +126,9 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
             print("----------------------------------------------------------------------")
+
 # =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE BARRA FILTRI ORIZZONTALE ED INSERIMENTO CODICI UNIVOCI
+# BLOCCO 4: INTERCETTAZIONE BARRA FILTRI ED INSERIMENTO CODICE CENSIMENTO CERTIFICATO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -143,31 +142,32 @@ def avvia_sincronizzazione_automatica():
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    data_inizio_pulita = str(data_in_completa).split(" ") if " " in str(data_in_completa) else str(data_in_completa)
-                    data_fine_pulita = str(data_fi_completa).split(" ") if " " in str(data_fi_completa) else str(data_fi_completa)
+                    data_inizio_pulita = str(data_in_completa)
+                    data_fine_pulita = str(data_fi_completa)
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=20000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca']").first
+                    tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
+
 # =====================================================================================
-# BLOCCO 5: COMPILAZIONE DATE, CANCELLAZIONE RIGA EXCEL LIVE E LOGOUT DI SICUREZZA
+# BLOCCO 5: GESTIONE MODULI, AGGIORNAMENTO AUTOMATICO REGISTRO EXCEL E LOGOUT
 # =====================================================================================
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
@@ -186,8 +186,8 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    campo_dal = page.locator("input[id*='iniziochiusura'], input[id*='Iniziochiusura'], input[id*='Txtiniziochiusura'], input[name*='Txtiniziochiusura'], input[id*='DataDal'], input[id*='Inizio']").first
-                    campo_al = page.locator("input[id*='finechiusura'], input[id*='Finechiusura'], input[id*='Txtfinechiusura'], input[name*='Txtfinechiusura'], input[id*='DataAl'], input[id*='Fine']").first
+                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura']").first
+                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura']").first
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
@@ -205,6 +205,7 @@ def avvia_sincronizzazione_automatica():
                     page.locator("input[type='submit'][value*='Salva'], input[value*='Conferma'], #ctl00_Cp1_btnSalva").first.click()
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     
+                    # 🛡️ INTERVENTO EXCEL: Sgancia permanentemente la riga dall'Excel cloud dopo l'impulso 'Salva'
                     try:
                         df_ferie_ram = pd.read_excel("storico_ferie.xlsx").fillna("")
                         df_ferie_pulito = df_ferie_ram[df_ferie_ram["CODICE_LOCALE"].astype(str).str.strip() != codice_aams]
