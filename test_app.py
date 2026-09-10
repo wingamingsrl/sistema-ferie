@@ -99,12 +99,11 @@ def carica_database_locale():
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # 🧹 REQUISITO SPASSINO GIORNALIERO: Elimina dal file solo i record scaduti (già riaperti)
+    # 🧹 MOTORE SPAZZINO AUTOMATICO: Rileva e distrugge i locali che hanno già riaperto rispetto a OGGI (Settembre 2026)
     righe_valide = []
     oggi_ora = datetime.now()
     file_modificato_pulizia = False
     
-    # Esegue il controllo del calendario solo se la sessione utente è attiva per evitare l'AttributeError
     if "user_nome" in st.session_state:
         for _, row in df_s.iterrows():
             testo_fine = str(row.get("FINE_FERIE", "")).strip()
@@ -113,7 +112,7 @@ def carica_database_locale():
                     data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
                     if data_fine_valida < oggi_ora:
                         file_modificato_pulizia = True
-                        continue  
+                        continue  # Cancella il locale (lo salta), ha già riaperto!
                 except Exception:
                     try:
                         data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
@@ -126,11 +125,17 @@ def carica_database_locale():
         if file_modificato_pulizia:
             df_s = pd.DataFrame(righe_valide) if righe_valide else pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+            
+            # 🛡️ FIX CANCELLAZIONE AUTOMATICA: Scrive fisicamente il file su disco prima di inviarlo a GitHub
             df_s.to_excel(FILE_STORICO_PERMANENTE, index=False)
-            try: push_excel_su_github(df_s)
+            
+            try: 
+                push_excel_su_github(df_s)
+                st.toast("🧹 Pulizia automatica: Rimossi i locali che hanno terminato le ferie!")
             except Exception: pass
   
     return df_l, df_t, df_s
+
 
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
