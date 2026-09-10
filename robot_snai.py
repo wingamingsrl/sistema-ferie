@@ -87,7 +87,7 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://snai.it", timeout=40000)
+            page.goto("https://partner.snai.it", timeout=40000)
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
