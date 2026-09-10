@@ -40,52 +40,54 @@ def avvia_sincronizzazione_automatica():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=[
-            "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled"
+            "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"
         ]) 
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            locale="it-IT", timezone_id="Europe/Rome"
-        )
+        context = browser.new_context()
         page = context.new_page()
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione lampo a partner.snai.it...")
-            # 🛡️ VELOCIZZAZIONE BLINDATA: Utilizza 'load' per saltare i blocchi pubblicitari all'ingresso
-            page.goto("https://partner.snai.it", wait_until="load", timeout=50000)
-            time.sleep(5)
+            # 🛡️ ASSETTO D'ACCESSO ORIGINALE RIPRISTINATO AL 100%
+            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
+            page.goto("https://partner.snai.it", timeout=30000)
+            time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
-            page.fill("input#username, input[name='username']", SNAI_USER)
-            page.fill("input#password, input[name='password']", SNAI_PASS)
+            page.fill("input#username, input[name='username'], input[type='text']", SNAI_USER)
+            page.fill("input#password, input[name='password'], input[type='password']", SNAI_PASS)
             
             print("🚀 [Robot] STEP 4b: Invio moduli di accesso...")
             page.click("button[type='submit'], input[type='submit'], .btn-login")
             time.sleep(4)
             
-            print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi countdown...")
+            print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi per far scadere il countdown...")
             time.sleep(11)
             
-            try: page.evaluate("document.querySelectorAll('.modal, .modal-backdrop').forEach(el => el.remove());")
+            try:
+                page.evaluate("""
+                    document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"], .fade.in').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = 'auto';
+                """)
+                print("✅ [Robot] STEP 4d: Codice pop-up eliminato dalla pagina con successo!")
             except Exception: pass
             time.sleep(2)
 
-            print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP...")
+            print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP pulito...")
             codice_totp = genera_codice_otp_automatico()
-            print(f"📌 [Robot] STEP 4f: Codice generato inviato a schermo: {codice_totp}")
+            print(f"📌 Codice generated inviato a schermo: {codice_totp}")
             
             page.fill("input#token, input[name='token'], input[name='otp']", str(codice_totp))
             time.sleep(1)
             
             page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia'), input[type='submit']")
-            print("⏳ [Robot] Convalida credenziali... Caricamento area riservata partner.snai.it...")
+            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
             time.sleep(15)
             
-            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
+            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", timeout=40000)
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -105,21 +107,19 @@ def avvia_sincronizzazione_automatica():
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ INPUT CERTIFICATO DA MANUELA
+                    # 🛡️ PUNTATORI DEI FILTRI PRECISI ED ESTRATTI DA MANUELA
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=20000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    # 🛡️ BOTTONE REALE ESTRATTO DA MANUELA
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
-                    # Selezione e clic sulle icone dentro la griglia #rounded-corner
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
@@ -131,7 +131,7 @@ def avvia_sincronizzazione_automatica():
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
-                        print("   AM 🖱:// Clic sulla cella td nativa della riga...")
+                        print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
                         cella_td.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (5 secondi)...")
@@ -163,8 +163,9 @@ def avvia_sincronizzazione_automatica():
             try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
             except Exception: page.context.clear_cookies()
 
-        except Exception as e: print(f"❌ Errore generale: {str(e)}")
+        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
