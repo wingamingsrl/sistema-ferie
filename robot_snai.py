@@ -94,7 +94,7 @@ def avvia_sincronizzazione_automatica():
             time.sleep(10)
 
 # =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE DELLA BARRA FILTRI ORIZZONTALE CON AGGANCIO DINAMICO FRAME
+# BLOCCO 4: INTERCETTAZIONE DELLA BARRA FILTRI CON APERTURA SINGOLA E STRUTTURA REALE
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://snai.it", wait_until="load", timeout=40000)
@@ -113,23 +113,19 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ FIX CODA CONTINUA: Forza il ricalcolo del foglio attivo ad ogni singolo giro di vite
-                    time.sleep(3)
+                    # 🛡️ PUNTATORE DIRETTO SENZA LOOP DOPPI: Cerca l'elemento sulla pagina principale (niente iframe confermato)
                     target_frame = page
-                    for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0 or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0:
-                            target_frame = f
-                            break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # Puntatore laser flessibile sul campo censimento all'interno del frame aggiornato
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
+                    # Usa l'ID esatto estratto dal tuo codice sorgente
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=25000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca, input[id*='btRicerca']").first
+                    # Usa il bottone esatto con la 'b' minuscola estratto dal tuo sorgente
+                    tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
@@ -137,7 +133,7 @@ def avvia_sincronizzazione_automatica():
 
 
 # =====================================================================================
-# BLOCCO 5: GESTIONE MODULI, ALLINEAMENTO E RESET FORZATO VIA URL DELLA GRIGLIA
+# BLOCCO 5: COMPILAZIONE DATE, CLIC SU TASTO SALVA ED INDIETRO CERTIFICATI DA MANUELA
 # =====================================================================================
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
@@ -171,22 +167,23 @@ def avvia_sincronizzazione_automatica():
                     campo_al.fill(data_fine_pulita)
                     time.sleep(1)
 
-                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
-                    page.locator("input[type='submit'][value*='Salva'], input[value*='Conferma'], #ctl00_Cp1_btnSalva").first.click()
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
-                    print("----------------------------------------------------------------------")
+                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
+                    # 🛡️ INPUT SBLOCCATO DA MANUELA: Clicca sull'ID reale di salvataggio della richiesta
+                    page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
+                    print(f"   ✅ [Robot] STEP 11: Impulso inviato! Locale {codice_aams} allineato con successo.")
                     time.sleep(6)
                     
-                    # 🛡️ INTERVENTO INDISTRUTTIBILE: Forza il ritorno alla pagina iniziale pulita ignorando il tasto indietro
-                    print("   ↩️ [Robot] Ricarico la pagina anagrafica pulita per il locale successivo...")
-                    page.goto("https://partner.snai.it", timeout=30000)
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
+                    # 🛡️ INPUT SBLOCCATO DA MANUELA: Clicca una volta sul tasto Indietro per resettare lo schermo
+                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it", timeout=30000)
-                        time.sleep(5)
+                        # Ritorno d'emergenza via URL se lo schermo si incastra
+                        page.goto("https://snai.it")
+                        time.sleep(6)
                     except Exception: pass
                     continue
 
@@ -199,3 +196,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
