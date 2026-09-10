@@ -58,7 +58,7 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione schermata a partner.partner.snai.it...")
+            print("🌐 [Robot] STEP 4: Connessione schermata a partner.snai.it...")
             page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
             time.sleep(6)
             
