@@ -86,63 +86,63 @@ def scarica_file_da_github_se_esiste(nome_file):
     return None
 
 def carica_database_locale():
-    df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
-    df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
+    # 1. Carica i file base dell'ufficio
+    df_l = pd.read_excel("locali.xlsx").fillna("") if os.path.exists("locali.xlsx") else pd.DataFrame()
+    df_t = pd.read_excel("tecnici.xlsx").fillna("") if os.path.exists("tecnici.xlsx") else pd.DataFrame()
     
-    # Se abbiamo appena fatto una cancellazione o modifica, impedisce a GitHub di sovrascrivere la RAM con i dati vecchi di rete
+    # 2. Controllo RAM per non sovrascrivere mentre salvi a mano
     if st.session_state.get("congelamento_sincro_attivo", False):
         if "storico_cloud" in st.session_state:
             df_s = pd.DataFrame(st.session_state.storico_cloud)
         else:
-            df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+            df_s = pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"])
     else:
-        df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-        if df_s is None or df_s.empty:
-            if os.path.exists(FILE_STORICO_PERMANENTE):
-                df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-            else:
-                df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+        df_s = pd.read_excel("storico_ferie.xlsx").fillna("") if os.path.exists("storico_ferie.xlsx") else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"])
             
-    df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+    df_s = df_s.reindex(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"]).fillna("")
     
-    # Pulizia automatica rigida delle ferie già trascorse rispetto ad oggi
-    righe_valide = []
-    oggi_ora = datetime.now()
-    file_modificato_pulizia = False
+    # 🧹 MOTORE SPAZZINO GIORNALIERO: Elimina i locali che hanno già riaperto rispetto a OGGI
+    righe_ancora_in_ferie = []
+    oggi = datetime.now() # Rileva la data reale di oggi (Settembre 2026)
+    trovati_locali_riaperti = False
     
     for _, row in df_s.iterrows():
         testo_fine = str(row.get("FINE_FERIE", "")).strip()
         if testo_fine:
             try:
-                data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
-                if data_fine_valida < oggi_ora:
-                    file_modificato_pulizia = True
-                    continue
+                # Tenta la lettura con Data e Ora estesa (es: 31-08-2026 23:30)
+                data_fine = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
+                if data_fine < oggi:
+                    trovati_locali_riaperti = True
+                    continue  # Sotto-inteso: Salta questo locale, ha già riaperto!
             except Exception:
                 try:
-                    data_fine_valida = datetime.strptime(testo_fine.split(" "), "%d-%m-%Y")
-                    if data_fine_valida.date() < oggi_ora.date():
-                        file_modificato_pulizia = True
-                        continue
+                    # Tenta la lettura con la sola Data semplice (es: 31-08-2026)
+                    data_fine = datetime.strptime(testo_fine, "%d-%m-%Y")
+                    if data_fine.date() < oggi.date():
+                        trovati_locali_riaperti = True
+                        continue # Salta, ferie terminate!
                 except Exception: pass
-        righe_valide.append(row)
         
-    if righe_valide:
-        df_s = pd.DataFrame(righe_valide)
+        # Se non è scaduto o non ha date strane, lo teniamo in elenco
+        righe_ancora_in_ferie.append(row)
+        
+    if righe_ancora_in_ferie:
+        df_s = pd.DataFrame(righe_ancora_in_ferie)
     else:
-        df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+        df_s = pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"])
         
-    df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+    df_s = df_s.reindex(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"]).fillna("")
     
-    # Blocco finale corretto ed allineato al millimetro
-    if file_modificato_pulizia and not st.session_state.get("congelamento_sincro_attivo", False):
+    # 📥 SE ABBIAMO TROVATO RIGHE SCADUTE: Aggiorna l'Excel sul PC dell'ufficio e lo spinge su GitHub
+    if trovati_locali_riaperti and not st.session_state.get("congelamento_sincro_attivo", False):
+        df_s.to_excel("storico_ferie.xlsx", index=False)
         try:
             push_excel_su_github(df_s)
-        except Exception:
-            pass
+            st.toast("🧹 Pulizia automatica: Rimossi i locali con ferie già terminate!")
+        except Exception: pass
   
     return df_l, df_t, df_s
-
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
