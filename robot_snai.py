@@ -105,11 +105,22 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE DELLA BARRA FILTRI ORIZZONTALE CON ATTESA ELASTICA
+# BLOCCO 4: SPOSTAMENTO REALE TRAMITE MENU GRAFICO ED INSERIMENTO CODICE CENSIMENTO
 # =====================================================================================
-            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
-            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione pannello centrale (10 secondi)...")
+            print("📦 [Robot] STEP 6: Apertura del menu principale Anagrafica...")
+            # 🛡️ NAVIGAZIONE DIRETTA DI MANUELA: Clicca sul menu reale per trasferire i cookie e il ViewState corretto
+            menu_anagrafica = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), span:has-text('Anagrafica'), a:has-text('Anagrafica')").first
+            menu_anagrafica.wait_for(state="visible", timeout=20000)
+            menu_anagrafica.click()
+            time.sleep(4)
+            
+            print("📬 [Robot] STEP 6a: Selezione della voce Sotto-Menu Esercizi...")
+            # Clicca sulla voce del sotto-menu per caricare la pagina esercizi in modo nativo
+            sotto_menu_esercizi = page.locator("a[href*='Esercizi.aspx'], span:has-text('Esercizi'), td:has-text('Esercizi')").first
+            sotto_menu_esercizi.wait_for(state="visible", timeout=15000)
+            sotto_menu_esercizi.click()
+            
+            print("   ⏳ [Robot] STEP 6b: Attesa stabilizzazione della pagina esercizi (10 secondi)...")
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -131,16 +142,16 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ IL MIRINO DI MANUELA: Punta all'ID esatto e reale estratto dal codice della pagina
+                    # 🛡️ IL MIRINO DI MANUELA: Punta all'ID esatto estratto dal tuo codice della pagina
                     campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio']").first
                     
-                    # 🛡️ ATTESA ELASTICA: Aspetta che l'UpdatePanel carichi la casella a schermo prima di toccarla
+                    # Aspetta che l'UpdatePanel carichi la casella a schermo prima di toccarla
                     campo_ricerca.wait_for(state="visible", timeout=25000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    # 🛡️ INVIO DELLA RICERCA: Clicca sul tasto Ricerca o preme Enter per filtrare il locale univoco
+                    # Clicca sul tasto di Ricerca reale per filtrare il locale univoco
                     tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca'], button:has-text('Ricerca')").first
                     if tasto_ricerca.count() > 0:
                         tasto_ricerca.click()
