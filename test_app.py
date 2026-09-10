@@ -99,48 +99,52 @@ def carica_database_locale():
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # 🧹 MOTORE AUTOMATICO GIORNALIERO (REPLICA ESATTA DEL TASTO ELIMINA MANUALI)
-    # Esegue il controllo del calendario solo se l'utente si è già autenticato a schermo
-    if "user_nome" in st.session_state and "storico_cloud" in st.session_state:
+    # 🧹 MOTORE AUTOMATICO FILTRATO GIORNALIERO SULLE DATE DI OGGI
+    if "user_nome" in st.session_state:
         oggi_ora = datetime.now()
-        indici_da_eliminare = []
+        codici_validi = []
+        file_modificato_pulizia = False
         
-        # Scansiona lo storico cloud per individuare la posizione esatta (ID) dei locali scaduti
-        for idx, row in enumerate(st.session_state.storico_cloud):
+        # Scansiona l'anagrafica per isolare i codici dei locali ancora attivi
+        for _, row in df_s.iterrows():
             testo_fine = str(row.get("FINE_FERIE", "")).strip()
+            codice_corrente = str(row.get("CODICE_LOCALE", "")).strip()
+            
             if testo_fine:
                 try:
                     data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
                     if data_fine_valida < oggi_ora:
-                        indici_da_eliminare.append(idx)
+                        file_modificato_pulizia = True
+                        continue  # Salta il locale, ferie scadute!
                 except Exception:
                     try:
                         data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
                         if data_fine_valida.date() < oggi_ora.date():
-                            indici_da_eliminare.append(idx)
+                            file_modificato_pulizia = True
+                            continue
                     except Exception: pass
+            
+            if codice_corrente:
+                codici_validi.append(codice_corrente)
         
-        # Se ci sono locali che hanno già riaperto, applica la stessa identica rimozione del tasto rosso
-        if indici_da_eliminare:
-            st.session_state.congelamento_sincro_attivo = True  # Blocca temporaneamente la RAM
+        # 🛡️ SE CI SONO SCADENZE: Applica il filtro pulito rigenerando il file Excel fisico
+        if file_modificato_pulizia:
+            df_s_filtrato = df_s[df_s["CODICE_LOCALE"].astype(str).str.strip().isin(codici_validi)]
+            df_s_filtrato = df_s_filtrato.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
             
-            # Rimuove i locali partendo dall'ultimo per non sfasare gli indici della lista
-            for idx in sorted(indici_da_eliminare, reverse=True):
-                st.session_state.storico_cloud.pop(idx)
-                
-            # Genera il database aggiornato identico alla procedura manuale dell'ufficio
-            df_nuovo_pulito = pd.DataFrame(st.session_state.storico_cloud)
+            # Allinea la plancia e salva fisicamente sul disco rigido
+            st.session_state.storico_cloud = df_s_filtrato.to_dict('records')
+            df_s_filtrato.to_excel(FILE_STORICO_PERMANENTE, index=False)
             
-            # Applica la sequenza nativa esatta che aggiorna l'Excel reale
-            df_nuovo_pulito.to_excel(FILE_STORICO_PERMANENTE, index=False)
-            push_excel_su_github(df_nuovo_pulito)
+            try: 
+                push_excel_su_github(df_s_filtrato)
+                st.toast("🧹 Pulizia automatica completata!")
+            except Exception: pass
             
-            st.session_state.congelamento_sincro_attivo = False  # Sblocca la RAM
-            st.toast("🧹 Pulizia automatica: Rimossi i locali con ferie già terminate!")
-            time.sleep(0.5)
             st.rerun()
-            
+  
     return df_l, df_t, df_s
+
 
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
