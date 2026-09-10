@@ -86,63 +86,52 @@ def scarica_file_da_github_se_esiste(nome_file):
     return None
 
 def carica_database_locale():
-    # 1. Carica i file base dell'ufficio
-    df_l = pd.read_excel("locali.xlsx").fillna("") if os.path.exists("locali.xlsx") else pd.DataFrame()
-    df_t = pd.read_excel("tecnici.xlsx").fillna("") if os.path.exists("tecnici.xlsx") else pd.DataFrame()
+    df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
+    df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
-    # 2. Controllo RAM per non sovrascrivere mentre salvi a mano
     if st.session_state.get("congelamento_sincro_attivo", False):
         if "storico_cloud" in st.session_state:
             df_s = pd.DataFrame(st.session_state.storico_cloud)
         else:
-            df_s = pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"])
+            df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
     else:
-        df_s = pd.read_excel("storico_ferie.xlsx").fillna("") if os.path.exists("storico_ferie.xlsx") else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"])
+        df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("") if os.path.exists(FILE_STORICO_PERMANENTE) else pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
-    df_s = df_s.reindex(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"]).fillna("")
+    df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # 🧹 MOTORE SPAZZINO GIORNALIERO: Elimina i locali che hanno già riaperto rispetto a OGGI
-    righe_ancora_in_ferie = []
-    oggi = datetime.now() # Rileva la data reale di oggi (Settembre 2026)
-    trovati_locali_riaperti = False
+    # 🧹 REQUISITO SPASSINO GIORNALIERO: Elimina dal file solo i record scaduti (già riaperti)
+    righe_valide = []
+    oggi_ora = datetime.now()
+    file_modificato_pulizia = False
     
-    for _, row in df_s.iterrows():
-        testo_fine = str(row.get("FINE_FERIE", "")).strip()
-        if testo_fine:
-            try:
-                # Tenta la lettura con Data e Ora estesa (es: 31-08-2026 23:30)
-                data_fine = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
-                if data_fine < oggi:
-                    trovati_locali_riaperti = True
-                    continue  # Sotto-inteso: Salta questo locale, ha già riaperto!
-            except Exception:
+    # Esegue il controllo del calendario solo se la sessione utente è attiva per evitare l'AttributeError
+    if "user_nome" in st.session_state:
+        for _, row in df_s.iterrows():
+            testo_fine = str(row.get("FINE_FERIE", "")).strip()
+            if testo_fine:
                 try:
-                    # Tenta la lettura con la sola Data semplice (es: 31-08-2026)
-                    data_fine = datetime.strptime(testo_fine, "%d-%m-%Y")
-                    if data_fine.date() < oggi.date():
-                        trovati_locali_riaperti = True
-                        continue # Salta, ferie terminate!
-                except Exception: pass
-        
-        # Se non è scaduto o non ha date strane, lo teniamo in elenco
-        righe_ancora_in_ferie.append(row)
-        
-    if righe_ancora_in_ferie:
-        df_s = pd.DataFrame(righe_ancora_in_ferie)
-    else:
-        df_s = pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"])
-        
-    df_s = df_s.reindex(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"]).fillna("")
-    
-    # 📥 SE ABBIAMO TROVATO RIGHE SCADUTE: Aggiorna l'Excel sul PC dell'ufficio e lo spinge su GitHub
-    if trovati_locali_riaperti and not st.session_state.get("congelamento_sincro_attivo", False):
-        df_s.to_excel("storico_ferie.xlsx", index=False)
-        try:
-            push_excel_su_github(df_s)
-            st.toast("🧹 Pulizia automatica: Rimossi i locali con ferie già terminate!")
-        except Exception: pass
+                    data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
+                    if data_fine_valida < oggi_ora:
+                        file_modificato_pulizia = True
+                        continue  
+                except Exception:
+                    try:
+                        data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
+                        if data_fine_valida.date() < oggi_ora.date():
+                            file_modificato_pulizia = True
+                            continue
+                    except Exception: pass
+            righe_valide.append(row)
+            
+        if file_modificato_pulizia:
+            df_s = pd.DataFrame(righe_valide) if righe_valide else pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+            df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+            df_s.to_excel(FILE_STORICO_PERMANENTE, index=False)
+            try: push_excel_su_github(df_s)
+            except Exception: pass
   
     return df_l, df_t, df_s
+
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
@@ -573,20 +562,20 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 idx_da_eliminare = int(idx_iscolato_str)
                 
                 if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                    st.session_state.congelamento_sincro_attivo = True  # 🛡️ Attiva la protezione RAM
+                    st.session_state.congelamento_sincro_attivo = True  
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     
-                    # 🛡️ FIX DI SICUREZZA: Spegne il congelamento e sblocca la sincronizzazione cloud per i prossimi inserimenti
+                    # 🛡️ SBLOCCO SICUREZZA: Spegne il congelamento RAM dopo la rimozione manuale
                     st.session_state.congelamento_sincro_attivo = False  
                     
                     st.success("🗑️ Chiusura rimossa con successo!")
                     time.sleep(1.0)
                     st.rerun()
-
         except Exception: pass
+        
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
@@ -595,12 +584,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             df_caricato = pd.read_excel(file_caricato).fillna("")
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
-                    
-                    # 🛡️ FIX DATA INSERIMENTO IN UPLOAD: Raddrizza anche la data di registrazione all'italiana
                     for col_data in ["DATA_INSERIMENTO", "INIZIO_FERIE", "FINE_FERIE"]:
                         if col_data in df_caricato.columns:
                             try:
-                                # Se ha l'orario esteso con i secondi, mantiene la struttura pulita italiana
                                 if col_data == "DATA_INSERIMENTO":
                                     df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M:%S')
                                 else:
@@ -617,6 +603,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
 
 
 # PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
