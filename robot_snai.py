@@ -1,12 +1,7 @@
-# =====================================================================================
-# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE ED ACCESSI PROPRIETARI — PORTALE: PARTNER.SNAI.IT
-# =====================================================================================
 import os
 import io
 import time
 import pyotp
-import base64
 import requests
 import pandas as pd
 from datetime import datetime
@@ -15,9 +10,7 @@ from playwright.sync_api import sync_playwright
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
-# =====================================================================================
-# BLOCCO 2: MOTORE DI LETTURA LIVE E AGGIORNAMENTO REPOSITORY EXCEL SU GITHUB
-# =====================================================================================
+
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
     try:
@@ -33,41 +26,6 @@ def genera_codice_otp_automatico():
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
 
-def push_excel_su_github(df_da_salvare):
-    try:
-        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
-        if not t_git: return
-        url_git = "https://github.com"
-        
-        output_binario = io.BytesIO()
-        with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
-            df_da_salvare.to_excel(writer, index=False)
-        dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
-        
-        headers_git = {
-            "Authorization": f"token {t_git}", 
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "WinGaming-Cloud-App"
-        }
-        
-        res_get = requests.get(url_git, headers=headers_git, timeout=5)
-        sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
-        
-        payload_git = {
-            "message": "🤖 [Robot] Rimozione locale Snaitech allineato", 
-            "content": dati_base64, 
-            "branch": "main"
-        }
-        if sha_file: 
-            payload_git["sha"] = sha_file
-            
-        requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        print("   📥 [Excel Cloud] Registro aggiornato e riga rimossa da GitHub.")
-    except Exception: pass
-
-# =====================================================================================
-# BLOCCO 3: ACCESSO COLLAUDATO ORIGINALE SUL PORTALE PARTNER SNAITECH
-# =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
@@ -86,6 +44,9 @@ def avvia_sincronizzazione_automatica():
         ]) 
         context = browser.new_context()
         page = context.new_page()
+
+        # Accetta in automatico i pop-up di conferma del browser
+        page.on("dialog", lambda dialog: dialog.accept())
 
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
@@ -127,11 +88,8 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
             print("----------------------------------------------------------------------")
 
-# =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE BARRA FILTRI ED INSERIMENTO CODICE CENSIMENTO CERTIFICATO
-# =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -166,9 +124,6 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
-# =====================================================================================
-# BLOCCO 5: GESTIONE MODULI, AGGIORNAMENTO AUTOMATICO REGISTRO EXCEL E LOGOUT
-# =====================================================================================
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
@@ -204,25 +159,17 @@ def avvia_sincronizzazione_automatica():
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
                     page.locator("input[type='submit'][value*='Salva'], input[value*='Conferma'], #ctl00_Cp1_btnSalva").first.click()
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
-                    
-                    # 🛡️ INTERVENTO EXCEL: Sgancia permanentemente la riga dall'Excel cloud dopo l'impulso 'Salva'
-                    try:
-                        df_ferie_ram = pd.read_excel("storico_ferie.xlsx").fillna("")
-                        df_ferie_pulito = df_ferie_ram[df_ferie_ram["CODICE_LOCALE"].astype(str).str.strip() != codice_aams]
-                        df_ferie_pulito.to_excel("storico_ferie.xlsx", index=False)
-                        push_excel_su_github(df_ferie_pulito)
-                    except Exception: pass
-                    
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    page.goto("https://partner.snai.it")
+                    # Ricarica l'anagrafica pulita per passare al locale successivo senza loop di file
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                     time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(5)
                     except Exception: pass
                     continue
