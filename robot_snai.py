@@ -144,10 +144,9 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 # BLOCCO 5: APERTURA ED INSERIMENTO DELLE DATE FERIE CON LOGOUT FINALE
 # =====================================================================================
-                    # Sblocca il preload Microsoft per rendere cliccabili gli elementi
                     try: target_frame.evaluate("document.querySelectorAll('.mainPreload').forEach(el => el.remove());")
                     except Exception: pass
-                    time.sleep(2)
+                    time.sleep(3)
 
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
@@ -159,15 +158,19 @@ def avvia_sincronizzazione_automatica():
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
-                        print("   🖱️ [JavaScript Mode] Esecuzione nativa filtrata della funzione...")
-                        # 🛡️ FIX APICI DI MANUELA: Sostituisce l'apice singolo con uno spazio per non spaccare il codice JavaScript
-                        nome_pulito_javascript = nome_locale_corrente.replace("'", " ").replace('"', ' ')
-                        target_frame.evaluate(f"Pianificazione_dettagli('', '37832','{nome_pulito_javascript}','{codice_aams}')")
+                        print("   🖱️ [Grid Mode] Clic nativo sulla prima riga utile della griglia risultati...")
+                        # 🛡️ FIX FINALE INTERCETTATO DA MANUELA: Se l'immagine è nascosta, clicca sulla cella td che lancia il postback
+                        cella_tabella = target_frame.locator("td[onclick*='Pianificazione_dettagli'], table[id*='lst'] td img, .Grid img").first
+                        if cella_tabella.count() > 0:
+                            cella_tabella.click(force=True, timeout=5000)
+                        else:
+                            # Esegue l'iniezione forzata bloccando il focus sul sotto-foglio iframe corretto
+                            nome_pulito_javascript = nome_locale_corrente.replace("'", " ").replace('"', ' ')
+                            target_frame.evaluate(f"window.Pianificazione_dettagli('', '37832','{nome_pulito_javascript}','{codice_aams}')")
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi temporali (5 secondi)...")
                     time.sleep(5)
 
-                    # Compilazione date nel sotto-pannello sbloccato
                     campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']").first
                     campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']").first
                     
