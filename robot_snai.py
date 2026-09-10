@@ -142,38 +142,44 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(6)
 
 # =====================================================================================
-# BLOCCO 5: RINFRESCO OCCHIO VISIVO ED INSERIMENTO DELLE DATE FERIE CON LOGOUT
+# BLOCCO 5: AGGANCIO REALE DELLA TABELLA 'ROUNDED-CORNER' CERTIFICATA DA MANUELA
 # =====================================================================================
-                    # 🛡️ CONTROMISURA RINFRESCO: Rinfresca l'occhio sul sotto-foglio dopo che il PostBack ha ricaricato la tabella
-                    time.sleep(2)
+                    # 🛡️ CONTROMISURA HTML DI MANUELA: Attende che la griglia dei risultati sia stampata a video
+                    print("   ⏳ [Robot] STEP 7c: Attesa stabilità della tabella dei risultati (#rounded-corner)...")
+                    
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("img[id*='img_pianificazione']").count() > 0 or f.locator("td[onclick*='Pianificazione']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("#rounded-corner").count() > 0 or f.locator("table[id*='rounded-corner']").count() > 0:
                             target_frame = f
                             break
 
                     try: target_frame.evaluate("document.querySelectorAll('.mainPreload').forEach(el => el.remove());")
                     except Exception: pass
 
-                    # Mappatura dei puntatori reali estratti dall'HTML di Manuela
-                    icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
-                    icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
-                    cella_javascript_diretta = target_frame.locator("td[onclick*='Pianificazione']").first
+                    # Forza l'attesa visiva assoluta sulla griglia dei risultati estratta da Manuela
+                    tabella_risultati = target_frame.locator("#rounded-corner, table[summary='Lista Esercizi']").first
+                    tabella_risultati.wait_for(state="visible", timeout=15000)
+                    time.sleep(2)
+
+                    # Mirino millimetrico sui file .jpg e .gif posizionati all'interno della griglia
+                    icona_nuovo = target_frame.locator("#rounded-corner img[src*='insert_pianificazione'], #rounded-corner img[id*='img_pianificazione']").first
+                    icona_modifica = target_frame.locator("#rounded-corner img[src*='edit_pianificazione']").first
+                    cella_cliccabile_td = target_frame.locator("#rounded-corner td[onclick*='Pianificazione']").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA] Rilevata icona esistente. Entro nella pianificazione...")
+                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Chiusura esistente! Entro in modifica...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Rilevato locale vuoto. Clic sul pulsante verde...")
+                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Locale vuoto! Clic sul pulsante verde...")
                         icona_nuovo.click(force=True, timeout=8000)
-                    elif cella_javascript_diretta.count() > 0:
-                        print("   🖱️ [Grid Mode] Clic sulla cella td nativa estratta da Manuela...")
-                        cella_javascript_diretta.click(force=True, timeout=8000)
+                    elif cella_cliccabile_td.count() > 0:
+                        print("   🖱️ [Grid Mode] Clic diretto sulla cella TD della griglia di Manuela...")
+                        cella_cliccabile_td.click(force=True, timeout=8000)
                     else:
-                        print("   ⚠️ [Grid Mode] Tento il clic forzato sulla prima immagine dei risultati aggiornati...")
-                        target_frame.locator("img[id*='img_pianificazione'], td img, .Grid img").first.click(force=True, timeout=8000)
+                        print("   ⚠️ [Grid Mode] Tento il clic forzato sulla riga della tabella risultati...")
+                        target_frame.locator("#rounded-corner tbody tr td img").first.click(force=True, timeout=8000)
                     
-                    print("   ⏳ [Robot] STEP 8c: Attesa apertura campi temporali (5 secondi)...")
+                    print("   ⏳ [Robot] STEP 8c: Attesa apertura campi temporali date (5 secondi)...")
                     time.sleep(5)
 
                     campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']").first
@@ -190,7 +196,7 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
                     target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} sincronizzato con successo!")
+                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
