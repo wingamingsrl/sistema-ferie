@@ -557,24 +557,28 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         try:
             parti_s = selezione_delete.split("ID ")
             if len(parti_s) > 1:
-                # 🛡️ FIX FINALE INDISTRUTTIBILE: Isola il numero esatto dell'indice senza spaccare la stringa
                 sub_stringa = parti_s[1]
                 idx_isolato_str = sub_stringa.split(" |")[0]
                 idx_da_eliminare = int(idx_isolato_str)
                 
                 if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                    st.session_state.congelamento_sincro_attivo = True  # Attiva protezione RAM
+                    st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
+                    
+                    # Rimuove la riga selezionata
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                    
+                    # 🛡️ FIX FONDAMENTALE: Forza la scrittura fisica dell'Excel su disco prima di inviarlo
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    
+                    # Spinge il file modificato su GitHub
                     push_excel_su_github(df_nuovo_salva)
                     
-                    st.session_state.congelamento_sincro_attivo = False  # Spegne congelamento RAM
-                    
-                    st.success("🗑️ Chiusura rimossa con successo!")
+                    st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
+                    st.success("🗑️ Chiusura rimossa con successo sia dalla plancia che dall'Excel cloud!")
                     time.sleep(1.0)
                     st.rerun()
-        except Exception as e_del: st.error(f"❌ Errore rimozione: {str(e_del)}")
+        except Exception as e_del: st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
