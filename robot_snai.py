@@ -105,10 +105,11 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: INIEZIONE NELL'UPDATEPANEL MICROSOFT DEL FRAME SPECIFICO (DA FOTO DI MANUELA)
+# BLOCCO 4: INTERCETTAZIONE REALE DELLA BARRA FILTRI ED INVIO RICERCA NATIVA
 # =====================================================================================
-            print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
+            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
+            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -118,28 +119,33 @@ def avvia_sincronizzazione_automatica():
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    print(f"🚀 [Robot] STEP 7: Forzatura programmatica -> {codice_aams} - {nome_locale_corrente}")
+                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ IDENTIFICAZIONE DEL FRAME GIUSTO: Trova lo schermo in cui vive la tabella
+                    # Identifica il foglio reale della tabella tra tutti i sotto-schermi della pagina
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("[id*='txtCodiceCensimentoesercizio']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
                             target_frame = f
                             break
 
-                    # 🛡️ INIEZIONE INTERNA AL FRAME: Scrive ed esegue il PostBack direttamente dentro la scatola protetta
-                    target_frame.evaluate(f"""
-                        var inputCensimento = document.getElementById('ctl00_Cp1_txtCodiceCensimentoesercizio');
-                        if(inputCensimento) {{
-                            inputCensimento.value = '{codice_aams}';
-                            __doPostBack('ctl00$Cp1$btnRicerca','');
-                        }} else if(document.forms['aspnetForm']) {{
-                            document.forms['aspnetForm']['ctl00$Cp1$txtCodiceCensimentoesercizio'].value = '{codice_aams}';
-                            __doPostBack('ctl00$Cp1$btnRicerca','');
-                        }}
-                    """)
-                    print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
+                    print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
+                    # 🛡️ PUNTATORE LASER DI MANUELA: Clicca e scrive nell'ID esatto certificato dal tuo sorgente
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
+                    campo_ricerca.wait_for(state="visible", timeout=15000)
+                    campo_ricerca.click()
+                    campo_ricerca.fill(codice_aams)
+                    time.sleep(2)
+                    
+                    # 🛡️ INTERCETTAZIONE TASTO RICERCA REALE: Clicca sul pulsante nativo della griglia
+                    tasto_filtra = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca'], button:has-text('Ricerca')").first
+                    if tasto_filtra.count() > 0:
+                        tasto_filtra.click()
+                    else:
+                        page.keyboard.press("Enter")
+                        
+                    print("   ⏳ [Robot] STEP 7b: Attesa caricamento griglia dei risultati (6 secondi)...")
                     time.sleep(6)
+
 
 # =====================================================================================
 # BLOCCO 5: AGGANCIO REALE DELLA TABELLA 'ROUNDED-CORNER' CERTIFICATA DA MANUELA
