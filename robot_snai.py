@@ -93,6 +93,14 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
+# =====================================================================================
+# BLOCCO 4: INTERCETTAZIONE DELLA BARRA FILTRI ORIZZONTALE CON AGGANCIO DINAMICO FRAME
+# =====================================================================================
+            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
+            page.goto("https://snai.it", wait_until="load", timeout=40000)
+            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
+            time.sleep(10)
+
             for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
@@ -105,24 +113,28 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # 🛡️ FIX CODA CONTINUA: Forza il ricalcolo del foglio attivo ad ogni singolo giro di vite
+                    time.sleep(3)
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
+                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0 or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
-                    campo_ricerca.wait_for(state="visible", timeout=20000)
+                    # Puntatore laser flessibile sul campo censimento all'interno del frame aggiornato
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
+                    campo_ricerca.wait_for(state="visible", timeout=25000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
+                    tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca, input[id*='btRicerca']").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
+
 
 # =====================================================================================
 # BLOCCO 5: GESTIONE MODULI, ALLINEAMENTO E RESET FORZATO VIA URL DELLA GRIGLIA
