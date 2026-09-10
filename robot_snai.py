@@ -105,10 +105,10 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: INIEZIONE NELL'UPDATEPANEL MICROSOFT (ESTRATTO DALLA FOTO DI MANUELA)
+# BLOCCO 4: INIEZIONE NELL'UPDATEPANEL MICROSOFT DEL FRAME SPECIFICO (DA FOTO DI MANUELA)
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
+            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -120,15 +120,22 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Forzatura programmatica -> {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ INIEZIONE LASER DA FOTO: Scrive nel modulo occultato di Snaitech ed attiva il PostBack
-                    page.evaluate(f"""
+                    # 🛡️ IDENTIFICAZIONE DEL FRAME GIUSTO: Trova lo schermo in cui vive la tabella
+                    target_frame = page
+                    for f in page.frames:
+                        if "Esercizi" in f.url or f.locator("[id*='txtCodiceCensimentoesercizio']").count() > 0:
+                            target_frame = f
+                            break
+
+                    # 🛡️ INIEZIONE INTERNA AL FRAME: Scrive ed esegue il PostBack direttamente dentro la scatola protetta
+                    target_frame.evaluate(f"""
                         var inputCensimento = document.getElementById('ctl00_Cp1_txtCodiceCensimentoesercizio');
                         if(inputCensimento) {{
                             inputCensimento.value = '{codice_aams}';
                             __doPostBack('ctl00$Cp1$btnRicerca','');
-                        }} else {{
+                        }} else if(document.forms['aspnetForm']) {{
                             document.forms['aspnetForm']['ctl00$Cp1$txtCodiceCensimentoesercizio'].value = '{codice_aams}';
-                            document.forms['aspnetForm'].submit();
+                            __doPostBack('ctl00$Cp1$btnRicerca','');
                         }}
                     """)
                     print("   ⏳ [Robot] STEP 7b: Attesa griglia dei risultati (6 secondi)...")
@@ -137,8 +144,8 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 # BLOCCO 5: APERTURA ED INSERIMENTO DELLE DATE FERIE CON LOGOUT FINALE
 # =====================================================================================
-                    icona_nuovo = page.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
-                    icona_modifica = page.locator("img[src*='edit_pianificazione']").first
+                    icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
+                    icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     
                     if icona_modifica.count() > 0:
                         print("   📝 [Robot] STEP 8: [MODIFICA] Entro nella pianificazione esistente...")
@@ -148,16 +155,16 @@ def avvia_sincronizzazione_automatica():
                         icona_nuovo.click(force=True)
                     else:
                         print("   🖱️ [JavaScript Mode] Esecuzione nativa della funzione Pianificazione_dettagli...")
-                        page.evaluate(f"Pianificazione_dettagli('', '37832','{nome_locale_corrente}','{codice_aams}')")
+                        target_frame.evaluate(f"Pianificazione_dettagli('', '37832','{nome_locale_corrente}','{codice_aams}')")
                     time.sleep(4)
 
-                    page.locator("input[id*='txtDataDal'], input[id*='Inizio']").first.fill(data_in_completa)
+                    target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first.fill(data_in_completa)
                     time.sleep(1)
-                    page.locator("input[id*='txtDataAl'], input[id*='Fine']").first.fill(data_fi_completa)
+                    target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first.fill(data_fi_completa)
                     time.sleep(1)
 
-                    page.locator("input[type='submit'][value*='Salva'], input[id*='btnSalva']").first.click()
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato con successo!")
+                    target_frame.locator("input[type='submit'][value*='Salva'], input[id*='btnSalva']").first.click()
+                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} sincronizzato con successo!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
