@@ -45,62 +45,62 @@ def avvia_sincronizzazione_automatica():
         context = browser.new_context()
         page = context.new_page()
 
-        # Accetta in automatico eventuali avvisi nativi
-        page.on("dialog", lambda dialog: dialog.accept())
-
         try:
+            # 🛡️ COPIA CONFORME ACCESSO COLLAUDATO ORIGINALE
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
-            page.goto("https://partner.snai.it", timeout=30000)
+            page.goto("https://partner.snai.it")
             time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
-            page.fill("input#username, input[name='username']", SNAI_USER)
-            page.fill("input#password, input[name='password']", SNAI_PASS)
+            page.fill("input#username, input[name='username'], input[type='text']", SNAI_USER)
+            page.fill("input#password, input[name='password'], input[type='password']", SNAI_PASS)
             
             print("🚀 [Robot] STEP 4b: Invio moduli di accesso...")
             page.click("button[type='submit'], input[type='submit'], .btn-login")
             time.sleep(4)
             
-            print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi countdown...")
+            print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi per far scadere il countdown...")
             time.sleep(11)
             
             try:
                 page.evaluate("""
-                    document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"]').forEach(el => el.remove());
+                    document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"], .fade.in').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = 'auto';
                 """)
-                print("✅ [Robot] STEP 4d: Codice pop-up eliminato.")
+                print("✅ [Robot] STEP 4d: Codice pop-up eliminato dalla pagina con successo!")
             except Exception: pass
             time.sleep(2)
 
-            print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP...")
+            print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP pulito...")
             codice_totp = genera_codice_otp_automatico()
             print(f"📌 Codice generated inviato a schermo: {codice_totp}")
             
             page.fill("input#token, input[name='token'], input[name='otp']", str(codice_totp))
             time.sleep(1)
             
-            page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia')")
-            print("⏳ [Robot] Convalida credenziali... Caricamento area riservata...")
+            page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia'), input[type='submit']")
+            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
             time.sleep(15)
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it", timeout=40000)
+            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_snai.iterrows():
+            for _, row in df_partner.snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    # 🛡️ FIX DATA STRING: Garantisce che il valore passato a fill() sia una stringa di testo pulita
-                    data_inizio_sola = str(data_in_completa.split(" ")[0] if " " in str(data_in_completa) else data_in_completa).strip()
-                    data_fine_sola = str(data_fi_completa.split(" ")[0] if " " in str(data_fi_completa) else data_fi_completa).strip()
+                    # 🛡️ PULIZIA DATE CONVERSIONE STRINGA PER INPUTBOX
+                    data_inizio_pulita = str(data_in_completa).split(" ")[0] if " " in str(data_in_completa) else str(data_in_completa)
+                    data_fine_pulita = str(data_fi_completa).split(" ")[0] if " " in str(data_fi_completa) else str(data_fi_completa)
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
@@ -140,39 +140,35 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    # 🛡️ MIRINO LASER SULL'URL DI MANUELA: Cerca i campi sulla pagina intera o nel sottomodulo
-                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura'], input[id*='Txtiniziochiusura']").first
-                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura'], input[id*='Txtfinechiusura']").first
+                    # Inserimento nei campi estratti dal popup ChiusuraEsercizio.aspx
+                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura']").first
+                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura']").first
                     
-                    # Se non trova l'ID fine specifico, scala sul secondo input di chiusura utile della pagina ChiusuraEsercizio
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
-                    campo_dal.wait_for(state="visible", timeout=15000)
+                    campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
-                    campo_dal.fill(data_inizio_sola)
+                    campo_dal.fill(data_inizio_pulita)
                     time.sleep(1)
                     
                     campo_al.click()
-                    campo_al.fill(data_fine_sola)
+                    campo_al.fill(data_fine_pulita)
                     time.sleep(1)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
-                    # Clicca sul tasto di salvataggio/conferma della pagina ChiusuraEsercizio
-                    pulsante_salva = page.locator("input[type='submit'][value*='Salva'], input[value*='Conferma'], #ctl00_Cp1_btnSalva, input[id*='Salva']").first
-                    pulsante_salva.click(timeout=10000)
+                    page.locator("input[type='submit'][value*='Salva'], input[value*='Conferma'], #ctl00_Cp1_btnSalva").first.click()
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    # Torna alla griglia iniziale per il locale successivo
-                    page.goto("https://snai.it", timeout=30000)
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                     time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://snai.it", timeout=30000)
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(5)
                     except Exception: pass
                     continue
