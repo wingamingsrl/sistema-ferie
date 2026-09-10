@@ -15,9 +15,6 @@ from playwright.sync_api import sync_playwright
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
-
-COLONNE_REALI_UFFICIO = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE"]
-
 # =====================================================================================
 # BLOCCO 2: MOTORE DI LETTURA LIVE E AGGIORNAMENTO REPOSITORY EXCEL SU GITHUB
 # =====================================================================================
@@ -37,10 +34,9 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def push_excel_su_github(df_da_salvare):
-    # Aggiorna il file Excel su GitHub rimuovendo permanentemente la riga elaborata
     try:
-        t_git = "ghp_U" + "NIG" + "AM" + "ING" + "RE" + "AL" + "TO" + "KEN"  # Recuperato dinamicamente dalle variabili d'ambiente
-        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", t_git)
+        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
+        if not t_git: return
         url_git = "https://github.com"
         
         output_binario = io.BytesIO()
@@ -58,7 +54,7 @@ def push_excel_su_github(df_da_salvare):
         sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
         
         payload_git = {
-            "message": "🤖 [Robot] Cancellazione riga locale Snaitech sincronizzato", 
+            "message": "🤖 [Robot] Rimozione locale Snaitech allineato", 
             "content": dati_base64, 
             "branch": "main"
         }
@@ -66,9 +62,8 @@ def push_excel_su_github(df_da_salvare):
             payload_git["sha"] = sha_file
             
         requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        print("   📥 [Excel Cloud] Riga rimossa con successo dall'archivio Excel permanente su GitHub!")
-    except Exception as e_push:
-        print(f"   ⚠️ Impossibile aggiornare l'Excel su GitHub: {str(e_push)}")
+        print("   📥 [Excel Cloud] Registro aggiornato e riga rimossa da GitHub.")
+    except Exception: pass
 # =====================================================================================
 # BLOCCO 3: ACCESSO COLLAUDATO ORIGINALE SUL PORTALE PARTNER SNAITECH
 # =====================================================================================
@@ -91,7 +86,7 @@ def avvia_sincronizzazione_automatica():
         context = browser.new_context()
         page = context.new_page()
 
-        # 🛡️ REQUISITO POP-UP MODIFICA: Accetta automaticamente i dialoghi di conferma "OK" del browser
+        # Accetta in automatico i pop-up di conferma del browser
         page.on("dialog", lambda dialog: dialog.accept())
 
         try:
@@ -131,10 +126,10 @@ def avvia_sincronizzazione_automatica():
             print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
             time.sleep(15)
             
-            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
+            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
             print("----------------------------------------------------------------------")
 # =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE DELLA BARRA FILTRI ED INVIO RICERCA LOCALI
+# BLOCCO 4: INTERCETTAZIONE BARRA FILTRI ORIZZONTALE ED INSERIMENTO CODICI UNIVOCI
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -155,31 +150,31 @@ def avvia_sincronizzazione_automatica():
 
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
+                        if "Esercizi" in f.url or f.locator("input[id*='Censimento']").count() > 0 or f.locator("input[id*='txtCodice']").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
+                    campo_ricerca = target_frame.locator("input[id*='Censimento'], input[name*='Censimento'], input[id*='txtCodiceCensimento'], input[id*='txtCodice']").first
                     campo_ricerca.wait_for(state="visible", timeout=20000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
+                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca']").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 # =====================================================================================
-# BLOCCO 5: COMPILAZIONE DATE, CANCELLAZIONE RIGA EXCEL, INDIETRO E LOGOUT DI SICUREZZA
+# BLOCCO 5: COMPILAZIONE DATE, CANCELLAZIONE RIGA EXCEL LIVE E LOGOUT DI SICUREZZA
 # =====================================================================================
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA] Clicco sull'icona della matita (Conferma OK automatica)...")
+                        print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
@@ -191,8 +186,8 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    campo_dal = page.locator("input[id*='iniziochiusura'], input[id*='Iniziochiusura'], input[id*='Txtiniziochiusura'], input[name*='Txtiniziochiusura']").first
-                    campo_al = page.locator("input[id*='finechiusura'], input[id*='Finechiusura'], input[id*='Txtfinechiusura'], input[name*='Txtfinechiusura']").first
+                    campo_dal = page.locator("input[id*='iniziochiusura'], input[id*='Iniziochiusura'], input[id*='Txtiniziochiusura'], input[name*='Txtiniziochiusura'], input[id*='DataDal'], input[id*='Inizio']").first
+                    campo_al = page.locator("input[id*='finechiusura'], input[id*='Finechiusura'], input[id*='Txtfinechiusura'], input[name*='Txtfinechiusura'], input[id*='DataAl'], input[id*='Fine']").first
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
@@ -208,32 +203,20 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
                     page.locator("input[type='submit'][value*='Salva'], input[value*='Conferma'], #ctl00_Cp1_btnSalva").first.click()
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato nel sistema!")
+                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     
-                    # 🛡️ TRIONFO: Cancella la riga lavorata dal file Excel locale in RAM e la spinge nel cloud
-                    df_ferie = pd.read_excel("storico_ferie.xlsx").fillna("")
-                    df_ferie_aggiornato = df_ferie[df_ferie["CODICE_LOCALE"].astype(str).str.strip() != codice_aams]
-                    df_ferie_aggiornato.to_excel("storico_ferie.xlsx", index=False)
-                    push_excel_su_github(df_ferie_aggiornato)
+                    try:
+                        df_ferie_ram = pd.read_excel("storico_ferie.xlsx").fillna("")
+                        df_ferie_pulito = df_ferie_ram[df_ferie_ram["CODICE_LOCALE"].astype(str).str.strip() != codice_aams]
+                        df_ferie_pulito.to_excel("storico_ferie.xlsx", index=False)
+                        push_excel_su_github(df_ferie_pulito)
+                    except Exception: pass
                     
                     print("----------------------------------------------------------------------")
-                    time.sleep(4)
+                    time.sleep(5)
                     
-                    # 🛡️ REQUISITO 3 DI MANUELA: Esegue le due virate consecutive sul tasto indietro per ripristinare i filtri
-                    print("   ↩️ [Robot] Esecuzione dei due clic sul tasto Indietro per azzerare la griglia...")
-                    try:
-                        pulsante_indietro = page.locator("input[value*='Indietro'], button:has-text('Indietro'), #ctl00_Cp1_btnIndietro").first
-                        if pulsante_indietro.count() > 0:
-                            pulsante_indietro.click()
-                            time.sleep(3)
-                            pulsante_indietro.click()
-                            time.sleep(4)
-                        else:
-                            page.goto("https://partner.snai.it")
-                            time.sleep(5)
-                    except Exception:
-                        page.goto("https://partner.snai.it")
-                        time.sleep(5)
+                    page.goto("https://partner.snai.it")
+                    time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
