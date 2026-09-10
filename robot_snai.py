@@ -105,21 +105,31 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: ATTIVAZIONE SERVIZIO MYWEB ED INSERIMENTO CODICE CENSIMENTO UNIVOCO
+# BLOCCO 4: NAVIGAZIONE GRAFICA REALE NEI MENU SBLOCCATI DI MYWEB
 # =====================================================================================
             print("📦 [Robot] STEP 6: Attivazione del sotto-portale di business MyWeb/Caring...")
             try:
-                # Clicca sul riquadro MyWeb o Caring visibile in Home Page per sbloccare i menu interni
-                pulsante_servizio = page.locator("div:has-text('MyWeb'), h3:has-text('MyWeb'), div:has-text('Caring'), a:has-text('My Web')").first
+                pulsante_servizio = page.locator("div:has-text('MyWeb'), h3:has-text('MyWeb'), div:has-text('Caring'), a:has-text('My Web'), .service-box").first
                 pulsante_servizio.click(timeout=10000)
                 print("   ✅ [Robot] STEP 6a: Clic di attivazione portale eseguito.")
-                time.sleep(5)
+                time.sleep(6)
             except Exception:
-                print("   ℹ️ [Robot] STEP 6b: Procedo direttamente alla pagina esercizi...")
+                print("   ℹ️ [Robot] STEP 6b: Già all'interno del portale o box non intercettato.")
 
-            print("📬 [Robot] STEP 6c: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
-            print("   ⏳ [Robot] STEP 6d: Attesa stabilizzazione della pagina esercizi (10 secondi)...")
+            print("📬 [Robot] STEP 6c: Apertura del menu principale Anagrafica a schermo...")
+            # Clicca sul menu reale "Anagrafica" che è apparso dopo l'ingresso in MyWeb
+            menu_anagrafica = page.locator("#ctl00_MenuID1_rpMaster_ctl04_btnMnuItemPadre, td:has-text('Anagrafica'), span:has-text('Anagrafica'), a:has-text('Anagrafica')").first
+            menu_anagrafica.wait_for(state="visible", timeout=20000)
+            menu_anagrafica.click()
+            time.sleep(4)
+            
+            print("📬 [Robot] STEP 6d: Selezione della voce Sotto-Menu Esercizi...")
+            # Clicca sulla voce del sotto-menu per caricare la pagina esercizi in modo nativo e sicuro
+            sotto_menu_esercizi = page.locator("a[href*='Esercizi.aspx'], span:has-text('Esercizi'), td:has-text('Esercizi')").first
+            sotto_menu_esercizi.wait_for(state="visible", timeout=15000)
+            sotto_menu_esercizi.click()
+            
+            print("   ⏳ [Robot] STEP 6e: Attesa stabilizzazione della pagina esercizi (10 secondi)...")
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
@@ -156,6 +166,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
+
 
 
 # =====================================================================================
