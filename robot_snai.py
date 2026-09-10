@@ -58,8 +58,8 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione schermata a partner.snai.it...")
-            page.goto("https://snai.it", wait_until="networkidle", timeout=60000)
+            print("🌐 [Robot] STEP 4: Connessione schermata a partner.partner.snai.it...")
+            page.goto("https://partner.snai.it", wait_until="networkidle", timeout=60000)
             time.sleep(6)
             
             try: page.mouse.move(150, 150)
@@ -108,7 +108,7 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 4: INIEZIONE NELL'UPDATEPANEL MICROSOFT (ESTRATTO DALLA FOTO DI MANUELA)
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
-            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load", timeout=40000)
             time.sleep(10)
 
             for _, row in df_snai.iterrows():
