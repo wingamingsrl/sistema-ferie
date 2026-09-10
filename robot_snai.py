@@ -105,12 +105,12 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: INTERCETTAZIONE REALE DELLA BARRA FILTRI ED INVIO RICERCA NATIVA
+# BLOCCO 4: SCANSIONE DIRETTA DELLA TABELLA INTERNA ED INDIVIDUAZIONE CODICI REALI
 # =====================================================================================
-            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
+            print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
-            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabelle Microsoft (10 secondi)...")
-            time.sleep(10)
+            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabella #rounded-corner (12 secondi)...")
+            time.sleep(12)
 
             for _, row in df_snai.iterrows():
                 try:
@@ -119,40 +119,8 @@ def avvia_sincronizzazione_automatica():
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
+                    print(f"🚀 [Robot] STEP 7: Ricerca visiva nella griglia per il Locale -> {codice_aams} - {nome_locale_corrente}")
 
-                    # Identifica il foglio reale della tabella tra tutti i sotto-schermi della pagina
-                    target_frame = page
-                    for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
-                            target_frame = f
-                            break
-
-                    print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ PUNTATORE LASER DI MANUELA: Clicca e scrive nell'ID esatto certificato dal tuo sorgente
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
-                    campo_ricerca.wait_for(state="visible", timeout=15000)
-                    campo_ricerca.click()
-                    campo_ricerca.fill(codice_aams)
-                    time.sleep(2)
-                    
-                    # 🛡️ INTERCETTAZIONE TASTO RICERCA REALE: Clicca sul pulsante nativo della griglia
-                    tasto_filtra = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca'], button:has-text('Ricerca')").first
-                    if tasto_filtra.count() > 0:
-                        tasto_filtra.click()
-                    else:
-                        page.keyboard.press("Enter")
-                        
-                    print("   ⏳ [Robot] STEP 7b: Attesa caricamento griglia dei risultati (6 secondi)...")
-                    time.sleep(6)
-
-
-# =====================================================================================
-# BLOCCO 5: AGGANCIO REALE DELLA TABELLA 'ROUNDED-CORNER' CERTIFICATA DA MANUELA
-# =====================================================================================
-                    # 🛡️ CONTROMISURA HTML DI MANUELA: Attende che la griglia dei risultati sia stampata a video
-                    print("   ⏳ [Robot] STEP 7c: Attesa stabilità della tabella dei risultati (#rounded-corner)...")
-                    
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#rounded-corner").count() > 0 or f.locator("table[id*='rounded-corner']").count() > 0:
@@ -162,28 +130,35 @@ def avvia_sincronizzazione_automatica():
                     try: target_frame.evaluate("document.querySelectorAll('.mainPreload').forEach(el => el.remove());")
                     except Exception: pass
 
-                    # Forza l'attesa visiva assoluta sulla griglia dei risultati estratta da Manuela
-                    tabella_risultati = target_frame.locator("#rounded-corner, table[summary='Lista Esercizi']").first
-                    tabella_risultati.wait_for(state="visible", timeout=15000)
-                    time.sleep(2)
+                    # 🛡️ PUNTATORE STRUTTURALE STRAPPATO DALL'HTML DI MANUELA:
+                    # Individua la riga specifica che contiene il codice AAMS del locale corrente
+                    riga_esercizio = target_frame.locator(f"#rounded-corner tr:has-text('{codice_aams}'), table[summary='Lista Esercizi'] tr:has-text('{codice_aams}')").first
+                    
+                    if riga_esercizio.count() == 0:
+                        print(f"   ⚠️ [Robot] STEP 7a: Codice {codice_aams} non visibile nella pagina corrente. Scavalco.")
+                        continue
+                        
+                    print(f"   🎯 [Robot] STEP 7b: Riga del locale {codice_aams} intercettata a schermo! Aggancio icone...")
 
-                    # Mirino millimetrico sui file .jpg e .gif posizionati all'interno della griglia
-                    icona_nuovo = target_frame.locator("#rounded-corner img[src*='insert_pianificazione'], #rounded-corner img[id*='img_pianificazione']").first
-                    icona_modifica = target_frame.locator("#rounded-corner img[src*='edit_pianificazione']").first
-                    cella_cliccabile_td = target_frame.locator("#rounded-corner td[onclick*='Pianificazione']").first
+# =====================================================================================
+# BLOCCO 5: APERTURA ED INSERIMENTO DELLE DATE FERIE CON LOGOUT FINALE DI SICUREZZA
+# =====================================================================================
+                    icona_nuovo = riga_esercizio.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
+                    icona_modifica = riga_esercizio.locator("img[src*='edit_pianificazione']").first
+                    cella_cliccabile_td = riga_esercizio.locator("td[onclick*='Pianificazione']").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Chiusura esistente! Entro in modifica...")
+                        print("   📝 [Robot] STEP 8: [EDIT_PIANIFICAZIONE] Chiusura già presente, entro in modifica...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE DETECTED] Locale vuoto! Clic sul pulsante verde...")
+                        print("   🟢 [Robot] STEP 8a: [INSERT_PIANIFICAZIONE] Locale vuoto, clicco sul pallino verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     elif cella_cliccabile_td.count() > 0:
-                        print("   🖱️ [Grid Mode] Clic diretto sulla cella TD della griglia di Manuela...")
+                        print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
                         cella_cliccabile_td.click(force=True, timeout=8000)
                     else:
-                        print("   ⚠️ [Grid Mode] Tento il clic forzato sulla riga della tabella risultati...")
-                        target_frame.locator("#rounded-corner tbody tr td img").first.click(force=True, timeout=8000)
+                        print("   ⚠️ [Grid Mode] Tento il clic generico sulle immagini della riga...")
+                        riga_esercizio.locator("td img").first.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi temporali date (5 secondi)...")
                     time.sleep(5)
