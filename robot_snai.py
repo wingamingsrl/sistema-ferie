@@ -124,6 +124,9 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
+# =====================================================================================
+# BLOCCO 5: GESTIONE MODULI, ALLINEAMENTO E RESET OBBLIGATORIO PAGINA
+# =====================================================================================
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
@@ -135,7 +138,7 @@ def avvia_sincronizzazione_automatica():
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
-                        print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
+                        print("   AM 🖱:// Clic sulla cella td nativa della riga...")
                         cella_td.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
@@ -162,14 +165,14 @@ def avvia_sincronizzazione_automatica():
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    # Ricarica l'anagrafica pulita per passare al locale successivo senza loop di file
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                    # 🛡️ RESET OPERATIVO: Riporta la pagina all'anagrafica pulita per fare la ricerca successiva
+                    page.goto("https://snai.it", timeout=30000)
                     time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        page.goto("https://snai.it")
                         time.sleep(5)
                     except Exception: pass
                     continue
@@ -183,3 +186,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
