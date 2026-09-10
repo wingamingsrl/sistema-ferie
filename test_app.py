@@ -99,7 +99,7 @@ def carica_database_locale():
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # 🧹 MOTORE SPAZZINO AUTOMATICO: Rileva e distrugge i locali che hanno già riaperto rispetto a OGGI (Settembre 2026)
+    # 🧹 MOTORE SPAZZINO AUTOMATICO GIORNALIERA: Rileva e distrugge i locali che hanno già riaperto rispetto a OGGI
     righe_valide = []
     oggi_ora = datetime.now()
     file_modificato_pulizia = False
@@ -112,7 +112,7 @@ def carica_database_locale():
                     data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
                     if data_fine_valida < oggi_ora:
                         file_modificato_pulizia = True
-                        continue  # Cancella il locale (lo salta), ha già riaperto!
+                        continue  # Salta la riga, escludendola dall'Excel perché scaduta
                 except Exception:
                     try:
                         data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
@@ -126,12 +126,13 @@ def carica_database_locale():
             df_s = pd.DataFrame(righe_valide) if righe_valide else pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
             
-            # 🛡️ FIX CANCELLAZIONE AUTOMATICA: Scrive fisicamente il file su disco prima di inviarlo a GitHub
+            # 🛡️ FIX ALLINEAMENTO TOTALE DI MANUELA: Aggiorna la memoria dello smartphone all'istante
+            st.session_state.storico_cloud = df_s.to_dict('records')
             df_s.to_excel(FILE_STORICO_PERMANENTE, index=False)
             
             try: 
                 push_excel_su_github(df_s)
-                st.toast("🧹 Pulizia automatica: Rimossi i locali che hanno terminato le ferie!")
+                st.toast("🧹 Pulizia automatica completata!")
             except Exception: pass
   
     return df_l, df_t, df_s
