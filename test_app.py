@@ -557,24 +557,24 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         try:
             parti_s = selezione_delete.split("ID ")
             if len(parti_s) > 1:
+                # 🛡️ FIX FINALE INDISTRUTTIBILE: Isola il numero esatto dell'indice senza spaccare la stringa
                 sub_stringa = parti_s[1]
-                idx_iscolato_str = sub_stringa.split(" |")[0]
-                idx_da_eliminare = int(idx_iscolato_str)
+                idx_isolato_str = sub_stringa.split(" |")[0]
+                idx_da_eliminare = int(idx_isolato_str)
                 
                 if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                    st.session_state.congelamento_sincro_attivo = True  # 🛡️ Attiva protezione RAM
+                    st.session_state.congelamento_sincro_attivo = True  # Attiva protezione RAM
                     st.session_state.storico_cloud.pop(idx_da_eliminare)
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                     push_excel_su_github(df_nuovo_salva)
                     
-                    # 🛡️ FIX FONDAMENTALE: Spegne il congelamento e sblocca la RAM
-                    st.session_state.congelamento_sincro_attivo = False  
+                    st.session_state.congelamento_sincro_attivo = False  # Spegne congelamento RAM
                     
                     st.success("🗑️ Chiusura rimossa con successo!")
                     time.sleep(1.0)
                     st.rerun()
-        except Exception as e_del: st.error(f"Errore rimozione: {str(e_del)}")
+        except Exception as e_del: st.error(f"❌ Errore rimozione: {str(e_del)}")
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
@@ -603,6 +603,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
 
 
 # PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
