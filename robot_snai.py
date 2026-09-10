@@ -105,12 +105,12 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
 # =====================================================================================
-# BLOCCO 4: SCANSIONE DIRETTA DELLA TABELLA INTERNA ED INDIVIDUAZIONE CODICI REALI
+# BLOCCO 4: INTERCETTAZIONE DELLA BARRA FILTRI ORIZZONTALE CON ATTESA ELASTICA
 # =====================================================================================
-            print("📬 [Robot] STEP 6: Spostamento forzato sulla pagina degli Esercizi censiti...")
+            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
-            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione tabella #rounded-corner (12 secondi)...")
-            time.sleep(12)
+            print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione pannello centrale (10 secondi)...")
+            time.sleep(10)
 
             for _, row in df_snai.iterrows():
                 try:
@@ -119,26 +119,37 @@ def avvia_sincronizzazione_automatica():
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    print(f"🚀 [Robot] STEP 7: Ricerca visiva nella griglia per il Locale -> {codice_aams} - {nome_locale_corrente}")
+                    print(f"🚀 [Robot] STEP 7: Inizio elaborazione per il Locale -> {codice_aams} - {nome_locale_corrente}")
 
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#rounded-corner").count() > 0 or f.locator("table[id*='rounded-corner']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0 or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
                             target_frame = f
                             break
 
                     try: target_frame.evaluate("document.querySelectorAll('.mainPreload').forEach(el => el.remove());")
                     except Exception: pass
 
-                    # 🛡️ PUNTATORE STRUTTURALE STRAPPATO DALL'HTML DI MANUELA:
-                    # Individua la riga specifica che contiene il codice AAMS del locale corrente
-                    riga_esercizio = target_frame.locator(f"#rounded-corner tr:has-text('{codice_aams}'), table[summary='Lista Esercizi'] tr:has-text('{codice_aams}')").first
+                    print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
+                    # 🛡️ IL MIRINO DI MANUELA: Punta all'ID esatto e reale estratto dal codice della pagina
+                    campo_ricerca = target_frame.locator("input#ctl00_Cp1_txtCodiceCensimentoesercizio, input[name*='txtCodiceCensimentoesercizio']").first
                     
-                    if riga_esercizio.count() == 0:
-                        print(f"   ⚠️ [Robot] STEP 7a: Codice {codice_aams} non visibile nella pagina corrente. Scavalco.")
-                        continue
-                        
-                    print(f"   🎯 [Robot] STEP 7b: Riga del locale {codice_aams} intercettata a schermo! Aggancio icone...")
+                    # 🛡️ ATTESA ELASTICA: Aspetta che l'UpdatePanel carichi la casella a schermo prima di toccarla
+                    campo_ricerca.wait_for(state="visible", timeout=25000)
+                    campo_ricerca.click()
+                    campo_ricerca.fill(codice_aams)
+                    time.sleep(2)
+                    
+                    # 🛡️ INVIO DELLA RICERCA: Clicca sul tasto Ricerca o preme Enter per filtrare il locale univoco
+                    tasto_ricerca = target_frame.locator("input[type='submit'][value='Ricerca'], input[value='Ricerca'], input[id*='Ricerca'], button:has-text('Ricerca')").first
+                    if tasto_ricerca.count() > 0:
+                        tasto_ricerca.click()
+                    else:
+                        page.keyboard.press("Enter")
+                    
+                    print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
+                    time.sleep(6)
+
 
 # =====================================================================================
 # BLOCCO 5: APERTURA ED INSERIMENTO DELLE DATE FERIE CON LOGOUT FINALE DI SICUREZZA
