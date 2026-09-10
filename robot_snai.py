@@ -144,26 +144,44 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 # BLOCCO 5: APERTURA ED INSERIMENTO DELLE DATE FERIE CON LOGOUT FINALE
 # =====================================================================================
+                    # Sblocca il preload Microsoft per rendere cliccabili gli elementi
+                    try: target_frame.evaluate("document.querySelectorAll('.mainPreload').forEach(el => el.remove());")
+                    except Exception: pass
+                    time.sleep(2)
+
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     
                     if icona_modifica.count() > 0:
                         print("   📝 [Robot] STEP 8: [MODIFICA] Entro nella pianificazione esistente...")
-                        icona_modifica.click(force=True)
+                        icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
-                        icona_nuovo.click(force=True)
+                        icona_nuovo.click(force=True, timeout=8000)
                     else:
-                        print("   🖱️ [JavaScript Mode] Esecuzione nativa della funzione Pianificazione_dettagli...")
-                        target_frame.evaluate(f"Pianificazione_dettagli('', '37832','{nome_locale_corrente}','{codice_aams}')")
-                    time.sleep(4)
+                        print("   🖱️ [JavaScript Mode] Esecuzione nativa filtrata della funzione...")
+                        # 🛡️ FIX APICI DI MANUELA: Sostituisce l'apice singolo con uno spazio per non spaccare il codice JavaScript
+                        nome_pulito_javascript = nome_locale_corrente.replace("'", " ").replace('"', ' ')
+                        target_frame.evaluate(f"Pianificazione_dettagli('', '37832','{nome_pulito_javascript}','{codice_aams}')")
+                    
+                    print("   ⏳ [Robot] STEP 8c: Attesa apertura campi temporali (5 secondi)...")
+                    time.sleep(5)
 
-                    target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio']").first.fill(data_in_completa)
+                    # Compilazione date nel sotto-pannello sbloccato
+                    campo_dal = target_frame.locator("input[id*='txtDataDal'], input[id*='Inizio'], input[name*='Dal']").first
+                    campo_al = target_frame.locator("input[id*='txtDataAl'], input[id*='Fine'], input[name*='Al']").first
+                    
+                    campo_dal.wait_for(state="visible", timeout=10000)
+                    campo_dal.click()
+                    campo_dal.fill(data_in_completa)
                     time.sleep(1)
-                    target_frame.locator("input[id*='txtDataAl'], input[id*='Fine']").first.fill(data_fi_completa)
+                    
+                    campo_al.click()
+                    campo_al.fill(data_fi_completa)
                     time.sleep(1)
 
-                    target_frame.locator("input[type='submit'][value*='Salva'], input[id*='btnSalva']").first.click()
+                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
+                    target_frame.locator("input[type='submit'][value*='Salva'], button:has-text('Salva'), input[id*='btnSalva']").first.click()
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} sincronizzato con successo!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
@@ -173,7 +191,7 @@ def avvia_sincronizzazione_automatica():
                     continue
 
             print("🔒 [Robot] STEP 12: Chiusura formale della sessione (Logout di sicurezza)...")
-            try: page.locator("a:has-text('LogOut'), a:has-text('Esci')").first.click(timeout=8000)
+            try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
             except Exception: page.context.clear_cookies()
 
         except Exception as e: print(f"❌ Errore generale: {str(e)}")
