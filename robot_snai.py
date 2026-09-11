@@ -149,12 +149,25 @@ def avvia_sincronizzazione_automatica():
 
                     campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
-                    campo_dal.fill(data_inizio_pulita)
+                    # 🛡️ DIGITAZIONE UMANA: Seleziona tutto il testo presente e lo cancella per non accavallare dati
+                    page.keyboard.press("Control+A")
+                    page.keyboard.press("Backspace")
+                    time.sleep(1)
+                    # Digita la data carattere per carattere simulando la tastiera dell'ufficio
+                    page.keyboard.type(data_inizio_pulita, delay=100)
+                    time.sleep(1)
+                    page.keyboard.press("Tab")
                     time.sleep(1)
                     
                     campo_al.click()
-                    campo_al.fill(data_fine_pulita)
+                    page.keyboard.press("Control+A")
+                    page.keyboard.press("Backspace")
                     time.sleep(1)
+                    page.keyboard.type(data_fine_pulita, delay=100)
+                    time.sleep(1)
+                    page.keyboard.press("Tab")
+                    time.sleep(2)
+
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     # 🛡️ PUNTATORE LASER SUL TUO TASTO SALVA
