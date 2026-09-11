@@ -530,14 +530,15 @@ if submit_button:
                 st.session_state.storico_cloud.append(nuova)
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
-                # 🛡️ FIX INSERIMENTO: Allinea rigidamente il nome del file sul disco per forzare l'allineamento cloud
-                df_salva.to_excel("storico_ferie.xlsx", index=False)
+                # 🛡️ RIPRISTINO ORIGINALE MANUELA: Torna alla variabile permanente collaudata
+                df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
                 time.sleep(4.0)
                 st.rerun()
+
 
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
