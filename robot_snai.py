@@ -1,5 +1,5 @@
 # =====================================================================================
-# VERSIONE DI PRODUZIONE BLINDATA — FORZATURA REFRESH CACHE AGGIORNATA DA MANUELA
+# VERSIONE DI PRODUZIONE FINALE — ALLINEAMENTO CONTINUO E GESTIONE CAMPI DISABILITATI
 # =====================================================================================
 import os
 import io
@@ -141,13 +141,21 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura']").first
-                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura']").first
+                    # 🛡️ COSTRUTTORE ELASTICO DATE DI SICUREZZA
+                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura'], input[id*='Txtiniziochiusura']").first
+                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura'], input[id*='Txtfinechiusura']").first
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
-                    campo_dal.wait_for(state="visible", timeout=12000)
+                    # Se i campi principali non sono modificabili o pronti, scavalca in sicurezza premendo indietro
+                    if campo_dal.count() == 0 or not campo_dal.is_visible():
+                        print("   ⚠️ [Avviso] Campi date non modificabili o chiusura già in corso. Salto il locale.")
+                        page.locator("#ctl00_Cp1_Button1").first.click(timeout=8000)
+                        time.sleep(5)
+                        continue
+
+                    campo_dal.wait_for(state="visible", timeout=8000)
                     campo_dal.click()
                     campo_dal.press("Control+A")
                     campo_dal.press("Backspace")
