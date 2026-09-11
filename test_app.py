@@ -105,7 +105,6 @@ def carica_database_locale():
         codici_validi = []
         file_modificato_pulizia = False
         
-        # Scansiona l'anagrafica per isolare i codici dei locali ancora attivi
         for _, row in df_s.iterrows():
             testo_fine = str(row.get("FINE_FERIE", "")).strip()
             codice_corrente = str(row.get("CODICE_LOCALE", "")).strip()
@@ -115,7 +114,7 @@ def carica_database_locale():
                     data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
                     if data_fine_valida < oggi_ora:
                         file_modificato_pulizia = True
-                        continue  # Salta il locale, ferie scadute!
+                        continue  # Salta il locale scaduto, ha già riaperto!
                 except Exception:
                     try:
                         data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
@@ -127,25 +126,25 @@ def carica_database_locale():
             if codice_corrente:
                 codici_validi.append(codice_corrente)
         
-        # 🛡️ SE CI SONO SCADENZE: Applica il filtro pulito rigenerando il file Excel fisico
+        # 🛡️ SE CI SONO SCADENZE DA PULIRE AUTO: Forza la scrittura fisica e la spinta cloud
         if file_modificato_pulizia:
             df_s_filtrato = df_s[df_s["CODICE_LOCALE"].astype(str).str.strip().isin(codici_validi)]
             df_s_filtrato = df_s_filtrato.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
             
-            # Allinea la plancia e salva fisicamente sul disco rigido
+            # Aggiorna la memoria interna dello smartphone
             st.session_state.storico_cloud = df_s_filtrato.to_dict('records')
+            
+            # 🛡️ FIX FINALE CANCELLAZIONE AUTOMATICA: Sovrascrive il file fisico prima di inviarlo
             df_s_filtrato.to_excel(FILE_STORICO_PERMANENTE, index=False)
             
             try: 
                 push_excel_su_github(df_s_filtrato)
-                st.toast("🧹 Pulizia automatica completata!")
+                st.toast("🧹 Pulizia automatica scadenze completata!")
             except Exception: pass
             
             st.rerun()
   
     return df_l, df_t, df_s
-
-
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
