@@ -135,9 +135,16 @@ def avvia_sincronizzazione_automatica():
                     elif cella_td_cliccabile.count() > 0:
                         print("   🖱️ [Grid Mode] Clic diretto sulla cella TD nativa della colonna 8...")
                         cella_td_cliccabile.click(force=True, timeout=8000)
-                    else:
-                        print("   ⚠️ [Grid Mode] Tento il clic forzato sulla prima immagine della riga...")
-                        target_frame.locator("table#rounded-corner tbody tr td img, td[onclick*='Pianificazione'] img").first.click(force=True, timeout=8000)
+                                        else:
+                        print("   ⚠️ [Grid Mode] Tento il clic forzato via JS sulla prima immagine della riga...")
+                        # 🛡️ FIX VIEWPORT DEFINITIVO: Forza il clic bypassando i blocchi di scorrimento di Playwright
+                        try:
+                            elemento_img = target_frame.locator("table#rounded-corner tbody tr td img, td[onclick*='Pianificazione'] img").first
+                            elemento_img.wait_for(state="attached", timeout=5000)
+                            target_frame.evaluate("el => el.click()", elemento_img.element_handle())
+                        except Exception:
+                            target_frame.locator("table#rounded-corner tbody tr td img, td[onclick*='Pianificazione'] img").first.click(force=True, timeout=8000)
+
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
