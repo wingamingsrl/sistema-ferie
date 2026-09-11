@@ -147,26 +147,22 @@ def avvia_sincronizzazione_automatica():
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
-                    campo_dal.wait_for(state="visible", timeout=12000)
+                                        campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
-                    # 🛡️ DIGITAZIONE UMANA: Seleziona tutto il testo presente e lo cancella per non accavallare dati
-                    page.keyboard.press("Control+A")
-                    page.keyboard.press("Backspace")
+                    # 🛡️ PULIZIA E DIGITAZIONE SEQUENZIALE REALE NEL CORRETTO FRAME
+                    campo_dal.press("Control+A")
+                    campo_dal.press("Backspace")
                     time.sleep(1)
-                    # Digita la data carattere per carattere simulando la tastiera dell'ufficio
-                    page.keyboard.type(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    page.keyboard.press("Tab")
+                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
                     time.sleep(1)
                     
                     campo_al.click()
-                    page.keyboard.press("Control+A")
-                    page.keyboard.press("Backspace")
+                    campo_al.press("Control+A")
+                    campo_al.press("Backspace")
                     time.sleep(1)
-                    page.keyboard.type(data_fine_pulita, delay=100)
-                    time.sleep(1)
-                    page.keyboard.press("Tab")
+                    campo_al.press_sequentially(data_fine_pulita, delay=100)
                     time.sleep(2)
+
 
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
