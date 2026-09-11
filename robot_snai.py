@@ -154,11 +154,11 @@ def avvia_sincronizzazione_automatica():
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
-
-                                        campo_dal.wait_for(state="visible", timeout=12000)
-                    campo_dal.click()
-                    campo_dal.fill(data_inizio_pulita)
-                    time.sleep(1)
+    
+                        campo_dal.wait_for(state="visible", timeout=12000)
+                        campo_dal.click()
+                        campo_dal.fill(data_inizio_pulita)
+                        time.sleep(1)
                     
                     # 🛡️ INPUT DI MANUELA: Forza la selezione della fascia oraria di inizio (00:00) se presente a schermo
                     try:
