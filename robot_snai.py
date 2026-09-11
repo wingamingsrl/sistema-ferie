@@ -1,3 +1,6 @@
+# =====================================================================================
+# VERSIONE DI PRODUZIONE BLINDATA — FORZATURA REFRESH CACHE AGGIORNATA DA MANUELA
+# =====================================================================================
 import os
 import io
 import time
@@ -16,7 +19,6 @@ def preleva_storico_diretto_da_cloud():
     try:
         nome_file_locale = "storico_ferie.xlsx"
         if os.path.exists(nome_file_locale):
-            print("Base data intercettata.")
             return pd.read_excel(nome_file_locale).fillna("")
     except Exception: pass
     return pd.DataFrame()
@@ -47,7 +49,7 @@ def avvia_sincronizzazione_automatica():
         page.on("dialog", lambda dialog: dialog.accept())
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner.partner.snai.it...")
+            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
             time.sleep(3)
             
@@ -80,7 +82,7 @@ def avvia_sincronizzazione_automatica():
             time.sleep(1)
             
             page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia'), input[type='submit']")
-            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.partner.snai.it...")
+            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
             time.sleep(15)
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
@@ -91,14 +93,13 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_partner.snai.iterrows():
+            for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     
-                    # Trasforma i trattini nelle barre richieste dal portale Microsoft
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
@@ -111,7 +112,6 @@ def avvia_sincronizzazione_automatica():
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ ASSETTO RICERCA ORIGINALE RIPRISTINATO AL 100%
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=20000)
                     campo_ricerca.click()
@@ -146,32 +146,28 @@ def avvia_sincronizzazione_automatica():
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
-                        campo_dal.wait_for(state="visible", timeout=12000)
-                        campo_dal.click()
-                        # 🛡️ PULIZIA E DIGITAZIONE SEQUENZIALE REALE NEL CORRETTO FRAME
-                        campo_dal.press("Control+A")
-                        campo_dal.press("Backspace")
-                        time.sleep(1)
-                        campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                        time.sleep(1)
-                        
-                        campo_al.click()
-                        campo_al.press("Control+A")
-                        campo_al.press("Backspace")
-                        time.sleep(1)
-                        campo_al.press_sequentially(data_fine_pulita, delay=100)
-                        time.sleep(2)
 
-
+                    campo_dal.wait_for(state="visible", timeout=12000)
+                    campo_dal.click()
+                    campo_dal.press("Control+A")
+                    campo_dal.press("Backspace")
+                    time.sleep(1)
+                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
+                    time.sleep(1)
+                    
+                    campo_al.click()
+                    campo_al.press("Control+A")
+                    campo_al.press("Backspace")
+                    time.sleep(1)
+                    campo_al.press_sequentially(data_fine_pulita, delay=100)
+                    time.sleep(2)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
-                    # 🛡️ PUNTATORE LASER SUL TUO TASTO SALVA
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     time.sleep(5)
                     
                     print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
-                    # 🛡️ NAVIGAZIONE INTERNA PROTETTA: Torna indietro cliccando sul tuo Button1 nativo
                     page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(5)
                     
@@ -186,7 +182,7 @@ def avvia_sincronizzazione_automatica():
             try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
             except Exception: page.context.clear_cookies()
 
-        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.partner.: {str(e)}")
+        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
 
 if __name__ == "__main__":
