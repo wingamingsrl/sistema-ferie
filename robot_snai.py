@@ -46,7 +46,7 @@ def avvia_sincronizzazione_automatica():
         page.on("dialog", lambda dialog: dialog.accept())
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner....")
+            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
             time.sleep(3)
             
@@ -102,7 +102,6 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ AGGANCIO DINAMICO GRIGLIA FILTRI
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -139,67 +138,44 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    # 🛡️ ACCENDE IL SECONDO RADAR SUI SOTTO-FRAME PER AGGANCIARE I MODULI COMPILAZIONE
                     frame_date = page
                     for f in page.frames:
-                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0 or f.locator("input[id*='txtfinechiusura']").count() > 0:
+                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
-                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
+                    # 🛡️ FORZATURA JAVASCRIPT DEFINITIVA: Sblocca i validatori ed inserisce i dati eludendo i blocchi del Watermark
+                    frame_date.evaluate(f"""() => {{
+                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
+                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
+                        var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
+                        
+                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
+                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
+                        if(water1) {{ water1.value = 'true'; }}
+                        if(water2) {{ water2.value = 'true'; }}
+                    }}""")
+                    time.sleep(2)
                     
-                    if campo_al.count() == 0:
-                        campo_al = frame_date.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
-
-                    print("   📝 [Robot] STEP 9: Compilazione data inizio con simulazione umana...")
-                    campo_dal.wait_for(state="visible", timeout=15000)
-                    campo_dal.click()
-                    campo_dal.clear()
-                    time.sleep(1)
-                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    
-                    try:
-                        frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
-                        time.sleep(1)
+                    # Gestione dei menu a tendina orari
+                    try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
-                    
-                    print("   📝 [Robot] STEP 9a: Compilazione data fine superando il Watermark...")
-                    campo_al.click()
-                    campo_al.clear()
-                    time.sleep(1)
-                    campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(1)
-                    
-                    try:
-                        frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
-                        time.sleep(2)
+                    try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
+                    time.sleep(2)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
-                    print("----------------------------------------------------------------------")
-                    time.sleep(6)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
+                    time.sleep(8)
                     
-                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Verifica Tasto Indietro)...")
-                    # 🛡️ FIX FINALE DI MANUELA: Cerca il tasto sulla pagina principale 'page' perché il frame date svanisce dopo il salva
-                    try:
-                        if page.locator("#ctl00_Cp1_Button1").count() > 0:
-                            page.locator("#ctl00_Cp1_Button1").first.click(timeout=4000)
-                        elif frame_date.locator("#ctl00_Cp1_Button1").count() > 0:
-                            frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=4000)
-                        else:
-                            page.goto("https://snai.it")
-                    except Exception:
-                        page.goto("https://snai.it")
-                    time.sleep(5)
-
+                    # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                    time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
-                    # 🛡️ BLINDATURA FORZATA RESET: Se un locale fallisce, ripulisce la schermata ricaricando l'anagrafica
                     try:
                         page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
@@ -215,3 +191,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
