@@ -135,7 +135,7 @@ def avvia_sincronizzazione_automatica():
                     elif cella_td_cliccabile.count() > 0:
                         print("   🖱️ [Grid Mode] Clic diretto sulla cella TD nativa della colonna 8...")
                         cella_td_cliccabile.click(force=True, timeout=8000)
-                                        else:
+                    else:
                         print("   ⚠️ [Grid Mode] Tento il clic forzato via JS sulla prima immagine della riga...")
                         # 🛡️ FIX VIEWPORT DEFINITIVO: Forza il clic bypassando i blocchi di scorrimento di Playwright
                         try:
