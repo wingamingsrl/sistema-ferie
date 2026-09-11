@@ -1,5 +1,5 @@
 # =====================================================================================
-# VERSIONE DI PRODUZIONE FINALE — ALLINEAMENTO CONTINUO E GESTIONE CAMPI DISABILITATI
+# VERSIONE DI PRODUZIONE FINALE — APERTURA, COMPILAZIONE E AGGIORNAMENTO MODIFICHE REAL
 # =====================================================================================
 import os
 import io
@@ -37,7 +37,7 @@ def avvia_sincronizzazione_automatica():
     ]
     if df_snai.empty: return
 
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG. Avvio Chrome...")
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locales Snaitech Spa WG. Avvio Chrome...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=[
@@ -129,7 +129,7 @@ def avvia_sincronizzazione_automatica():
                     cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA] Entro nella pianificazione...")
+                        print("   📝 [Robot] STEP 8: [MODIFICA] Entro nella pianificazione per verificare/aggiornare i dati...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
@@ -141,30 +141,21 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    # 🛡️ COSTRUTTORE ELASTICO DATE DI SICUREZZA
-                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura'], input[id*='Txtiniziochiusura']").first
-                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura'], input[id*='Txtfinechiusura']").first
+                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura']").first
+                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura']").first
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
-                    # Se i campi principali non sono modificabili o pronti, scavalca in sicurezza premendo indietro
-                    if campo_dal.count() == 0 or not campo_dal.is_visible():
-                        print("   ⚠️ [Avviso] Campi date non modificabili o chiusura già in corso. Salto il locale.")
-                        page.locator("#ctl00_Cp1_Button1").first.click(timeout=8000)
-                        time.sleep(5)
-                        continue
-
                     campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
-                    # 🛡️ AZZERAMENTO TOTALE DI MANUELA: Svuota rigidamente il testo preimpostato da Snaitech
+                    
+                    # 🛡️ SOVRASCRITTURA MANUELA: Svuota in modo aggressivo qualsiasi vecchia data (sia in modifica che preimpostata)
                     campo_dal.fill("")
                     time.sleep(1)
-                    # Digita la data inizio pulita
                     campo_dal.press_sequentially(data_inizio_pulita, delay=100)
                     time.sleep(1)
                     
-                    # Seleziona l'orario di inizio nel menu a tendina (00:00)
                     try:
                         target_frame.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                         time.sleep(1)
@@ -176,7 +167,6 @@ def avvia_sincronizzazione_automatica():
                     campo_al.press_sequentially(data_fine_pulita, delay=100)
                     time.sleep(1)
                     
-                    # 🛡️ BLINDATURA ORARIO DI FINE DI MANUELA: Forza la selezione sul menu a tendina dell'orario di fine
                     try:
                         target_frame.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                         time.sleep(2)
@@ -186,12 +176,16 @@ def avvia_sincronizzazione_automatica():
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     time.sleep(5)
-
+                    
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
+                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                    time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.locator("#ctl00_Cp1_Button1").first.click(timeout=5000)
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        time.sleep(5)
                     except Exception: pass
                     continue
 
