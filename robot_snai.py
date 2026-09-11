@@ -1,7 +1,3 @@
-# =====================================================================================
-# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE ED ACCESSI PROPRIETARI — PORTALE: PARTNER.SNAI.IT
-# =====================================================================================
 import os
 import io
 import time
@@ -28,9 +24,7 @@ def genera_codice_otp_automatico():
     chiave_pulita = CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", "")
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
-# =====================================================================================
-# BLOCCO 2: FILTRO SELEZIONE LOCALI ED APERTURA CHROME IN MODALITÀ HEADLESS
-# =====================================================================================
+
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
@@ -49,10 +43,6 @@ def avvia_sincronizzazione_automatica():
         context = browser.new_context()
         page = context.new_page()
 
-        page.on("dialog", lambda dialog: dialog.accept())
-# =====================================================================================
-# BLOCCO 3: PROCEDURA DI ACCESSO ORIGINALE COLLAUDATA CON SUPERAMENTO OTP
-# =====================================================================================
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
@@ -90,13 +80,11 @@ def avvia_sincronizzazione_automatica():
             print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
             time.sleep(15)
             
-            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
+            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
             print("----------------------------------------------------------------------")
-# =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA ED ACCESSO ALLA BARRA FILTRI ORIGINALE
-# =====================================================================================
+
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -113,6 +101,10 @@ def avvia_sincronizzazione_automatica():
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
                     target_frame = page
+                    for f in page.frames:
+                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
+                            target_frame = f
+                            break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
@@ -126,15 +118,13 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
-# =====================================================================================
-# BLOCCO 5: COMPILAZIONE DATE, CLIC SU TASTO SALVA E AZZERAMENTO SCHERMO IN EMERGENZA
-# =====================================================================================
+
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA] Entro nella pianificazione...")
+                        print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
@@ -154,45 +144,27 @@ def avvia_sincronizzazione_automatica():
 
                     campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
-                    
-                    campo_dal.press("Control+A")
-                    campo_dal.press("Backspace")
+                    campo_dal.fill(data_inizio_pulita)
                     time.sleep(1)
-                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    
-                    try:
-                        target_frame.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
-                        time.sleep(1)
-                    except Exception: pass
                     
                     campo_al.click()
-                    campo_al.press("Control+A")
-                    campo_al.press("Backspace")
+                    campo_al.fill(data_fine_pulita)
                     time.sleep(1)
-                    campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(2)
-                    
-                    try:
-                        target_frame.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
-                        time.sleep(2)
-                    except Exception: pass
 
-                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
+                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
+                    print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
-                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                     time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
-                    # 🛡️ INTERVENTO DI SALVATAGGIO DI MANUELA: Se lo schermo si incastra, forza il reset via URL per non rompere i locali successivi
                     try:
-                        page.goto("https://partner.snai.it")
-                        time.sleep(6)
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        time.sleep(5)
                     except Exception: pass
                     continue
 
@@ -200,8 +172,9 @@ def avvia_sincronizzazione_automatica():
             try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
             except Exception: page.context.clear_cookies()
 
-        except Exception as e: print(f"❌ Errore Visualizzato: {str(e)}")
+        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
