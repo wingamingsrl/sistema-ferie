@@ -45,7 +45,6 @@ def avvia_sincronizzazione_automatica():
         context = browser.new_context()
         page = context.new_page()
 
-        # Accetta in automatico i pop-up di conferma del browser richiesti per le modifiche
         page.on("dialog", lambda dialog: dialog.accept())
 
         try:
@@ -108,23 +107,18 @@ def avvia_sincronizzazione_automatica():
                     target_frame = page
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ ID CASSELLA ESTRATTO DA MANUELA
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=25000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
-                    # 🛡️ ID BOTTONE RICERCA ESTRATTO DA MANUELA
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
-# =====================================================================================
-# BLOCCO 5: COMPILAZIONE DATE, CLIC SU TASTO SALVA ED INDIETRO CERTIFICATI DA MANUELA
-# =====================================================================================
-                    # 🛡️ PUNTATORI AD AGGANCIO TOTALE DAL CODICE SORGENTE DI MANUELA
+
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione'], img[src*='edit'], img[id*='img_pianificazione'][src*='gif']").first
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[src*='insert'], img[id*='img_pianificazione'][src*='jpg']").first
                     cella_td_cliccabile = target_frame.locator("td[onclick*='Pianificazione_dettagli'], table[id*='lst'] tr td:nth-child(8)").first
@@ -136,7 +130,7 @@ def avvia_sincronizzazione_automatica():
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA DETECTED] Clic sul pallino verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     elif cella_td_cliccabile.count() > 0:
-                        print("   🖱️ [Grid Mode] Clic diretto sulla cella TD nativa della colonna 8 certificata...")
+                        print("   🖱️ [Grid Mode] Clic diretto sulla cella TD nativa della colonna 8...")
                         cella_td_cliccabile.click(force=True, timeout=8000)
                     else:
                         print("   ⚠️ [Grid Mode] Tento il clic forzato sulla prima immagine della riga...")
@@ -172,7 +166,7 @@ def avvia_sincronizzazione_automatica():
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://snai.it")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                     except Exception: pass
                     continue
@@ -186,6 +180,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
-
-
