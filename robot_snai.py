@@ -165,7 +165,7 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     time.sleep(6)
                     
-                                       print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
                     page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(6)
                     
