@@ -155,14 +155,27 @@ def avvia_sincronizzazione_automatica():
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
-                    campo_dal.wait_for(state="visible", timeout=12000)
+                                        campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
                     campo_dal.fill(data_inizio_pulita)
                     time.sleep(1)
                     
+                    # 🛡️ INPUT DI MANUELA: Forza la selezione della fascia oraria di inizio (00:00) se presente a schermo
+                    try:
+                        target_frame.select_option("select#ctl00_Cp1_fascia_from, #ctl00_Cp1_fascia_from", "00:00")
+                        time.sleep(1)
+                    except Exception: pass
+                    
                     campo_al.click()
                     campo_al.fill(data_fine_pulita)
                     time.sleep(1)
+                    
+                    # 🛡️ INPUT DI MANUELA: Forza la selezione della fascia oraria di fine (23:30) se presente a schermo
+                    try:
+                        target_frame.select_option("select#ctl00_Cp1_fascia_to, #ctl00_Cp1_fascia_to", "23:30")
+                        time.sleep(1)
+                    except Exception: pass
+
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
