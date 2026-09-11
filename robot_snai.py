@@ -11,36 +11,6 @@ CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
 
-def push_screenshot_su_github(nome_file_foto):
-    try:
-        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
-        if not t_git: return
-        url_git = f"https://github.com{nome_file_foto}"
-        
-        if os.path.exists(nome_file_foto):
-            with open(nome_file_foto, "rb") as f_img:
-                dati_base64 = base64.b64encode(f_img.read()).decode('utf-8')
-            
-            headers_git = {
-                "Authorization": f"token {t_git}", 
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "WinGaming-Cloud-App"
-            }
-            
-            res_get = requests.get(url_git, headers=headers_git, timeout=5)
-            sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
-            
-            payload_git = {
-                "message": f"📸 [Robot] Caricamento screenshot spia errore locale {nome_file_foto}", 
-                "content": dati_base64, 
-                "branch": "main"
-            }
-            if sha_file: payload_git["sha"] = sha_file
-                
-            requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            print(f"   📥 [Screenshot Cloud] Fotografia spia salvata permanentemente su GitHub: {nome_file_foto}")
-    except Exception: pass
-
 
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
@@ -181,7 +151,7 @@ def avvia_sincronizzazione_automatica():
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
-                    # 🛡️ FIX SINTASSI DI MANUELA: Trasforma i trattini dell'Excel (31-08) nelle barre di Snaitech (31/08)
+                    # 🛡️ CONVERSIONE RIGIDA DATA: Trasforma i trattini dell'Excel (31-08) nelle barre di Snaitech (31/08)
                     data_inizio_barre = str(data_inizio_pulita).replace("-", "/").strip()
                     data_fine_barre = str(data_fine_pulita).replace("-", "/").strip()
 
@@ -206,24 +176,18 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Impulso inviato! Verifico l'accettazione del portale...")
+                    print(f"   ✅ [Robot] STEP 11: Impulso inviato con successo sul portale Snaitech.")
                     time.sleep(6)
                     
-                    try:
-                        print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
-                        page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
-                        time.sleep(6)
-                    except Exception as e_back:
-                        # 📸 SPIA PERMANENTE: Se il salvataggio fallisce, scatta e spinge la foto direttamente nel tuo cloud GitHub
-                        nome_foto = f"errore_{codice_aams}.png"
-                        page.screenshot(path=nome_foto, full_page=True)
-                        push_screenshot_su_github(nome_foto)
-                        raise e_back
+                    # 🛡️ RESET DI NAVIGAZIONE VINCENTE: Ricarica l'URL pulito ignorando il tasto Indietro grafico
+                    print("   ↩️ [Robot] Ricarico la pagina anagrafica pulita per il locale successivo...")
+                    page.goto("https://snai.it", wait_until="load", timeout=30000)
+                    time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://snai.it", wait_until="load", timeout=30000)
                         time.sleep(6)
                     except Exception: pass
                     continue
@@ -237,3 +201,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
