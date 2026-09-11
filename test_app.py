@@ -330,7 +330,6 @@ if not st.session_state.autenticato:
                         st.rerun()
                     else:
                         st.error("❌ Credenziali errate. Riprova.")
-
     st.stop()
 
 esecutore_nome = st.session_state.user_nome
