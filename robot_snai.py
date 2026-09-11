@@ -48,7 +48,7 @@ def avvia_sincronizzazione_automatica():
 
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.partner.snai.it...")
-            page.goto("https://partner.partner.snai.it")
+            page.goto("https://partner.snai.it")
             time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
@@ -87,7 +87,7 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -186,7 +186,7 @@ def avvia_sincronizzazione_automatica():
             try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
             except Exception: page.context.clear_cookies()
 
-        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.partner.snai.it: {str(e)}")
+        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.partner.: {str(e)}")
         finally: browser.close()
 
 if __name__ == "__main__":
