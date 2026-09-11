@@ -291,7 +291,9 @@ if not st.session_state.autenticato:
                 st.session_state.user_nome = str(utente_trovato.iloc[0]["NOME"]).strip()
                 st.session_state.user_email = str(utente_trovato.iloc[0]["EMAIL"]).strip()
                 st.session_state.autenticato = True
-                
+                # 🛡️ ALLINEAMENTO LIVE DI MANUELA: Scrive il token nell'URL della barra internet per mantenere la sessione 2 ore
+                st.query_params["token_sessione"] = f"{st.session_state.user_email}_attivo"
+
                 # 🧹 INNESTO AUTOMATICO DI MANUELA: Spazzino istantaneo nativo al momento del Login
                 if os.path.exists(FILE_STORICO_PERMANENTE):
                     df_s_login = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
