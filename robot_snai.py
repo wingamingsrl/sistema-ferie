@@ -43,9 +43,11 @@ def avvia_sincronizzazione_automatica():
         context = browser.new_context()
         page = context.new_page()
 
+        page.on("dialog", lambda dialog: dialog.accept())
+
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
-            page.goto("https://partner.snai.it")
+            page.goto("https://snai.it")
             time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
@@ -80,11 +82,11 @@ def avvia_sincronizzazione_automatica():
             print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
             time.sleep(15)
             
-            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE SNAITECH!")
+            print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -100,6 +102,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # 🛡️ AGGANCIO DINAMICO GRIGLIA FILTRI
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -133,16 +136,21 @@ def avvia_sincronizzazione_automatica():
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
                         cella_td.click(force=True, timeout=8000)
                     
-                        print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
+                    print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    target_frame = page
-                    # 🛡️ PUNTATORI LASER RIGIDI ESTRATTI DA MANUELA (Una T maiuscola e una t minuscola)
-                    campo_dal = target_frame.locator("#ctl00_Cp1_Txtiniziochiusura").first
-                    campo_al = target_frame.locator("#ctl00_Cp1_txtfinechiusura").first
+                    # 🛡️ ACCENDE IL SECONDO RADAR SUI SOTTO-FRAME PER AGGANCIARE I MODULI COMPILAZIONE
+                    frame_date = page
+                    for f in page.frames:
+                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0 or f.locator("input[id*='txtfinechiusura']").count() > 0:
+                            frame_date = f
+                            break
+
+                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
+                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
                     
                     if campo_al.count() == 0:
-                        campo_al = target_frame.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
+                        campo_al = frame_date.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
                     print("   📝 [Robot] STEP 9: Compilazione data inizio con simulazione umana...")
                     campo_dal.wait_for(state="visible", timeout=15000)
@@ -152,9 +160,8 @@ def avvia_sincronizzazione_automatica():
                     campo_dal.press_sequentially(data_inizio_pulita, delay=100)
                     time.sleep(1)
                     
-                    # Forza la selezione dell'orario di inizio nel menu a tendina
                     try:
-                        target_frame.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
+                        frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                         time.sleep(1)
                     except Exception: pass
                     
@@ -165,31 +172,26 @@ def avvia_sincronizzazione_automatica():
                     campo_al.press_sequentially(data_fine_pulita, delay=100)
                     time.sleep(1)
                     
-                    # Forza la selezione del menu a tendina dell'orario di fine obbligatorio
                     try:
-                        target_frame.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
+                        frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                         time.sleep(2)
                     except Exception: pass
 
-                    # Clicca su un elemento neutro (il titolo della nota) per togliere il focus e bloccare i validatori Microsoft
-                    try: target_frame.locator("#ctl00_Cp1_pnNota").first.click(force=True)
-                    except Exception: pass
-                    time.sleep(2)
-
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
-                    page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
+                    frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     print("----------------------------------------------------------------------")
                     time.sleep(6)
                     
                     print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
-                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                    frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
+                    # 🛡️ BLINDATURA FORZATA RESET: Se un locale fallisce, ripulisce la schermata ricaricando l'anagrafica
                     try:
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                     except Exception: pass
                     continue
