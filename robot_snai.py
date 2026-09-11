@@ -121,26 +121,32 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
-
-                    icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
-                    icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
-                    cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
+# =====================================================================================
+# BLOCCO 5: COMPILAZIONE DATE, CLIC SU TASTO SALVA ED INDIETRO CERTIFICATI DA MANUELA
+# =====================================================================================
+                    # 🛡️ PUNTATORI AD AGGANCIO TOTALE DAL CODICE SORGENTE DI MANUELA
+                    icona_modifica = target_frame.locator("img[src*='edit_pianificazione'], img[src*='edit'], img[id*='img_pianificazione'][src*='gif']").first
+                    icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[src*='insert'], img[id*='img_pianificazione'][src*='jpg']").first
+                    cella_td_cliccabile = target_frame.locator("td[onclick*='Pianificazione_dettagli'], table[id*='lst'] tr td:nth-child(8)").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
+                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Entro nella pianificazione (Pop-up OK)...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA DETECTED] Clic sul pallino verde...")
                         icona_nuovo.click(force=True, timeout=8000)
+                    elif cella_td_cliccabile.count() > 0:
+                        print("   🖱️ [Grid Mode] Clic diretto sulla cella TD nativa della colonna 8 certificata...")
+                        cella_td_cliccabile.click(force=True, timeout=8000)
                     else:
-                        print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
-                        cella_td.click(force=True, timeout=8000)
+                        print("   ⚠️ [Grid Mode] Tento il clic forzato sulla prima immagine della riga...")
+                        target_frame.locator("table#rounded-corner tbody tr td img, td[onclick*='Pianificazione'] img").first.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura']").first
-                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura']").first
+                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura'], input[id*='Txtiniziochiusura']").first
+                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura'], input[id*='Txtfinechiusura']").first
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
@@ -154,32 +160,13 @@ def avvia_sincronizzazione_automatica():
                     campo_al.fill(data_fine_pulita)
                     time.sleep(1)
 
-                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
-                    # 🛡️ ID BOTTONE SALVA ESTRATTO DA MANUELA
+                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     time.sleep(6)
                     
                     print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
-                    # 🛡️ ID BOTTONE INDIETRO ESTRATTO DA MANUELA: Riporta subito a Esercizi.aspx
                     page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(6)
-                    
-                except Exception as row_err:
-                    print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
-                    try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
-                        time.sleep(6)
-                    except Exception: pass
-                    continue
 
-            print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
-            try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
-            except Exception: page.context.clear_cookies()
-
-        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
-        finally: browser.close()
-
-if __name__ == "__main__":
-    avvia_sincronizzazione_automatica()
 
