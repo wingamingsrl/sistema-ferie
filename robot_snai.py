@@ -136,29 +136,50 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    campo_dal = page.locator("#ctl00_Cp1_Txtiniziochiusura, input[name*='Txtiniziochiusura']").first
-                    campo_al = page.locator("#ctl00_Cp1_Txtfinechiusura, input[name*='Txtfinechiusura']").first
+                    # 🛡️ FIX DEFINITIVO MINUSCOLE DI MANUELA: Allineati ai tag HTML reali del portale Snaitech
+                    campo_dal = page.locator("#ctl00_Cp1_txtiniziochiusura, input[id*='txtiniziochiusura']").first
+                    campo_al = page.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
 
                     campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
-                    campo_dal.fill(data_inizio_pulita)
+                    
+                    # Svuota il campo e digita le date carattere per carattere simulando l'uomo nel frame
+                    campo_dal.press("Control+A")
+                    campo_dal.press("Backspace")
+                    time.sleep(1)
+                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
                     time.sleep(1)
                     
+                    try:
+                        target_frame.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
+                        time.sleep(1)
+                    except Exception: pass
+                    
                     campo_al.click()
-                    campo_al.fill(data_fine_pulita)
+                    campo_al.press("Control+A")
+                    campo_al.press("Backspace")
                     time.sleep(1)
+                    campo_al.press_sequentially(data_fine_pulita, delay=100)
+                    time.sleep(1)
+                    
+                    try:
+                        target_frame.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
+                        time.sleep(2)
+                    except Exception: pass
 
-                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech...")
+                    print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
+                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(5)
+
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
