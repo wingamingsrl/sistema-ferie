@@ -181,13 +181,13 @@ def avvia_sincronizzazione_automatica():
                     
                     # 🛡️ RESET DI NAVIGAZIONE VINCENTE: Ricarica l'URL pulito ignorando il tasto Indietro grafico
                     print("   ↩️ [Robot] Ricarico la pagina anagrafica pulita per il locale successivo...")
-                    page.goto("https://snai.it", wait_until="load", timeout=30000)
+                    page.goto("https://partner.snai.it", wait_until="load", timeout=30000)
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://snai.it", wait_until="load", timeout=30000)
+                        page.goto("https://partner.snai.it", wait_until="load", timeout=30000)
                         time.sleep(6)
                     except Exception: pass
                     continue
