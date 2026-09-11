@@ -531,6 +531,7 @@ if submit_button:
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
+
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
