@@ -183,9 +183,19 @@ def avvia_sincronizzazione_automatica():
                     print("----------------------------------------------------------------------")
                     time.sleep(6)
                     
-                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
-                    frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Verifica Tasto Indietro)...")
+                    # 🛡️ FIX FINALE DI MANUELA: Cerca il tasto sulla pagina principale 'page' perché il frame date svanisce dopo il salva
+                    try:
+                        if page.locator("#ctl00_Cp1_Button1").count() > 0:
+                            page.locator("#ctl00_Cp1_Button1").first.click(timeout=4000)
+                        elif frame_date.locator("#ctl00_Cp1_Button1").count() > 0:
+                            frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=4000)
+                        else:
+                            page.goto("https://snai.it")
+                    except Exception:
+                        page.goto("https://snai.it")
                     time.sleep(5)
+
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
