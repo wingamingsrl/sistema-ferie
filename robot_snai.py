@@ -47,8 +47,8 @@ def avvia_sincronizzazione_automatica():
         page.on("dialog", lambda dialog: dialog.accept())
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
-            page.goto("https://partner.snai.it")
+            print("🌐 [Robot] STEP 4: Connessione a partner.partner.snai.it...")
+            page.goto("https://partner.partner.snai.it")
             time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
@@ -80,18 +80,18 @@ def avvia_sincronizzazione_automatica():
             time.sleep(1)
             
             page.click("input#btnInvia, input[value='Invia'], button:has-text('Invia'), input[type='submit']")
-            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.snai.it...")
+            print("⏳ [Robot] Convalida credenziali in corso... Caricamento area riservata partner.partner.snai.it...")
             time.sleep(15)
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://partner.partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_snai.iterrows():
+            for _, row in df_partner.snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
@@ -146,22 +146,21 @@ def avvia_sincronizzazione_automatica():
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
-
-                                        campo_dal.wait_for(state="visible", timeout=12000)
-                    campo_dal.click()
-                    # 🛡️ PULIZIA E DIGITAZIONE SEQUENZIALE REALE NEL CORRETTO FRAME
-                    campo_dal.press("Control+A")
-                    campo_dal.press("Backspace")
-                    time.sleep(1)
-                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    
-                    campo_al.click()
-                    campo_al.press("Control+A")
-                    campo_al.press("Backspace")
-                    time.sleep(1)
-                    campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(2)
+                        campo_dal.wait_for(state="visible", timeout=12000)
+                        campo_dal.click()
+                        # 🛡️ PULIZIA E DIGITAZIONE SEQUENZIALE REALE NEL CORRETTO FRAME
+                        campo_dal.press("Control+A")
+                        campo_dal.press("Backspace")
+                        time.sleep(1)
+                        campo_dal.press_sequentially(data_inizio_pulita, delay=100)
+                        time.sleep(1)
+                        
+                        campo_al.click()
+                        campo_al.press("Control+A")
+                        campo_al.press("Backspace")
+                        time.sleep(1)
+                        campo_al.press_sequentially(data_fine_pulita, delay=100)
+                        time.sleep(2)
 
 
 
@@ -187,7 +186,7 @@ def avvia_sincronizzazione_automatica():
             try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
             except Exception: page.context.clear_cookies()
 
-        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
+        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.partner.snai.it: {str(e)}")
         finally: browser.close()
 
 if __name__ == "__main__":
