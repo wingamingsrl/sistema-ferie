@@ -28,12 +28,12 @@ def genera_codice_otp_automatico():
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
 
-def scatta_e_salva_foto_locale(nome_file_foto, pagina_attiva):
+def scatta_e_salva_foto_locale(nome_foto, pagina_attiva):
     try:
-        # Scatta la fotografia e la blinda sul server locale protetto
-        pagina_attiva.screenshot(path=nome_file_foto, full_page=True)
-        print(f"   📸 [Fotocamera Spia] Istantanea salvata sul server: {nome_file_foto}")
+        pagina_attiva.screenshot(path=nome_foto, full_page=True)
+        print(f"   📸 [Fotocamera] Istantanea salvata sul server: {nome_foto}")
     except Exception: pass
+
 # =====================================================================================
 # BLOCCO 2: FILTRO CHIRURGICO LOCALI ED APERTURA STRUTTURALE DI CHROME
 # =====================================================================================
@@ -182,12 +182,15 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
 
+                                       # 📸 CATTURA 1: Prima del click (Incolla questa riga sopra il BtnOk)
+                    scatta_e_salva_foto_locale(f"prima_{codice_aams}.png", page)
+
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Scatto l'istantanea di riscontro...")
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(4)
                     
-                    # 🛡️ MACCHINA FOTOGRAFICA SPIA: Salva l'immagine con il nome del locale per dirti cosa risponde Snaitech
+                    # 📸 CATTURA 2: Dopo il click (Incolla questa riga sotto il time.sleep)
                     try: scatta_e_salva_foto_locale(f"risultato_{codice_aams}.png", page)
                     except Exception: pass
                     time.sleep(3)
