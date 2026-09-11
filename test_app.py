@@ -99,52 +99,49 @@ def carica_database_locale():
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
     
-    # 🧹 MOTORE AUTOMATICO FILTRATO GIORNALIERO SULLE DATE DI OGGI
-    if "user_nome" in st.session_state:
+    # 🧹 MOTORE AUTOMATICO GIORNALIERO (REPLICA ESATTA DEL TASTO ELIMINA MANUALE)
+    # Si attiva in automatico solo se l'utente è loggato e la memoria cloud è pronta
+    if "user_nome" in st.session_state and "storico_cloud" in st.session_state:
         oggi_ora = datetime.now()
-        codici_validi = []
-        file_modificato_pulizia = False
+        indici_da_eliminare = []
         
-        for _, row in df_s.iterrows():
+        # Scansiona lo storico cloud individuando la posizione esatta (ID) dei locali con ferie passate rispetto a oggi (Settembre 2026)
+        for idx, row in enumerate(st.session_state.storico_cloud):
             testo_fine = str(row.get("FINE_FERIE", "")).strip()
-            codice_corrente = str(row.get("CODICE_LOCALE", "")).strip()
-            
             if testo_fine:
                 try:
                     data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
                     if data_fine_valida < oggi_ora:
-                        file_modificato_pulizia = True
-                        continue  # Salta il locale scaduto, ha già riaperto!
+                        indici_da_eliminare.append(idx)
                 except Exception:
                     try:
                         data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
                         if data_fine_valida.date() < oggi_ora.date():
-                            file_modificato_pulizia = True
-                            continue
+                            indici_da_eliminare.append(idx)
                     except Exception: pass
-            
-            if codice_corrente:
-                codici_validi.append(codice_corrente)
         
-        # 🛡️ SE CI SONO SCADENZE DA PULIRE AUTO: Forza la scrittura fisica e la spinta cloud
-        if file_modificato_pulizia:
-            df_s_filtrato = df_s[df_s["CODICE_LOCALE"].astype(str).str.strip().isin(codici_validi)]
-            df_s_filtrato = df_s_filtrato.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+        # 🛡️ SE CI SONO SCADENZE: Esegue la rimozione col .pop() identica al comando manuale
+        if indici_da_eliminare:
+            st.session_state.congelamento_sincro_attivo = True  # Blocca temporaneamente la RAM
             
-            # Aggiorna la memoria interna dello smartphone
-            st.session_state.storico_cloud = df_s_filtrato.to_dict('records')
+            # Rimuove i record partendo dall'ultimo per non sfasare gli indici della lista
+            for idx in sorted(indici_da_eliminare, reverse=True):
+                st.session_state.storico_cloud.pop(idx)
+                
+            # Rigenera il database aggiornato dall'elenco rimasto
+            df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
             
-            # 🛡️ FIX FINALE CANCELLAZIONE AUTOMATICA: Sovrascrive il file fisico prima di inviarlo
-            df_s_filtrato.to_excel(FILE_STORICO_PERMANENTE, index=False)
+            # Forza la stesura su disco e la spinta cloud con la sequenza collaudata
+            df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+            push_excel_su_github(df_nuovo_salva)
             
-            try: 
-                push_excel_su_github(df_s_filtrato)
-                st.toast("🧹 Pulizia automatica scadenze completata!")
-            except Exception: pass
-            
+            st.session_state.congelamento_sincro_attivo = False  # Sblocca la RAM
+            st.toast("🧹 Pulizia automatica: Rimossi i locali che hanno terminato le ferie!")
+            time.sleep(0.5)
             st.rerun()
-  
+            
     return df_l, df_t, df_s
+
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
