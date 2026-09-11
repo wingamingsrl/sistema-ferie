@@ -155,29 +155,38 @@ def avvia_sincronizzazione_automatica():
                         time.sleep(5)
                         continue
 
-                    campo_dal.wait_for(state="visible", timeout=8000)
+                    campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
-                    campo_dal.press("Control+A")
-                    campo_dal.press("Backspace")
+                    # 🛡️ AZZERAMENTO TOTALE DI MANUELA: Svuota rigidamente il testo preimpostato da Snaitech
+                    campo_dal.fill("")
                     time.sleep(1)
+                    # Digita la data inizio pulita
                     campo_dal.press_sequentially(data_inizio_pulita, delay=100)
                     time.sleep(1)
                     
+                    # Seleziona l'orario di inizio nel menu a tendina (00:00)
+                    try:
+                        target_frame.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
+                        time.sleep(1)
+                    except Exception: pass
+                    
                     campo_al.click()
-                    campo_al.press("Control+A")
-                    campo_al.press("Backspace")
+                    campo_al.fill("")
                     time.sleep(1)
                     campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(2)
+                    time.sleep(1)
+                    
+                    # 🛡️ BLINDATURA ORARIO DI FINE DI MANUELA: Forza la selezione sul menu a tendina dell'orario di fine
+                    try:
+                        target_frame.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
+                        time.sleep(2)
+                    except Exception: pass
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     time.sleep(5)
-                    
-                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
-                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
-                    time.sleep(5)
+
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
