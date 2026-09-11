@@ -165,8 +165,27 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     time.sleep(6)
                     
-                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
+                                       print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
                     page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(6)
+                    
+                except Exception as row_err:
+                    print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
+                    try:
+                        page.goto("https://snai.it")
+                        time.sleep(6)
+                    except Exception: pass
+                    continue
+
+            print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
+            try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
+            except Exception: page.context.clear_cookies()
+
+        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
+        finally: browser.close()
+
+if __name__ == "__main__":
+    avvia_sincronizzazione_automatica()
+
 
 
