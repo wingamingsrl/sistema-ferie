@@ -1,7 +1,3 @@
-# =====================================================================================
-# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE ED ACCESSI PROPRIETARI — PORTALE: PARTNER.SNAI.IT
-# =====================================================================================
 import os
 import io
 import time
@@ -28,14 +24,12 @@ def genera_codice_otp_automatico():
     chiave_pulita = CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", "")
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
-# =====================================================================================
-# BLOCCO 2: FILTRO SELEZIONE LOCALI ED APERTURA CHROME IN MODALITÀ HEADLESS
-# =====================================================================================
+
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
-    # Filtra ed elabora esclusivamente i locali ufficiali di competenza WinGaming
+    # Filtra ed elabora esclusivamente i locali ufficiali "Snaitech Spa WG"
     df_snai = df_ferie[
         df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"
     ]
@@ -50,11 +44,8 @@ def avvia_sincronizzazione_automatica():
         context = browser.new_context()
         page = context.new_page()
 
-        # Accetta in automatico i pop-up di avviso o conferma emessi dal portale
         page.on("dialog", lambda dialog: dialog.accept())
-# =====================================================================================
-# BLOCCO 3: PROCEDURA DI ACCESSO ORIGINALE COLLAUDATA CON SUPERAMENTO OTP
-# =====================================================================================
+
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
@@ -94,11 +85,9 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
-# =====================================================================================
-# BLOCCO 4: AZZERAMENTO FILTRI DI STATO ED INSERIMENTO CODICE CENSIMENTO
-# =====================================================================================
+
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -114,19 +103,8 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # 🛡️ STRUTTURA RICERCA ORIGINALE RIPRISTINATA: Punta dritto sulla pagina principale
                     target_frame = page
-                    for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
-                            target_frame = f
-                            break
-
-                    # 🛡️ BLINDATURA DI MANUELA: Forza il menu a tendina dello Stato su "TUTTI" per non nascondere Paini e Sole e Luna
-                    try:
-                        menu_stato = target_frame.locator("select[id*='ddlStato'], select[name*='Stato'], #ctl00_Cp1_ddlStatoesercizio").first
-                        if menu_stato.count() > 0:
-                            menu_stato.select_option(label="Tutti")
-                            time.sleep(1)
-                    except Exception: pass
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
@@ -140,9 +118,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
-# =====================================================================================
-# BLOCCO 5: APERTURA SCHERMA, DIGITAZIONE SEQUENZIALE REALE, SALVA E RESET VIA URL
-# =====================================================================================
+
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
@@ -169,13 +145,11 @@ def avvia_sincronizzazione_automatica():
                     campo_dal.wait_for(state="visible", timeout=12000)
                     campo_dal.click()
                     
-                    # 🛡️ DIGITAZIONE SEQUENZIALE REALE: Pulisce e scrive tasto per tasto simulando l'uomo
-                    page.keyboard.press("Control+A")
-                    page.keyboard.press("Backspace")
+                    # 🛡️ DIGITAZIONE SEQUENZIALE UMANA COLLAUDATA NEL CORRETTO SELETTORE
+                    campo_dal.press("Control+A")
+                    campo_dal.press("Backspace")
                     time.sleep(1)
                     campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    page.keyboard.press("Tab")
                     time.sleep(1)
                     
                     try:
@@ -184,12 +158,10 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     
                     campo_al.click()
-                    page.keyboard.press("Control+A")
-                    page.keyboard.press("Backspace")
+                    campo_al.press("Control+A")
+                    campo_al.press("Backspace")
                     time.sleep(1)
                     campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(1)
-                    page.keyboard.press("Tab")
                     time.sleep(1)
                     
                     try:
@@ -202,19 +174,14 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
                     time.sleep(5)
                     
-                    try:
-                        print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
-                        page.locator("#ctl00_Cp1_Button1").first.click(timeout=8000)
-                        time.sleep(5)
-                    except Exception:
-                        page.goto("https://partner.snai.it")
-                        time.sleep(6)
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
+                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                    time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it")
-                        time.sleep(5)
+                        page.locator("#ctl00_Cp1_Button1").first.click(timeout=5000)
                     except Exception: pass
                     continue
 
@@ -222,7 +189,7 @@ def avvia_sincronizzazione_automatica():
             try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
             except Exception: page.context.clear_cookies()
 
-        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
+        except Exception as e: print(f"❌ Errore Visualizzato: {str(e)}")
         finally: browser.close()
 
 if __name__ == "__main__":
