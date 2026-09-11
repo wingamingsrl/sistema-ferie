@@ -282,55 +282,57 @@ if not st.session_state.autenticato:
         st.write("🔒 Autenticazione Richiesta")
         input_email = st.text_input("Nome Utente (E-mail):").strip().lower()
         input_password = st.text_input("Password di Sicurezza:", type="password").strip()
-                if st.button("🚀 ACCEDI AL PORTALE"):
-                    # Verifica le credenziali inserite dall'ufficio
-                    utente_trovato = df_t[(df_t["EMAIL"] == email_input.strip()) & (df_t["PASSWORD"] == pass_input.strip())]
-                    if not utente_trovato.empty:
-                        st.session_state.user_nome = utente_trovato.iloc[0]["NOME"]
-                        st.session_state.user_email = utente_trovato.iloc[0]["EMAIL"]
-                        st.session_state.autenticato = True
-                        
-                        # 🧹 INNESTO AUTOMATICO DI MANUELA: Spazzino istantaneo al momento del Login
-                        if os.path.exists(FILE_STORICO_PERMANENTE):
-                            df_s_login = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-                            st.session_state.storico_cloud = df_s_login.to_dict('records')
+        
+        if st.button("🚀 ACCEDI AL PORTALE"):
+            # Verifica le credenziali inserite dall'ufficio
+            utente_trovato = df_tecnici[(df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == input_email) & (df_tecnici["PASSWORD"].astype(str).str.strip() == input_password)]
+            if not utente_trovato.empty:
+                st.session_state.user_nome = str(utente_trovato.iloc[0]["NOME"]).strip()
+                st.session_state.user_email = str(utente_trovato.iloc[0]["EMAIL"]).strip()
+                st.session_state.autenticato = True
+                
+                # 🧹 INNESTO AUTOMATICO DI MANUELA: Spazzino istantaneo nativo al momento del Login
+                if os.path.exists(FILE_STORICO_PERMANENTE):
+                    df_s_login = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+                    st.session_state.storico_cloud = df_s_login.to_dict('records')
+                    
+                    oggi_ora = datetime.now()
+                    indici_da_eliminare = []
+                    
+                    # Individua gli indici esatti delle scadenze passate (locali che hanno già riaperto)
+                    for idx, row in enumerate(st.session_state.storico_cloud):
+                        testo_fine = str(row.get("FINE_FERIE", "")).strip()
+                        if testo_fine:
+                            try:
+                                data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
+                                if data_fine_valida < oggi_ora:
+                                    indici_da_eliminare.append(idx)
+                            except Exception:
+                                try:
+                                    data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
+                                    if data_fine_valida.date() < oggi_ora.date():
+                                        indici_da_eliminare.append(idx)
+                                except Exception: pass
+                    
+                    # Se rileva record scaduti, applica la sequenza nativa esatta del tasto elimina manuale
+                    if indici_da_eliminare:
+                        st.session_state.congelamento_sincro_attivo = True
+                        for idx in sorted(indici_da_eliminare, reverse=True):
+                            st.session_state.storico_cloud.pop(idx)
                             
-                            oggi_ora = datetime.now()
-                            indici_da_eliminare = []
-                            
-                            # Individua gli indici dei locali che hanno già riaperto
-                            for idx, row in enumerate(st.session_state.storico_cloud):
-                                testo_fine = str(row.get("FINE_FERIE", "")).strip()
-                                if testo_fine:
-                                    try:
-                                        data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
-                                        if data_fine_valida < oggi_ora:
-                                            indici_da_eliminare.append(idx)
-                                    except Exception:
-                                        try:
-                                            data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
-                                            if data_fine_valida.date() < os_date_adesso: # Allineato ad oggi (Settembre 2026)
-                                                indici_da_eliminare.append(idx)
-                                        except Exception: pass
-                            
-                            # Se ci sono locali scaduti, applica la sequenza nativa del tasto elimina manuale
-                            if indici_da_eliminare:
-                                st.session_state.congelamento_sincro_attivo = True
-                                for idx in sorted(indici_da_eliminare, reverse=True):
-                                    st.session_state.storico_cloud.pop(idx)
-                                    
-                                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                                # Scrittura fisica obbligatoria su disco prima della spinta cloud
-                                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                                push_excel_su_github(df_nuovo_salva)
-                                st.session_state.congelamento_sincro_attivo = False
-                        
-                        st.success(f"🔓 Benvenuta {st.session_state.user_nome}!")
-                        time.sleep(1.0)
-                        st.rerun()
-                    else:
-                        st.error("❌ Credenziali errate. Riprova.")
+                        df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                        # Scrittura fisica obbligatoria su disco sul server prima della spinta cloud
+                        df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                        push_excel_su_github(df_nuovo_salva)
+                        st.session_state.congelamento_sincro_attivo = False
+                
+                st.success(f"🔓 Benvenuta {st.session_state.user_nome}!")
+                time.sleep(1.0)
+                st.rerun()
+            else:
+                st.error("❌ Credenziali errate. Riprova.")
     st.stop()
+
 
 esecutore_nome = st.session_state.user_nome
 esecutore_email = st.session_state.user_email
