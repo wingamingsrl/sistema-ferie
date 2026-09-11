@@ -1,3 +1,6 @@
+# =====================================================================================
+# BLOCCO 1: LIBRERIE DI SISTEMA E MOTORE AUTOMATICO GENERATORE CHIAVI OTP 2FA
+# =====================================================================================
 import os
 import io
 import time
@@ -25,6 +28,15 @@ def genera_codice_otp_automatico():
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
 
+def scatta_e_salva_foto_locale(nome_file_foto, pagina_attiva):
+    try:
+        # Scatta la fotografia e la blinda sul server locale protetto
+        pagina_attiva.screenshot(path=nome_file_foto, full_page=True)
+        print(f"   📸 [Fotocamera Spia] Istantanea salvata sul server: {nome_file_foto}")
+    except Exception: pass
+# =====================================================================================
+# BLOCCO 2: FILTRO CHIRURGICO LOCALI ED APERTURA STRUTTURALE DI CHROME
+# =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
@@ -44,7 +56,9 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
-
+# =====================================================================================
+# BLOCCO 3: CONNESSIONE ED AUTENTICAZIONE CON SUPERAMENTO COUNTDOWN POP-UP
+# =====================================================================================
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
@@ -84,9 +98,11 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
-
+# =====================================================================================
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E MOTORE CONTINUATIVO DI FILTRO GRIGLIA
+# =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://partner.snai.it")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -129,7 +145,7 @@ def avvia_sincronizzazione_automatica():
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
@@ -137,14 +153,16 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
-
+# =====================================================================================
+# BLOCCO 5: IMPOSTAZIONE DATI VIA JAVASCRIPT, SCATTO FOTO SPIA E LOGOUT FORMALE
+# =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ FORZATURA JAVASCRIPT DEFINITIVA: Sblocca i validatori ed inserisce i dati eludendo i blocchi del Watermark
+                    # Iniezione JavaScript atomica dei dati per aggirare il blocco del Watermark Extender
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
@@ -158,7 +176,6 @@ def avvia_sincronizzazione_automatica():
                     }}""")
                     time.sleep(2)
                     
-                    # Gestione dei menu a tendina orari
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
@@ -167,17 +184,21 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(8)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Scatto l'istantanea di riscontro...")
+                    time.sleep(4)
                     
-                    # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                    # 🛡️ MACCHINA FOTOGRAFICA SPIA: Salva l'immagine con il nome del locale per dirti cosa risponde Snaitech
+                    try: scatta_e_salva_foto_locale(f"risultato_{codice_aams}.png", page)
+                    except Exception: pass
+                    time.sleep(3)
+                    
+                    page.goto("https://partner.snai.it")
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        page.goto("https://partner.snai.it")
                         time.sleep(6)
                     except Exception: pass
                     continue
