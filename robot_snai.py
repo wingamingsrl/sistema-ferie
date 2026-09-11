@@ -27,7 +27,6 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def avvia_sincronizzazione_automatica():
-    def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
