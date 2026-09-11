@@ -11,6 +11,37 @@ CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
 
+def push_screenshot_su_github(nome_file_foto):
+    try:
+        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
+        if not t_git: return
+        url_git = f"https://github.com{nome_file_foto}"
+        
+        if os.path.exists(nome_file_foto):
+            with open(nome_file_foto, "rb") as f_img:
+                dati_base64 = base64.b64encode(f_img.read()).decode('utf-8')
+            
+            headers_git = {
+                "Authorization": f"token {t_git}", 
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "WinGaming-Cloud-App"
+            }
+            
+            res_get = requests.get(url_git, headers=headers_git, timeout=5)
+            sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+            
+            payload_git = {
+                "message": f"📸 [Robot] Caricamento screenshot spia errore locale {nome_file_foto}", 
+                "content": dati_base64, 
+                "branch": "main"
+            }
+            if sha_file: payload_git["sha"] = sha_file
+                
+            requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            print(f"   📥 [Screenshot Cloud] Fotografia spia salvata permanentemente su GitHub: {nome_file_foto}")
+    except Exception: pass
+
+
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
     try:
@@ -121,13 +152,15 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
+# =====================================================================================
+# BLOCCO 5: COMPILAZIONE DATE CON BARRE, CLIC SU TASTO SALVA E SCATTO CLOUD SPIA
+# =====================================================================================
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione'], img[src*='edit'], img[id*='img_pianificazione'][src*='gif']").first
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[src*='insert'], img[id*='img_pianificazione'][src*='jpg']").first
                     cella_td_cliccabile = target_frame.locator("td[onclick*='Pianificazione_dettagli'], table[id*='lst'] tr td:nth-child(8)").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Entro nella pianificazione...")
-                        # 🛡️ FIX VIEWPORT: Forza il clic bypassando i controlli di copertura visiva di Playwright
+                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Entro nella pianificazione (Pop-up OK)...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA DETECTED] Clic sul pallino verde...")
@@ -136,15 +169,8 @@ def avvia_sincronizzazione_automatica():
                         print("   🖱️ [Grid Mode] Clic diretto sulla cella TD nativa della colonna 8...")
                         cella_td_cliccabile.click(force=True, timeout=8000)
                     else:
-                        print("   ⚠️ [Grid Mode] Tento il clic forzato via JS sulla prima immagine della riga...")
-                        # 🛡️ FIX VIEWPORT DEFINITIVO: Forza il clic bypassando i blocchi di scorrimento di Playwright
-                        try:
-                            elemento_img = target_frame.locator("table#rounded-corner tbody tr td img, td[onclick*='Pianificazione'] img").first
-                            elemento_img.wait_for(state="attached", timeout=5000)
-                            target_frame.evaluate("el => el.click()", elemento_img.element_handle())
-                        except Exception:
-                            target_frame.locator("table#rounded-corner tbody tr td img, td[onclick*='Pianificazione'] img").first.click(force=True, timeout=8000)
-
+                        print("   ⚠️ [Grid Mode] Tento il clic forzato sulla prima immagine della riga...")
+                        target_frame.locator("table#rounded-corner tbody tr td img, td[onclick*='Pianificazione'] img").first.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
@@ -154,42 +180,50 @@ def avvia_sincronizzazione_automatica():
                     
                     if campo_al.count() == 0:
                         campo_al = page.locator("input[id*='chiusura'], input[id*='Al']").nth(1)
-    
-                        campo_dal.wait_for(state="visible", timeout=12000)
-                        campo_dal.click()
-                        campo_dal.fill(data_inizio_pulita)
-                        time.sleep(1)
+
+                    # 🛡️ FIX SINTASSI DI MANUELA: Trasforma i trattini dell'Excel (31-08) nelle barre di Snaitech (31/08)
+                    data_inizio_barre = str(data_inizio_pulita).replace("-", "/").strip()
+                    data_fine_barre = str(data_fine_pulita).replace("-", "/").strip()
+
+                    campo_dal.wait_for(state="visible", timeout=12000)
+                    campo_dal.click()
+                    campo_dal.fill(data_inizio_barre)
+                    time.sleep(1)
                     
-                    # 🛡️ INPUT DI MANUELA: Forza la selezione della fascia oraria di inizio (00:00) se presente a schermo
                     try:
-                        target_frame.select_option("select#ctl00_Cp1_fascia_from, #ctl00_Cp1_fascia_from", "00:00")
+                        target_frame.locator("#ctl00_Cp1_fascia_from, select[name*='fascia_from']").select_option("00:00")
                         time.sleep(1)
                     except Exception: pass
                     
                     campo_al.click()
-                    campo_al.fill(data_fine_pulita)
+                    campo_al.fill(data_fine_barre)
                     time.sleep(1)
                     
-                    # 🛡️ INPUT DI MANUELA: Forza la selezione della fascia oraria di fine (23:30) se presente a schermo
                     try:
-                        target_frame.select_option("select#ctl00_Cp1_fascia_to, #ctl00_Cp1_fascia_to", "23:30")
+                        target_frame.locator("#ctl00_Cp1_fascia_to, select[name*='fascia_to']").select_option("23:30")
                         time.sleep(1)
                     except Exception: pass
 
-
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     page.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
+                    print(f"   ✅ [Robot] STEP 11: Impulso inviato! Verifico l'accettazione del portale...")
                     time.sleep(6)
                     
-                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
-                    page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
-                    time.sleep(6)
+                    try:
+                        print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic singolo)...")
+                        page.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                        time.sleep(6)
+                    except Exception as e_back:
+                        # 📸 SPIA PERMANENTE: Se il salvataggio fallisce, scatta e spinge la foto direttamente nel tuo cloud GitHub
+                        nome_foto = f"errore_{codice_aams}.png"
+                        page.screenshot(path=nome_foto, full_page=True)
+                        push_screenshot_su_github(nome_foto)
+                        raise e_back
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        page.goto("https://partner.snai.it")
                         time.sleep(6)
                     except Exception: pass
                     continue
