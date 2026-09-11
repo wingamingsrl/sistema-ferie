@@ -98,6 +98,7 @@ def carica_database_locale():
         df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("") if os.path.exists(FILE_STORICO_PERMANENTE) else pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+    return df_l, df_t, df_s
     
     # 🧹 MOTORE AUTOMATICO GIORNALIERO (REPLICA ESATTA DEL TASTO ELIMINA MANUALE)
     # Si attiva in automatico solo se l'utente è loggato e la memoria cloud è pronta
