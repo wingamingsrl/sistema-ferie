@@ -27,16 +27,19 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def avvia_sincronizzazione_automatica():
+    def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
+    # 🛡️ FILTRO REALE DI MANUELA: Isola ed elabora esclusivamente i locali sotto "Snaitech Spa WG"
     df_snai = df_ferie[
-        df_ferie["CONCESSIONARIO"].astype(str).str.lower().str.contains("snai|snaitech", regex=True) |
-        df_ferie["NOME_LOCALE"].astype(str).str.lower().str.contains("snai", regex=True)
+        df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"
     ]
-    if df_snai.empty: return
+    if df_snai.empty: 
+        print("ℹ️ [Robot] Nessun locale trovato per il concessionario specifico 'Snaitech Spa WG'.")
+        return
 
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech. Avvio Chrome...")
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali ufficiali Snaitech Spa WG. Avvio Chrome...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=[
@@ -124,7 +127,8 @@ def avvia_sincronizzazione_automatica():
                     cella_td_cliccabile = target_frame.locator("td[onclick*='Pianificazione_dettagli'], table[id*='lst'] tr td:nth-child(8)").first
                     
                     if icona_modifica.count() > 0:
-                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Entro nella pianificazione (Pop-up OK)...")
+                        print("   📝 [Robot] STEP 8: [MODIFICA DETECTED] Entro nella pianificazione...")
+                        # 🛡️ FIX VIEWPORT: Forza il clic bypassando i controlli di copertura visiva di Playwright
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA DETECTED] Clic sul pallino verde...")
