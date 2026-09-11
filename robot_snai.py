@@ -46,8 +46,8 @@ def avvia_sincronizzazione_automatica():
         page.on("dialog", lambda dialog: dialog.accept())
 
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
-            page.goto("https://snai.it")
+            print("🌐 [Robot] STEP 4: Connessione a partner....")
+            page.goto("https://partner.snai.it")
             time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
@@ -86,7 +86,7 @@ def avvia_sincronizzazione_automatica():
             print("----------------------------------------------------------------------")
 
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -191,7 +191,7 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     # 🛡️ BLINDATURA FORZATA RESET: Se un locale fallisce, ripulisce la schermata ricaricando l'anagrafica
                     try:
-                        page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                     except Exception: pass
                     continue
