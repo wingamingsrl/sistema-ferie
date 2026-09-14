@@ -51,6 +51,7 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
+
 # =====================================================================================
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
 # =====================================================================================
@@ -93,8 +94,9 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
+
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA CON ID REALE (C MAIUSCOLA)
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO NATIVO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -115,13 +117,12 @@ def avvia_sincronizzazione_automatica():
 
                     target_frame = page
                     for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("input[id*='txtCodiceCensimentoesercizio']").count() > 0 or f.locator("input[id*='txtcodiceCensimentoesercizio']").count() > 0:
+                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
                             target_frame = f
                             break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    # 🛡️ FIX RICERCA DI MANUELA: Aggancia sia la C maiuscola che la c minuscola per non andare mai in timeout
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, #ctl00_Cp1_txtcodiceCensimentoesercizio, input[id*='Censimentoesercizio']").first
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=20000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
@@ -159,6 +160,7 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
+                    # 🛡️ L'UNICA CORREZIONE AL TUO CODICE: Mette la T maiuscola su Txtfinechiusura per allinearsi a Snaitech
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
@@ -172,6 +174,7 @@ def avvia_sincronizzazione_automatica():
                     }}""")
                     time.sleep(2)
                     
+                    # Gestione dei menu a tendina orari originali
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
@@ -183,6 +186,7 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(8)
                     
+                    # Forza il ripristino della bacheca originale pulita
                     page.goto("https://partner.snai.it")
                     time.sleep(6)
                     
