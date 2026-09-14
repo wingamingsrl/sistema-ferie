@@ -1,11 +1,10 @@
 # =====================================================================================
 # SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E MOTORE FOTOCAMERA SPIA GITHUB CLOUD
+# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E CONFIGURAZIONE TOTP 2FA
 # =====================================================================================
 import os
 import io
 import time
-import base64
 import pyotp
 import requests
 import pandas as pd
@@ -29,40 +28,6 @@ def genera_codice_otp_automatico():
     chiave_pulita = CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", "")
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
-
-def push_screenshot_su_github(nome_file_foto):
-    try:
-        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
-        if not t_git:
-            try: t_git = str(pd.read_excel("token.xlsx").iloc).strip()
-            except Exception: return
-            
-        url_git = f"https://github.com{nome_file_foto}"
-        
-        if os.path.exists(nome_file_foto):
-            with open(nome_file_foto, "rb") as f_img:
-                dati_base64 = base64.b64encode(f_img.read()).decode('utf-8')
-            
-            headers_git = {
-                "Authorization": f"token {t_git}", 
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "WinGaming-Cloud-App"
-            }
-            
-            res_get = requests.get(url_git, headers=headers_git, timeout=5)
-            sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
-            
-            payload_git = {
-                "message": f"📸 [Robot] Caricamento screenshot spia locale {nome_file_foto}", 
-                "content": dati_base64, 
-                "branch": "main"
-            }
-            if sha_file: payload_git["sha"] = sha_file
-                
-            requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            print(f"   📥 [Screenshot Cloud] Immagine spia salvata permanentemente su GitHub: {nome_file_foto}")
-    except Exception: pass
-
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -128,14 +93,10 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA TRAMITE CLICK SUL MENU GRAFICO GENERALE
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA ORIGINALE RIGIDA DEI RAGAZZI
 # =====================================================================================
-            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti tramite Menu...")
-            # 🛡️ BLINDATURA DI MANUELA: Clicca sul testo del menu laterale per forzare il caricamento del foglio ASPX
-            try:
-                page.locator("a:has-text('Esercizi'), [id*='menu'] a:has-text('Esercizi')").first.click(timeout=10000)
-            except Exception:
-                page.goto("https://partner.snai.it")
+            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
+            page.goto("https://partner.snai.it")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -151,11 +112,16 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # Ripristino esatto del ciclo dei ragazzi sui frame dell'anagrafica
                     target_frame = page
+                    for f in page.frames:
+                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
+                            target_frame = f
+                            break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
-                    campo_ricerca.wait_for(state="visible", timeout=25000)
+                    campo_ricerca.wait_for(state="visible", timeout=20000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
@@ -183,7 +149,7 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 # =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E RESET INTERNO MENU
+# BLOCCO 5: COMPILAZIONE CON DIGITAZIONE TASTO PER TASTO SIMULATA E SALVATAGGIO REALE
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -191,55 +157,53 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    frame_date.evaluate(f"""() => {{
-                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
-                        var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
-                        var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
-                        
-                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
-                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
-                        if(water1) {{ water1.value = 'true'; }}
-                        if(water2) {{ water2.value = 'true'; }}
-                    }}""")
-                    time.sleep(2)
+                    # Agganciamo gli ID esatti della griglia emersi dal tuo HTML
+                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura").first
+                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura").first
+
+                    campo_dal.wait_for(state="visible", timeout=12000)
+                    campo_dal.click()
+                    
+                    # 🛡️ PULIZIA E DIGITAZIONE UMANA NEL FRAME: Attiva i validatori Microsoft ASP.NET
+                    campo_dal.press("Control+A")
+                    campo_dal.press("Backspace")
+                    time.sleep(1)
+                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
+                    time.sleep(1)
+                    campo_dal.press("Tab")
+                    time.sleep(1)
                     
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
+                    
+                    campo_al.click()
+                    campo_al.press("Control+A")
+                    campo_al.press("Backspace")
+                    time.sleep(1)
+                    campo_al.press_sequentially(data_fine_pulita, delay=100)
+                    time.sleep(1)
+                    campo_al.press("Tab")
+                    time.sleep(1)
+                    
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
                     time.sleep(2)
 
-                    # 📸 CATTURA SPIA PRIMA DEL SALVA
-                    try:
-                        foto_p = f"prima_{codice_aams}.png"
-                        page.screenshot(path=foto_p, full_page=True)
-                        push_screenshot_su_github(foto_p)
-                    except Exception: pass
-
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 4 secondi...")
-                    time.sleep(4)
+                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} inviato. Attesa stabilizzazione...")
+                    time.sleep(6)
                     
-                    # 📸 CATTURA SPIA DOPO IL SALVA (CATTURA L'ERRORE ROSSO DI REIEZIONE)
-                    try:
-                        foto_r = f"risultato_{codice_aams}.png"
-                        page.screenshot(path=foto_r, full_page=True)
-                        push_screenshot_su_github(foto_r)
-                    except Exception: pass
-                    time.sleep(4)
-                    
-                    # Ritorno protetto tramite clic sul menu laterale per evitare il blocco del foglio aspx di prima
-                    try: page.locator("a:has-text('Esercizi'), [id*='menu'] a:has-text('Esercizi')").first.click(timeout=6000)
-                    except Exception: page.goto("https://partner.snai.it")
+                    # Ripristino della bacheca tramite l'URL corto originario pulito dei ragazzi
+                    page.goto("https://partner.snai.it")
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
-                    try: page.locator("a:has-text('Esercizi'), [id*='menu'] a:has-text('Esercizi')").first.click(timeout=6000)
-                    except Exception: page.goto("https://partner.snai.it")
-                    time.sleep(6)
+                    try:
+                        page.goto("https://partner.snai.it")
+                        time.sleep(6)
+                    except Exception: pass
                     continue
 
             print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
