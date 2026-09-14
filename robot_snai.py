@@ -1,6 +1,3 @@
-# =====================================================================================
-# VERSIONE DI PRODUZIONE BLINDATA — FORZATURA REFRESH CACHE AGGIORNATA DA MANUELA
-# =====================================================================================
 import os
 import io
 import time
@@ -37,7 +34,7 @@ def avvia_sincronizzazione_automatica():
     ]
     if df_snai.empty: return
 
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locales Snaitech Spa WG. Avvio Chrome...")
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG. Avvio Chrome...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=[
@@ -132,7 +129,7 @@ def avvia_sincronizzazione_automatica():
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
@@ -147,10 +144,10 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # 🛡️ L'UNICA RETTIFICA CON LE MAIUSCOLE CERTIFICATE SULL'ID FINE DI MANUELA
+                    # 🛡️ FORZATURA JAVASCRIPT DEFINITIVA: Sblocca i validatori ed inserisce i dati eludendo i blocchi del Watermark
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
@@ -161,10 +158,25 @@ def avvia_sincronizzazione_automatica():
                     }}""")
                     time.sleep(2)
                     
-                    try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
+                    # Gestione dei menu a tendina orari
+                    # 🛡️ INPUT DI MANUELA: Forza la selezione fisica sul menu a tendina degli orari per sbloccare Barilott
+                    try:
+                        tendina_da = frame_date.locator("#ctl00_Cp1_fascia_from").first
+                        tendina_da.focus()
+                        tendina_da.select_option(value="00:00")
+                        tendina_da.dispatch_event("change")
+                        time.sleep(1)
                     except Exception: pass
-                    try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
+                    
+                    try:
+                        tendina_a = frame_date.locator("#ctl00_Cp1_fascia_to").first
+                        tendina_a.focus()
+                        # Seleziona l'opzione 23:30 muovendo l'indice del menu di Snaitech
+                        tendina_a.select_option(value="23:30")
+                        tendina_a.dispatch_event("change")
+                        time.sleep(2)
                     except Exception: pass
+
                     time.sleep(2)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
@@ -172,6 +184,7 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(8)
                     
+                    # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                     time.sleep(6)
                     
@@ -192,3 +205,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
