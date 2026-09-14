@@ -156,52 +156,52 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
-                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
-
-                    print("   📝 [Robot] STEP 9: Digitazione sequenziale data inizio...")
-                    campo_dal.wait_for(state="visible", timeout=12000)
-                    campo_dal.click()
-                    campo_dal.press("Control+A")
-                    campo_dal.press("Backspace")
-                    time.sleep(1)
-                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    campo_dal.press("Tab")
-                    time.sleep(1)
+                    # Forzatura JavaScript originaria di Manuela (Perfetta, non si tocca)
+                    frame_date.evaluate(f"""() => {{
+                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
+                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
+                        var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
+                        
+                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
+                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
+                        if(water1) {{ water1.value = 'true'; }}
+                        if(water2) {{ water2.value = 'true'; }}
+                    }}""")
+                    time.sleep(2)
                     
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
-                    time.sleep(1)
-                    
-                    print("   📝 [Robot] STEP 9a: Digitazione sequenziale data fine...")
-                    campo_al.click()
-                    campo_al.press("Control+A")
-                    campo_al.press("Backspace")
-                    time.sleep(1)
-                    campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(1)
-                    campo_al.press("Tab")
-                    time.sleep(1)
-                    
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
                     time.sleep(2)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e salvato con successo!")
-                    print("----------------------------------------------------------------------")
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Verifico la risposta del server...")
+                    time.sleep(6)
                     
-                    # 🛡️ SBLOCCO DI NAVIGAZIONE DI MANUELA: Snaitech torna indietro da sola dopo il salva.
-                    # Aspettiamo solo che si rinfreschi lo schermo riattivando la griglia per il locale successivo.
-                    time.sleep(8)
+                    # 🛡️ ISPETTORE TESTUALE DI MANUELA: Legge l'avviso rosso a schermo e lo stampa direttamente sul telefono
+                    try:
+                        alert_testo = frame_date.evaluate("""() => {
+                            var nodi = document.querySelectorAll('.error, [id*="lblErrore"], [id*="valSummary"], [style*="Red"], .important');
+                            for (var n of nodi) {
+                                if (n.innerText && n.innerText.trim().length > 2) return n.innerText.trim();
+                            }
+                            return "Nessun blocco testuale visibile (Modulo respinto in background)";
+                        }""")
+                        print(f"   🚨 [SNAITECH RESPONSE] -> {alert_testo}")
+                    except Exception: pass
+                    
+                    # Forza il ripristino della bacheca originale protetta dei ragazzi
+                    page.goto("https://partner.snai.it")
+                    time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it")
-                        time.sleep(8)
+                        page.goto("https://snai.it")
+                        time.sleep(6)
                     except Exception: pass
                     continue
 
