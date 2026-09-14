@@ -1,6 +1,6 @@
 # =====================================================================================
 # SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E CONFIGURAZIONE TOTP 2FA
+# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E MOTORE FOTOCAMERA SPIA GITHUB CLOUD
 # =====================================================================================
 import os
 import io
@@ -62,6 +62,7 @@ def push_screenshot_su_github(nome_file_foto):
             requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             print(f"   📥 [Screenshot Cloud] Immagine spia salvata permanentemente su GitHub: {nome_file_foto}")
     except Exception: pass
+
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -85,7 +86,7 @@ def avvia_sincronizzazione_automatica():
 
         page.on("dialog", lambda dialog: dialog.accept())
 # =====================================================================================
-# BLOCCO 3: CONNESIONE ED IMMISSIONE CREDENZIALI CON GENERAZIONE ED INVIO OTP
+# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
 # =====================================================================================
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
@@ -127,10 +128,14 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 # =====================================================================================
-# BLOCCO 4: APERTURA ANAGRAFICA ED INSERIMENTO CODICI CON FILTRO DI RICERCA FISSO page
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA TRAMITE CLICK SUL MENU GRAFICO GENERALE
 # =====================================================================================
-            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it")
+            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti tramite Menu...")
+            # 🛡️ BLINDATURA DI MANUELA: Clicca sul testo del menu laterale per forzare il caricamento del foglio ASPX
+            try:
+                page.locator("a:has-text('Esercizi'), [id*='menu'] a:has-text('Esercizi')").first.click(timeout=10000)
+            except Exception:
+                page.goto("https://partner.snai.it")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -146,12 +151,11 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ BLINDATURA DI MANUELA: Esclude il ciclo dei frame e punta dritto sulla pagina principale
                     target_frame = page
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
-                    campo_ricerca.wait_for(state="visible", timeout=20000)
+                    campo_ricerca.wait_for(state="visible", timeout=25000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
@@ -179,7 +183,7 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 # =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E RESET URL NATIVO
+# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E RESET INTERNO MENU
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -226,15 +230,16 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(4)
                     
-                    page.goto("https://partner.snai.it")
+                    # Ritorno protetto tramite clic sul menu laterale per evitare il blocco del foglio aspx di prima
+                    try: page.locator("a:has-text('Esercizi'), [id*='menu'] a:has-text('Esercizi')").first.click(timeout=6000)
+                    except Exception: page.goto("https://partner.snai.it")
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
-                    try:
-                        page.goto("https://partner.snai.it")
-                        time.sleep(6)
-                    except Exception: pass
+                    try: page.locator("a:has-text('Esercizi'), [id*='menu'] a:has-text('Esercizi')").first.click(timeout=6000)
+                    except Exception: page.goto("https://partner.snai.it")
+                    time.sleep(6)
                     continue
 
             print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
@@ -246,4 +251,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
