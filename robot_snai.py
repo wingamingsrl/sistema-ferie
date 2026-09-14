@@ -1,6 +1,6 @@
 # =====================================================================================
 # SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E MOTORE FOTOCAMERA SPIA GITHUB CLOUD
+# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E CONFIGURAZIONE TOTP 2FA
 # =====================================================================================
 import os
 import io
@@ -15,7 +15,6 @@ from playwright.sync_api import sync_playwright
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
-FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
@@ -63,6 +62,7 @@ def push_screenshot_su_github(nome_file_foto):
             requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             print(f"   📥 [Screenshot Cloud] Immagine spia salvata permanentemente su GitHub: {nome_file_foto}")
     except Exception: pass
+
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -75,7 +75,7 @@ def avvia_sincronizzazione_automatica():
     ]
     if df_snai.empty: return
 
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG. Avvio Chrome...")
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locales Snaitech Spa WG. Avvio Chrome...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=[
@@ -85,13 +85,14 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
+
 # =====================================================================================
-# BLOCCO 3: CONNESSIONE ED AUTENTICAZIONE CON URL NATIVO CERTIFICATO DA MANUELA
+# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
 # =====================================================================================
         try:
-            # 🛡️ URL CORRETTO RIPRISTINATO DA MANUELA
+            # 🛡️ COPIATO RIGA PER RIGA DAL TUO FILE FUNZIONANTE
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
-            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
+            page.goto("https://partner.snai.it")
             time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
@@ -128,6 +129,7 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
+
 # =====================================================================================
 # BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO NATIVO
 # =====================================================================================
@@ -183,6 +185,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
 # =====================================================================================
 # BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E RESET URL NATIVO
 # =====================================================================================
@@ -231,7 +234,6 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(4)
                     
-                    # 🛡️ URL INTERNO DI REINDIRIZZAMENTO REALE NATIVO SENZA DOPPIO PARTNER
                     page.goto("https://partner.snai.it")
                     time.sleep(6)
                     
@@ -249,6 +251,9 @@ def avvia_sincronizzazione_automatica():
 
         except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
+
+if __name__ == "__main__":
+    avvia_sincronizzazione_automatica()
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
