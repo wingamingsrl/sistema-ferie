@@ -1,6 +1,5 @@
 # =====================================================================================
-# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E CONFIGURAZIONE TOTP 2FA
+# VERSIONE DI PRODUZIONE BLINDATA — FORZATURA REFRESH CACHE AGGIORNATA DA MANUELA
 # =====================================================================================
 import os
 import io
@@ -29,9 +28,6 @@ def genera_codice_otp_automatico():
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
 
-# =====================================================================================
-# BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
-# =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
@@ -52,9 +48,6 @@ def avvia_sincronizzazione_automatica():
 
         page.on("dialog", lambda dialog: dialog.accept())
 
-# =====================================================================================
-# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
-# =====================================================================================
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
@@ -95,11 +88,8 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
-# =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO NATIVO
-# =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -151,16 +141,13 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-# =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET ORIGINALE URL
-# =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ L'UNICA CORREZIONE AL TUO CODICE: Mette la T maiuscola su Txtfinechiusura per allinearsi a Snaitech
+                    # 🛡️ L'UNICA RETTIFICA CON LE MAIUSCOLE CERTIFICATE SULL'ID FINE DI MANUELA
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
@@ -174,7 +161,6 @@ def avvia_sincronizzazione_automatica():
                     }}""")
                     time.sleep(2)
                     
-                    # Gestione dei menu a tendina orari originali
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
@@ -186,14 +172,13 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(8)
                     
-                    # Forza il ripristino della bacheca originale pulita
-                    page.goto("https://partner.snai.it")
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                     except Exception: pass
                     continue
