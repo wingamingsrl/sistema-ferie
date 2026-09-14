@@ -63,7 +63,6 @@ def push_screenshot_su_github(nome_file_foto):
             requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             print(f"   📥 [Screenshot Cloud] Immagine spia salvata permanentemente su GitHub: {nome_file_foto}")
     except Exception: pass
-
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -86,12 +85,12 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
-
 # =====================================================================================
-# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP
+# BLOCCO 3: CONNESSIONE ED AUTENTICAZIONE CON URL NATIVO CERTIFICATO DA MANUELA
 # =====================================================================================
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner.partner.snai.it...")
+            # 🛡️ URL CORRETTO RIPRISTINATO DA MANUELA
+            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
             time.sleep(3)
             
@@ -129,9 +128,8 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
-
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO NATIVO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -185,9 +183,8 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
-
 # =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E LOGOUT FINALE
+# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E RESET URL NATIVO
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -214,7 +211,7 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
 
-                    # 📸 FOTO 1: Stato prima del click su Salva
+                    # 📸 CATTURA SPIA PRIMA DEL SALVA
                     try:
                         foto_p = f"prima_{codice_aams}.png"
                         page.screenshot(path=foto_p, full_page=True)
@@ -226,7 +223,7 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 4 secondi...")
                     time.sleep(4)
                     
-                    # 📸 FOTO 2: Stato dopo il click (Mostra l'errore se non salva)
+                    # 📸 CATTURA SPIA DOPO IL SALVA (CATTURA L'ERRORE ROSSO DI REIEZIONE)
                     try:
                         foto_r = f"risultato_{codice_aams}.png"
                         page.screenshot(path=foto_r, full_page=True)
@@ -234,6 +231,7 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(4)
                     
+                    # 🛡️ URL INTERNO DI REINDIRIZZAMENTO REALE NATIVO SENZA DOPPIO PARTNER
                     page.goto("https://partner.snai.it")
                     time.sleep(6)
                     
