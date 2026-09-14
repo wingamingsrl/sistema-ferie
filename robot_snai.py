@@ -1,9 +1,11 @@
 # =====================================================================================
-# BLOCCO 1: LIBRERIE DI SISTEMA E MOTORE AUTOMATICO GENERATORE CHIAVI OTP 2FA
+# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
+# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI E MOTORE FOTOCAMERA SPIA GITHUB CLOUD
 # =====================================================================================
 import os
 import io
 import time
+import base64
 import pyotp
 import requests
 import pandas as pd
@@ -13,6 +15,7 @@ from playwright.sync_api import sync_playwright
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
+FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
@@ -28,14 +31,41 @@ def genera_codice_otp_automatico():
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
 
-def scatta_e_salva_foto_locale(nome_foto, pagina_attiva):
+def push_screenshot_su_github(nome_file_foto):
     try:
-        pagina_attiva.screenshot(path=nome_foto, full_page=True)
-        print(f"   📸 [Fotocamera] Istantanea salvata sul server: {nome_foto}")
+        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
+        if not t_git:
+            try: t_git = str(pd.read_excel("token.xlsx").iloc).strip()
+            except Exception: return
+            
+        url_git = f"https://github.com{nome_file_foto}"
+        
+        if os.path.exists(nome_file_foto):
+            with open(nome_file_foto, "rb") as f_img:
+                dati_base64 = base64.b64encode(f_img.read()).decode('utf-8')
+            
+            headers_git = {
+                "Authorization": f"token {t_git}", 
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "WinGaming-Cloud-App"
+            }
+            
+            res_get = requests.get(url_git, headers=headers_git, timeout=5)
+            sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+            
+            payload_git = {
+                "message": f"📸 [Robot] Caricamento screenshot spia locale {nome_file_foto}", 
+                "content": dati_base64, 
+                "branch": "main"
+            }
+            if sha_file: payload_git["sha"] = sha_file
+                
+            requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            print(f"   📥 [Screenshot Cloud] Immagine spia salvata permanentemente su GitHub: {nome_file_foto}")
     except Exception: pass
 
 # =====================================================================================
-# BLOCCO 2: FILTRO CHIRURGICO LOCALI ED APERTURA STRUTTURALE DI CHROME
+# BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
@@ -56,8 +86,9 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
+
 # =====================================================================================
-# BLOCCO 3: CONNESSIONE ED AUTENTICAZIONE CON SUPERAMENTO COUNTDOWN POP-UP
+# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP
 # =====================================================================================
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
@@ -98,8 +129,9 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
+
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E MOTORE CONTINUATIVO DI FILTRO GRIGLIA
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -153,8 +185,9 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
 # =====================================================================================
-# BLOCCO 5: IMPOSTAZIONE DATI VIA JAVASCRIPT, SCATTO FOTO SPIA E LOGOUT FORMALE
+# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPPIO SCATTO FOTO SPIA E LOGOUT FINALE
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -162,7 +195,6 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # Iniezione JavaScript atomica dei dati per aggirare il blocco del Watermark Extender
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
@@ -182,18 +214,25 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
 
-                                       # 📸 CATTURA 1: Prima del click (Incolla questa riga sopra il BtnOk)
-                    scatta_e_salva_foto_locale(f"prima_{codice_aams}.png", page)
+                    # 📸 FOTO 1: Stato esatto prima dell'invio moduli
+                    try:
+                        foto_p = f"prima_{codice_aams}.png"
+                        page.screenshot(path=foto_p, full_page=True)
+                        push_screenshot_su_github(foto_p)
+                    except Exception: pass
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 4 secondi...")
                     time.sleep(4)
                     
-                    # 📸 CATTURA 2: Dopo il click (Incolla questa riga sotto il time.sleep)
-                    try: scatta_e_salva_foto_locale(f"risultato_{codice_aams}.png", page)
+                    # 📸 FOTO 2: Stato esatto dopo l'invio (Cattura l'errore visivo di Snaitech)
+                    try:
+                        foto_r = f"risultato_{codice_aams}.png"
+                        page.screenshot(path=foto_r, full_page=True)
+                        push_screenshot_su_github(foto_r)
                     except Exception: pass
-                    time.sleep(3)
+                    time.sleep(4)
                     
                     page.goto("https://partner.snai.it")
                     time.sleep(6)
