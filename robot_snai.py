@@ -52,7 +52,6 @@ def avvia_sincronizzazione_automatica():
 
         page.on("dialog", lambda dialog: dialog.accept())
 
-
 # =====================================================================================
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
 # =====================================================================================
@@ -151,7 +150,6 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
-
 
 # =====================================================================================
 # BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET ORIGINALE URL
