@@ -177,13 +177,18 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(4)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Verifico l'accettazione del portale...")
+                    time.sleep(5)
                     
-                    # 📸 CATTURA SPIA 2: Dopo il click (Cattura l'eventuale reiezione del server)
-                    try: scatta_e_salva_foto_locale(f"risultato_{codice_aams}.png", page)
+                    # 🔍 ISPETTORE DI MANUELA: Estrae il testo dell'errore bloccante di Snaitech e lo stampa nella console nera
+                    try:
+                        messaggio_errore = frame_date.evaluate("""() => {
+                            // Cerca elementi di testo rossi, etichette di errore o validator attivi nella maschera
+                            var errore_lbl = document.querySelector('.error, [id*="lblErrore"], [id*="valSummary"], .important, [style*="color: Red"]');
+                            return errore_lbl ? errore_lbl.innerText.strip() : "Nessun avviso testuale rilevato";
+                        }""")
+                        print(f"   🚨 [SNAITECH ALERT] Risposta visiva del portale -> {messaggio_errore}")
                     except Exception: pass
-                    time.sleep(4)
                     
                     # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
