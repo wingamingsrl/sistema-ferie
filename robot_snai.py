@@ -91,8 +91,8 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP
 # =====================================================================================
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
-            page.goto("https://partner.snai.it")
+            print("🌐 [Robot] STEP 4: Connessione a partner.partner.snai.it...")
+            page.goto("https://partner.snai.it", wait_until="load", timeout=40000)
             time.sleep(3)
             
             print("📝 [Robot] STEP 4a: Inserimento credenziali Snaitech...")
@@ -187,7 +187,7 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(7)
 
 # =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPPIO SCATTO FOTO SPIA E LOGOUT FINALE
+# BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E LOGOUT FINALE
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -214,7 +214,7 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
 
-                    # 📸 FOTO 1: Stato esatto prima dell'invio moduli
+                    # 📸 FOTO 1: Stato prima del click su Salva
                     try:
                         foto_p = f"prima_{codice_aams}.png"
                         page.screenshot(path=foto_p, full_page=True)
@@ -226,7 +226,7 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 4 secondi...")
                     time.sleep(4)
                     
-                    # 📸 FOTO 2: Stato esatto dopo l'invio (Cattura l'errore visivo di Snaitech)
+                    # 📸 FOTO 2: Stato dopo il click (Mostra l'errore se non salva)
                     try:
                         foto_r = f"risultato_{codice_aams}.png"
                         page.screenshot(path=foto_r, full_page=True)
@@ -254,4 +254,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
