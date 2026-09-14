@@ -145,16 +145,16 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(7)
 
 # =====================================================================================
-# BLOCCO 5: COMPILAZIONE DIGITATA SUI TAG REALI E RIPRISTINO RESET ORIGINALE
+# BLOCCO 5: COMPILAZIONE DIGITATA SUI TAG REALI MAPPATI DA MANUELA
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
-                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_txtiniziochiusura").count() > 0:
+                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ ALLINEAMENTO REALE DI MANUELA: Entrambe le 't' minuscole come da tuo HTML originale
-                    campo_dal = frame_date.locator("#ctl00_Cp1_txtiniziochiusura, input[id*='txtiniziochiusura']").first
+                    # 🛡️ ALLINEAMENTO HTML REALE DI MANUELA: Il primo ha la T maiuscola, il secondo la t minuscola
+                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
                     print("   📝 [Robot] STEP 9: Digitazione sequenziale data inizio...")
@@ -192,14 +192,12 @@ def avvia_sincronizzazione_automatica():
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    # 🛡️ RIPRISTINO ORIGINALE DEI RAGAZZI: Torna alla griglia usando il tasto grafico Indietro
                     print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
                     frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
                     time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
-                    # 🛡️ RIPRISTINO EMERGENZA DEI RAGAZZI: Tenta il clic sul tasto Indietro anziché distruggere l'URL
                     try:
                         frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=5000)
                         time.sleep(5)
@@ -217,4 +215,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
