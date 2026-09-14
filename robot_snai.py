@@ -25,6 +25,12 @@ def genera_codice_otp_automatico():
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
 
+def scatta_e_salva_foto_locale(nome_foto, pagina_attiva):
+    try:
+        pagina_attiva.screenshot(path=nome_foto, full_page=True)
+        print(f"   📸 [Fotocamera Spia] Istantanea salvata sul server: {nome_foto}")
+    except Exception: pass
+
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
@@ -165,10 +171,19 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
 
+                    # 📸 CATTURA SPIA 1: Prima del click (Verifica riempimento campi)
+                    try: scatta_e_salva_foto_locale(f"prima_{codice_aams}.png", page)
+                    except Exception: pass
+
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(8)
+                    time.sleep(4)
+                    
+                    # 📸 CATTURA SPIA 2: Dopo il click (Cattura l'eventuale reiezione del server)
+                    try: scatta_e_salva_foto_locale(f"risultato_{codice_aams}.png", page)
+                    except Exception: pass
+                    time.sleep(4)
                     
                     # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
