@@ -145,17 +145,17 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(7)
 
 # =====================================================================================
-# BLOCCO 5: COMPILAZIONE DIGITATA TASTO PER TASTO NEL FRAME E SALVATAGGIO REALE
+# BLOCCO 5: COMPILAZIONE DIGITATA SUI TAG REALI E RIPRISTINO RESET ORIGINALE
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
-                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
+                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ PUNTATORI FISSI DAL TUO HTML: Una T maiuscola e una t minuscola
-                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura").first
-                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura").first
+                    # 🛡️ ALLINEAMENTO REALE DI MANUELA: Entrambe le 't' minuscole come da tuo HTML originale
+                    campo_dal = frame_date.locator("#ctl00_Cp1_txtiniziochiusura, input[id*='txtiniziochiusura']").first
+                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
                     print("   📝 [Robot] STEP 9: Digitazione sequenziale data inizio...")
                     campo_dal.wait_for(state="visible", timeout=12000)
@@ -163,7 +163,6 @@ def avvia_sincronizzazione_automatica():
                     campo_dal.press("Control+A")
                     campo_dal.press("Backspace")
                     time.sleep(1)
-                    # Digita carattere per carattere svegliando i validatori Microsoft
                     campo_dal.press_sequentially(data_inizio_pulita, delay=100)
                     time.sleep(1)
                     campo_dal.press("Tab")
@@ -193,15 +192,20 @@ def avvia_sincronizzazione_automatica():
                     print("----------------------------------------------------------------------")
                     time.sleep(5)
                     
-                    page.goto("https://partner.snai.it")
-                    time.sleep(6)
+                    # 🛡️ RIPRISTINO ORIGINALE DEI RAGAZZI: Torna alla griglia usando il tasto grafico Indietro
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
+                    frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                    time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
+                    # 🛡️ RIPRISTINO EMERGENZA DEI RAGAZZI: Tenta il clic sul tasto Indietro anziché distruggere l'URL
                     try:
+                        frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=5000)
+                        time.sleep(5)
+                    except Exception:
                         page.goto("https://partner.snai.it")
                         time.sleep(6)
-                    except Exception: pass
                     continue
 
             print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
@@ -213,3 +217,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
