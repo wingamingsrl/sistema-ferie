@@ -28,6 +28,7 @@ def genera_codice_otp_automatico():
     chiave_pulita = CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", "")
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
+
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -50,6 +51,7 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
+
 # =====================================================================================
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
 # =====================================================================================
@@ -92,6 +94,7 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
+
 # =====================================================================================
 # BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA ORIGINALE RIGIDA DEI RAGAZZI
 # =====================================================================================
@@ -147,6 +150,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
 # =====================================================================================
 # BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET ORIGINALE URL
 # =====================================================================================
@@ -156,7 +160,6 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # 🛡️ FIX ID COSTRUTTORE DI MANUELA: Sincronizza le maiuscole/minuscole reali del portale Snaitech
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
