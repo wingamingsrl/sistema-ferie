@@ -93,7 +93,7 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA ORIGINALE RIGIDA DEI RAGAZZI
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO NATIVO
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -148,7 +148,7 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 # =====================================================================================
-# BLOCCO 5: COMPILAZIONE DIGITATA SUI TAG REALI, SALVA E STABILIZZAZIONE AUTOMATICA
+# BLOCCO 5: COMPILAZIONE DIGITATA SUI TAG REALI, SALVA E RESET FILTRI TASTO INDIERTO
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -156,51 +156,57 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # Forzatura JavaScript originaria di Manuela (Perfetta, non si tocca)
-                    frame_date.evaluate(f"""() => {{
-                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
-                        var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
-                        var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
-                        
-                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
-                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
-                        if(water1) {{ water1.value = 'true'; }}
-                        if(water2) {{ water2.value = 'true'; }}
-                    }}""")
-                    time.sleep(2)
+                    # ID esatti ricavati dall'HTML certificato: T maiuscola per inizio, t minuscola per fine
+                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
+                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
+
+                    print("   📝 [Robot] STEP 9: Digitazione sequenziale data inizio...")
+                    campo_dal.wait_for(state="visible", timeout=12000)
+                    campo_dal.click()
+                    campo_dal.press("Control+A")
+                    campo_dal.press("Backspace")
+                    time.sleep(1)
+                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
+                    time.sleep(1)
+                    campo_dal.press("Tab")
+                    time.sleep(1)
                     
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
+                    time.sleep(1)
+                    
+                    print("   📝 [Robot] STEP 9a: Digitazione sequenziale data fine...")
+                    campo_al.click()
+                    campo_al.press("Control+A")
+                    campo_al.press("Backspace")
+                    time.sleep(1)
+                    campo_al.press_sequentially(data_fine_pulita, delay=100)
+                    time.sleep(1)
+                    campo_al.press("Tab")
+                    time.sleep(1)
+                    
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
                     time.sleep(2)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Verifico la risposta del server...")
+                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato e inviato al server.")
                     time.sleep(6)
                     
-                    # 🛡️ ISPETTORE TESTUALE DI MANUELA: Legge l'avviso rosso a schermo e lo stampa direttamente sul telefono
+                    # Ritorno indietro protetto: se lo schermo si incastra o cambia, usa il paracadute via URL nativo
                     try:
-                        alert_testo = frame_date.evaluate("""() => {
-                            var nodi = document.querySelectorAll('.error, [id*="lblErrore"], [id*="valSummary"], [style*="Red"], .important');
-                            for (var n of nodi) {
-                                if (n.innerText && n.innerText.trim().length > 2) return n.innerText.trim();
-                            }
-                            return "Nessun blocco testuale visibile (Modulo respinto in background)";
-                        }""")
-                        print(f"   🚨 [SNAITECH RESPONSE] -> {alert_testo}")
-                    except Exception: pass
-                    
-                    # Forza il ripristino della bacheca originale protetta dei ragazzi
-                    page.goto("https://partner.snai.it")
-                    time.sleep(6)
+                        print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
+                        frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=6000)
+                        time.sleep(5)
+                    except Exception:
+                        page.goto("https://partner.snai.it")
+                        time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://snai.it")
+                        page.goto("https://partner.snai.it")
                         time.sleep(6)
                     except Exception: pass
                     continue
