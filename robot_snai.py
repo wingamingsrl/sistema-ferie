@@ -62,7 +62,6 @@ def push_screenshot_su_github(nome_file_foto):
             requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             print(f"   📥 [Screenshot Cloud] Immagine spia salvata permanentemente su GitHub: {nome_file_foto}")
     except Exception: pass
-
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -85,12 +84,10 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
-
 # =====================================================================================
-# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
+# BLOCCO 3: CONNESIONE ED IMMISSIONE CREDENZIALI CON GENERAZIONE ED INVIO OTP
 # =====================================================================================
         try:
-            # 🛡️ COPIATO RIGA PER RIGA DAL TUO FILE FUNZIONANTE
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
             time.sleep(3)
@@ -129,9 +126,8 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
-
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA AD ACCESSO FISSO NATIVO
+# BLOCCO 4: APERTURA ANAGRAFICA ED INSERIMENTO CODICI CON FILTRO DI RICERCA FISSO page
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -150,11 +146,8 @@ def avvia_sincronizzazione_automatica():
                     
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # 🛡️ BLINDATURA DI MANUELA: Esclude il ciclo dei frame e punta dritto sulla pagina principale
                     target_frame = page
-                    for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
-                            target_frame = f
-                            break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
@@ -185,7 +178,6 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
-
 # =====================================================================================
 # BLOCCO 5: AGGIORNAMENTO DATI VIA JS, DOPBIO SCATTO FOTO SPIA E RESET URL NATIVO
 # =====================================================================================
@@ -255,5 +247,3 @@ def avvia_sincronizzazione_automatica():
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
 
-if __name__ == "__main__":
-    avvia_sincronizzazione_automatica()
