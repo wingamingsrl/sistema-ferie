@@ -130,7 +130,7 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA COPIATA DAL TUO FILE STABILE
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA, MOTORE DI SALTO E PAUSA DI ASSESTAMENTO FRAME
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -148,14 +148,15 @@ def avvia_sincronizzazione_automatica():
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
-                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
                     if mirino_azione not in ["NUOVA", "MODIFICA"]:
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
+                    
+                    # 🛡️ FIX STABILIZZAZIONE DI MANUELA: Pausa di 3 secondi per consentire ai frame di caricarsi dopo il salto veloce
+                    time.sleep(3)
 
-                    # COPIATO RIGIDAMENTE DAL TUO FILE ORIGINALE FUNZIONANTE
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -191,6 +192,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
 # =====================================================================================
 # BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET ORIGINALE URL
 # =====================================================================================
