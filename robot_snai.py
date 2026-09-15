@@ -1,11 +1,6 @@
-# =====================================================================================
-# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
-# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI, TOTP 2FA E AZZERAMENTO COMANDI EXCEL
-# =====================================================================================
 import os
 import io
 import time
-import base64
 import pyotp
 import requests
 import pandas as pd
@@ -15,17 +10,13 @@ from playwright.sync_api import sync_playwright
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
 SNAI_PASS = "Salmi123!"
-FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
     try:
         nome_file_locale = "storico_ferie.xlsx"
         if os.path.exists(nome_file_locale):
-            df = pd.read_excel(nome_file_locale)
-            if "ROBOT_ACTION" not in df.columns:
-                df["ROBOT_ACTION"] = ""
-            return df.fillna("")
+            return pd.read_excel(nome_file_locale).fillna("")
     except Exception: pass
     return pd.DataFrame()
 
@@ -65,9 +56,7 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo su GitHub!")
     except Exception: pass
 
-# =====================================================================================
-# BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
-# =====================================================================================
+
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
@@ -87,9 +76,7 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
-# =====================================================================================
-# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
-# =====================================================================================
+
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
@@ -129,11 +116,9 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
-# =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA, MOTORE DI SALTO E PAUSA DI ASSESTAMENTO FRAME
-# =====================================================================================
+
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -143,19 +128,18 @@ def avvia_sincronizzazione_automatica():
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
-                    mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
                     
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
+                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
+                    
+                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
+                    mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
                     if mirino_azione not in ["NUOVA", "MODIFICA"]:
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
-                        
-                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
-                    
-                    # 🛡️ FIX STABILIZZAZIONE DI MANUELA: Pausa di 3 secondi per consentire ai frame di caricarsi dopo il salto veloce
-                    time.sleep(3)
+
 
                     target_frame = page
                     for f in page.frames:
@@ -193,19 +177,16 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-# =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET ORIGINALE URL
-# =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ COPIATO DAL TUO FILE ORIGINALE MA CON L'ID RETTIFICATO AD ALTA PRECISIONE (ENTRAMBE LE T MAIUSCOLE)
+                    # 🛡️ FORZATURA JAVASCRIPT DEFINITIVA: Sblocca i validatori ed inserisce i dati eludendo i blocchi del Watermark
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
@@ -216,6 +197,7 @@ def avvia_sincronizzazione_automatica():
                     }}""")
                     time.sleep(2)
                     
+                    # Gestione dei menu a tendina orari
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
@@ -225,19 +207,20 @@ def avvia_sincronizzazione_automatica():
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(4)
+                    time.sleep(8)
                     
-                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub a lavoro compiuto
+                    # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                    time.sleep(6)
+
+                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
-                    
-                    page.goto("https://partner.snai.it")
-                    time.sleep(6)
-                    
+
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                     except Exception: pass
                     continue
@@ -251,3 +234,4 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
