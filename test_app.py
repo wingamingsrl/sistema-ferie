@@ -481,6 +481,9 @@ if submit_button:
             # 🛡️ FIX DATA INSERIMENTO ALL'ITALIANA: Formato Giorno-Mese-Anno con secondi reali
             data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
+            # 🛡️ AUTOMAZIONE DI MANUELA: Identifica il tipo di azione per il robot e lo scrive nello STATO_INVIO
+            tipo_azione_snai = "MODIFICA" if (sovrapposizione_rilevata and forza_sovrascrittura) else "NUOVA"
+            
             nuova = {
                 "DATA_INSERIMENTO": str(data_inserimento_it),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -490,8 +493,9 @@ if submit_button:
                 "INIZIO_FERIE": str(str_c),
                 "FINE_FERIE": str(str_r),
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
-                "STATO_INVIO": "In attesa"
+                "STATO_INVIO": f"In attesa - {tipo_azione_snai}"
             }
+
 
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
