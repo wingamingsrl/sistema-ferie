@@ -139,7 +139,7 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(7)
 
 # =====================================================================================
-# BLOCCO 5: SBLOCCO VALIDATORI JS, SELEZIONE ORARI NATIVA E SALVATAGGIO FISSO SUL SERVER
+# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON VALIDA EVENTI E RESET TASTO INDIETRO
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -147,57 +147,44 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # 🛡️ INPUT DI MANUELA: Sincronizza le due 'T' maiuscole e forza l'evento change per dire al server che i campi sono pieni
+                    # 🛡️ INIEZIONE CON MARGINI BLINDATI: Aggancia le maiuscole e notifica i validatori Microsoft ASP.NET
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
-                        if(dal) {{ 
-                            dal.value = '{data_inizio_pulita}'; 
-                            dal.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                            dal.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-                        }}
-                        if(al) {{ 
-                            al.value = '{data_fine_pulita}'; 
-                            al.dispatchEvent(new Event('change', {{ bubbles: true }})); 
-                            al.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-                        }}
+                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
+                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
                         if(water1) {{ water1.value = 'true'; }}
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
                     time.sleep(2)
                     
-                    # Forza la selezione visiva reale sui menu a tendina orari di Snaitech per sbloccarli
-                    try:
-                        tendina_da = frame_date.locator("#ctl00_Cp1_fascia_from").first
-                        tendina_da.select_option(value="00:00")
-                        tendina_da.dispatch_event("change")
-                        time.sleep(1)
+                    try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
-                    
-                    try:
-                        tendina_a = frame_date.locator("#ctl00_Cp1_fascia_to").first
-                        tendina_a.select_option(value="23:30")
-                        tendina_a.dispatch_event("change")
-                        time.sleep(2)
+                    try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
+                    time.sleep(2)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(8)
                     
-                    page.goto("https://snai.it")
-                    time.sleep(6)
+                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
+                    frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
+                    time.sleep(5)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
+                    # 🛡️ IL VERO RESET SALVA-SESSIONE DEI RAGAZZI: Clicca sul tasto Indietro grafico, impedendo lo schermo bianco!
                     try:
-                        page.goto("https://snai.it")
+                        frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=5000)
+                        time.sleep(5)
+                    except Exception:
+                        page.goto("https://partner.snai.it")
                         time.sleep(6)
-                    except Exception: pass
                     continue
 
             print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
