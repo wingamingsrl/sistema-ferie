@@ -177,36 +177,30 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-                    # =====================================================================================
-                    # BLOCCO 5: COMPILAZIONE JS INTEGRALE E RESET AUTOMATICO REGISTRO EXCEL CLOUD
-                    # =====================================================================================
+# =====================================================================================
+# BLOCCO 5: COMPILAZIONE JS INTEGRALE E RESET AUTOMATICO REGISTRO EXCEL CLOUD
+# =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    print("   📝 [Robot] STEP 9: Iniezione parametri e attivazione validatori di stato Snaitech...")
+                    # 🛡️ FORZATURA JAVASCRIPT REALE: Inserisce le date pulite eludendo i blocchi del Watermark
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
-                        if(dal) {{ 
-                            dal.value = '{data_inizio_pulita}'; 
-                            dal.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                        }}
-                        if(al) {{ 
-                            al.value = '{data_fine_pulita}'; 
-                            al.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                        }}
-                        // Blindatura dei validatori invisibili per evitare il crash del server Snaitech
+                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
+                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
                         if(water1) {{ water1.value = 'true'; }}
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
                     time.sleep(2)
                     
+                    # Gestione dei menu a tendina orari originali
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
@@ -215,18 +209,10 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
-                    time.sleep(5)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
+                    time.sleep(8)
                     
-                    # 📸 CATTURA SPIA REALE DI MANUELA: Fotografa l'Iframe delle date per leggere il responso di Snaitech
-                    try:
-                        frame_date.screenshot(path="errore_visivo_snaitech.png")
-                        print("   📸 [Spia] Fotografia dell'Iframe catturata con successo sul server!")
-                    except Exception as e_foto:
-                        print(f"   ⚠️ Impossibile scattare la foto: {str(e_foto)}")
-                    time.sleep(3)
-                    
-                    # Svuota la cella Excel solo se siamo sicuri del giro, ma per ora lasciamolo scorrere
+                    # 🛡️ RESCRITTURA AUTOMATICA EXCEL CLOUD: Ripristinato lo svuotamento dopo lo STEP 11
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
