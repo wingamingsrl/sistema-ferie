@@ -201,26 +201,19 @@ def avvia_sincronizzazione_automatica():
 
                     print(f"   📝 [Robot] STEP 9: Iniezione parametri puliti (Inizio: {data_inizio_pura} - Fine: {data_fine_pura}) e sblocco validatori...")
                     frame_date.evaluate(f"""() => {{
-                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura') || document.getElementById('ctl00_Cp1_txtiniziochiusura');
-                        // 🛡️ ALLINEAMENTO HTML DI MANUELA: Cerca prima l'ID reale con la 't' minuscola estratto dal portale
-                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura') || document.getElementById('ctl00_Cp1_Txtfinechiusura');
+                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
+                        // 🛡️ ALLINEAMENTO SPECULARE DI MANUELA: Identico all'inizio ma con l'ID reale in minuscolo
+                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
-                        if(dal) {{ 
-                            dal.value = '{data_inizio_pura}'; 
-                            dal.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                            dal.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-                        }}
-                        if(al) {{ 
-                            al.value = '{data_fine_pura}'; 
-                            al.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                            al.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-                        }}
+                        if(dal) {{ dal.value = '{data_inizio_pura}'; dal.dispatchEvent(new Event('change')); }}
+                        if(al) {{ al.value = '{data_fine_pura}'; al.dispatchEvent(new Event('change')); }}
                         if(water1) {{ water1.value = 'true'; }}
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
                     time.sleep(2)
+
 
 
                     
