@@ -529,16 +529,20 @@ if submit_button:
                     risposta_server = str(e_mail)
             
             if invio_ok:
-                nuova["STATO_INVIO"] = "Inviato OK"
+                nuova["STATO_INVIO"] = "Inviato OK" # Lascia traccia dell'e-mail partita
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
                     st.session_state.storico_cloud.pop(riga_conflitto_idx)
                 
                 st.session_state.storico_cloud.append(nuova)
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
-                # 🛡️ RIPRISTINO ORIGINALE MANUELA: Torna alla variabile permanente collaudata
+                # Forza l'inclusione strutturale della nuova colonna nell'Excel aziendale permanente
+                if "ROBOT_ACTION" not in df_salva.columns:
+                    df_salva["ROBOT_ACTION"] = ""
+                    
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
+
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
