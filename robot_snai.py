@@ -199,19 +199,28 @@ def avvia_sincronizzazione_automatica():
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
 
-                    print(f"   📝 [Robot] STEP 9: Iniezione parametri puliti (Inizio: {data_inizio_pura} - Fine: {data_fine_pura}) e attivazione validatori...")
+                    print(f"   📝 [Robot] STEP 9: Iniezione parametri puliti (Inizio: {data_inizio_pura} - Fine: {data_fine_pura}) e sblocco validatori...")
                     frame_date.evaluate(f"""() => {{
-                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
+                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura') || document.getElementById('ctl00_Cp1_txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
-                        if(dal) {{ dal.value = '{data_inizio_pura}'; dal.dispatchEvent(new Event('change')); }}
-                        if(al) {{ al.value = '{data_fine_pura}'; al.dispatchEvent(new Event('change')); }}
+                        if(dal) {{ 
+                            dal.value = '{data_inizio_pura}'; 
+                            dal.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                            dal.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+                        }}
+                        if(al) {{ 
+                            al.value = '{data_fine_pura}'; 
+                            al.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                            al.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+                        }}
                         if(water1) {{ water1.value = 'true'; }}
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
                     time.sleep(2)
+
                     
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option(ora_inizio_pulita)
                     except Exception: pass
