@@ -59,10 +59,11 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
                 "branch": "main"
             }
             res_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            if res_put.status_code in:
+            if res_put.status_code == 200 or res_put.status_code == 201:
                 print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo su GitHub!")
             else:
                 print(f"   ⚠️ Risposta server GitHub anomala: {res_put.status_code}")
+
     except Exception as e:
         print(f"   ⚠️ Errore durante la riscrittura dell'Excel: {str(e)}")
 
