@@ -83,8 +83,15 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
                     payload_git["sha"] = str(res_retry.json().get("sha", ""))
                     risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
                     print(f"📊 [Step-by-Step] Risposta secondo tentativo PUT -> Codice: {risposta_put.status_code}")
-                    
-            if risposta_put.status_code in:
+               # Gestione sblocco collisioni simultanee (Codice 422 / 409)
+            if risposta_put.status_code == 422 or risposta_put.status_code == 409:
+                print("🔄 [Step-by-Step] Collisione intercettata! Eseguo secondo tentativo forzato...")
+                res_retry = requests.get(url_git, headers=headers_git, timeout=5)
+                if res_retry.status_code == 200:
+                    payload_git["sha"] = str(res_retry.json().get("sha", ""))
+                    risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+                    print(f"📊 [Step-by-Step] Risposta secondo tentativo PUT -> Codice: {risposta_put.status_code}")                
+            if risposta_put.status_code == 200 or risposta_put.status_code == 201:
                 print("✅ [Step-by-Step] 7. OPERAZIONE COMPLETATA! Cella svuotata e file aggiornato online!")
             else:
                 print(f"❌ [Step-by-Step] 7. FALLITO! Il server ha rifiutato la scrittura. Codice finale: {risposta_put.status_code}")
@@ -92,6 +99,7 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             print(f"❌ [Step-by-Step] Errore 3b: Il file {FILE_STORICO_PERMANENTE} non esiste sul server!")
     except Exception as e:
         print(f"💥 [Step-by-Step] CRASH INTERNO: {str(e)}")
+
 
 
 def avvia_sincronizzazione_automatica():
