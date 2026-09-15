@@ -160,11 +160,16 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
+                    # 🛡️ PUNTATORE ROTANTE DI MANUELA: Attende che gli elementi grafici della tabella siano stabili a schermo
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione.jpg'], img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
-                    cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                     
-                    if icona_modifica.count() > 0:
+                    # Aspetta un istante che almeno uno dei due comandi reali sia caricato dal server
+                    try:
+                        icona_nuovo.wait_for(state="attached", timeout=4000)
+                    except Exception: pass
+
+                    if icona_modifica.count() > 0 and icona_modifica.is_visible():
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
@@ -172,6 +177,7 @@ def avvia_sincronizzazione_automatica():
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
+                        cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                         cella_td.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
