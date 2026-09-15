@@ -28,72 +28,41 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
-    print(f"📡 [Step-by-Step] 1. Avvio pulizia Excel cloud per locale: {codice_locale_successo}...")
+    print(f"📡 [Step-by-Step] 1. Avvio pulizia Excel cloud nativa per locale: {codice_locale_successo}...")
     try:
-        t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
-        if not t_git:
-            print("❌ [Step-by-Step] Errore 1a: TOKEN_GITHUB_ACTIONS non trovato nel server!")
-            return
+        nome_file = "storico_ferie.xlsx"
+        if os.path.exists(nome_file):
+            print("📊 [Step-by-Step] 2. Rilettura file fisico ed esecuzione svuotamento cella...")
+            df_file = pd.read_excel(nome_file)
             
-        print("📝 [Step-by-Step] 2. Configurazione indirizzo API di rete GitHub...")
-        url_git = "https://github.com"
-        headers_git = {
-            "Authorization": f"token {t_git}", 
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "WinGaming-Cloud-App"
-        }
-        
-        if os.path.exists("storico_ferie.xlsx"):
-            print("📊 [Step-by-Step] 3. Rilettura file fisico locale sul server...")
-            df_file = pd.read_excel("storico_ferie.xlsx")
-            
-            # Esegue lo svuotamento chirurgico della cella
+            # Svuota il comando ROBOT_ACTION per il locale lavorato
             df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
             
-            # Compressione e conversione speculare Base64 allineata a test_app.py
+            # Riassegna la struttura rigida dell'ufficio per sicurezza
             colonne_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
             df_pulito_salva = df_file.reindex(columns=colonne_ufficio).astype(str).fillna("")
-            output_binario = io.BytesIO()
-            with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
-                df_pulito_salva.to_excel(writer, index=False)
-            dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
-            print("📦 [Step-by-Step] 4. Conversione binaria Base64 eseguita con successo.")
+            df_pulito_salva.to_excel(nome_file, index=False)
+            print("💾 [Step-by-Step] 3. Scrittura fisica delle modifiche completata su disco sul server.")
             
-            # Interrogazione dello SHA per bloccare le collisioni di sovrascrittura
-            print("🔍 [Step-by-Step] 5. Interrogazione SHA del file remoto...")
-            res_get = requests.get(url_git, headers=headers_git, timeout=5)
-            sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
-            print(f"📌 [Step-by-Step] SHA rintracciato -> {sha_file} (Risposta GET: {res_get.status_code})")
+            # 🛡️ SPINTA NATIVA GIT AUTOMATICA: Sovrascrive il file direttamente sul server GitHub con diritti amministrativi
+            print("🛰️ [Step-by-Step] 4. Configurazione credenziali server ed esecuzione Git Commit...")
+            os.system("git config --global user.name 'WinGaming-Robot'")
+            os.system("git config --global user.email 'wingamingsrl@gmail.com'")
+            os.system(f"git add {nome_file}")
+            os.system(f"git commit -m '🤖 [Robot] Allineamento Snaitech OK. Reset azione locale {codice_locale_successo}'")
             
-            payload_git = {
-                "message": f"🤖 [Robot] Allineamento Snaitech OK. Reset azione locale {codice_locale_successo}", 
-                "content": str(dati_base64), 
-                "branch": "main"
-            }
-            if sha_file: 
-                payload_git["sha"] = str(sha_file)
-                
-            print("🛰️ [Step-by-Step] 6. Spedizione pacchetto PUT di aggiornamento su GitHub...")
-            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            print(f"📊 [Step-by-Step] Risposta PUT Immediata -> Codice: {risposta_put.status_code}")
+            print("🚀 [Step-by-Step] 5. Lancio comando Git Push formale...")
+            stato_push = os.system("git push origin main")
             
-            # Gestione sblocco collisioni simultanee (Codice 422 / 409)
-            if risposta_put.status_code == 422 or risposta_put.status_code == 409:
-                print("🔄 [Step-by-Step] Collisione intercettata! Eseguo secondo tentativo forzato...")
-                res_retry = requests.get(url_git, headers=headers_git, timeout=5)
-                if res_retry.status_code == 200:
-                    payload_git["sha"] = str(res_retry.json().get("sha", ""))
-                    risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-                    print(f"📊 [Step-by-Step] Risposta secondo tentativo PUT -> Codice: {risposta_put.status_code}")
-                    
-            if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-                print("✅ [Step-by-Step] 7. OPERAZIONE COMPLETATA! Cella svuotata e file aggiornato online!")
+            if stato_push == 0:
+                print("✅ [Step-by-Step] 6. OPERAZIONE COMPLETATA! Il file Excel reale è stato aggiornato e ripulito online!")
             else:
-                print(f"❌ [Step-by-Step] 7. FALLITO! Il server ha rifiutato la scrittura. Codice finale: {risposta_put.status_code}")
+                print(f"❌ [Step-by-Step] 6. RIFIUTATO! Git push ha restituito il codice di blocco: {stato_push}")
         else:
-            print("❌ [Step-by-Step] Errore 3b: Il file storico_ferie.xlsx non esiste sul server!")
+            print(f"❌ [Step-by-Step] Errore: Il file {nome_file} non esiste sul server!")
     except Exception as e:
         print(f"💥 [Step-by-Step] CRASH INTERNO: {str(e)}")
+
 
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
