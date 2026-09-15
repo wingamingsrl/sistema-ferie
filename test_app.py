@@ -481,13 +481,8 @@ if submit_button:
             # 🛡️ FIX DATA INSERIMENTO ALL'ITALIANA: Formato Giorno-Mese-Anno con secondi reali
             data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
-            # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta per il robot Snaitech
-            if sovrapposizione_rilevata and forza_rossa:
-                tipo_azione_snai = "MODIFICA"
-            elif forza_sovrascrittura:
-                tipo_azione_snai = "MODIFICA"
-            else:
-                tipo_azione_snai = "NUOVA"
+            # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
+            tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
 
             nuova = {
                 "DATA_INSERIMENTO": str(data_inserimento_it),
@@ -499,8 +494,9 @@ if submit_button:
                 "FINE_FERIE": str(str_r),
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "In attesa",
-                "ROBOT_ACTION": str(tipo_azione_snai)  # <-- FORZATURA TESTUALE RIGIDA
+                "ROBOT_ACTION": str(tipo_azione_snai)  # <-- SCRITTURA RIGIDA CERTIFICATA
             }
+
 
 
 
