@@ -183,19 +183,23 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-# =====================================================================================
-# BLOCCO 5: COMPILAZIONE JS INTEGRALE E RESET AUTOMATICO REGISTRO EXCEL CLOUD
-# =====================================================================================
+                    # =====================================================================================
+                    # BLOCCO 5: SINCRO PARAMETRI ORARI ORARI REALI, TRUPLO SCATTO SPIA E PULIZIA EXCEL
+                    # =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ FORZATURA JAVASCRIPT REALE: Inserisce le date pulite eludendo i blocchi del Watermark
+                    # 🛡️ ESTRAZIONE PARAMETRI ORARI REALI DALL'EXCEL DI MANUELA
+                    ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
+                    ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
+
+                    print("   📝 [Robot] STEP 9: Iniezione parametri e validatori dinamici Snaitech...")
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
@@ -206,34 +210,33 @@ def avvia_sincronizzazione_automatica():
                     }}""")
                     time.sleep(2)
                     
-                    # Gestione dei menu a tendina orari originali
-                    try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
+                    # Allineamento dinamico dei menu a tendina orari reali dell'ufficio
+                    try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option(ora_inizio_pulita)
                     except Exception: pass
-                    
-                    try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
+                    try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option(ora_fine_pulita)
                     except Exception: pass
                     time.sleep(2)
 
-                    # 📸 FOTOCAMERA SPIA: Fotografa la maschera delle date compilata prima del clic su Salva
-                    try:
-                        frame_date.screenshot(path="errore_visivo_snaitech.png")
-                        print("   📸 [Spia] Fotografia della maschera catturata con successo sul server!")
-                    except Exception as e_foto:
-                        print(f"   ⚠️ Impossibile scattare la foto: {str(e_foto)}")
+                    # 📸 FOTO SPIA 1: Modulo compilato prima di premere Salva
+                    try: page.screenshot(path="1_modulo_compilato.png", full_page=True)
+                    except Exception: pass
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
-                    time.sleep(5)
+                    time.sleep(4)
                     
-                    # 📸 CATTURA SPIA REALE: Fotografa la pagina intera per leggere il responso di Snaitech dopo il Salva
-                    try:
-                        page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
-                        print("   📸 [Spia] Fotografia della risposta catturata con successo sul server!")
+                    # 📸 FOTO SPIA 2: Schermata un secondo dopo il click (Cattura l'errore immediato)
+                    try: page.screenshot(path="2_risposta_immediata.png", full_page=True)
                     except Exception: pass
-                    time.sleep(3)
+                    time.sleep(4)
                     
-                    # Svuota la cella Excel solo se siamo sicuri del giro, ma per ora lasciamolo scorrere
+                    # 📸 FOTO SPIA 3: Schermata stabilizzata finale prima del cambio pagina
+                    try: page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
+                    except Exception: pass
+                    time.sleep(2)
+                    
+                    # 🛡️ PULIZIA CLOUD DI MANUELA: Svuota la cella nell'Excel ed aggiorna GitHub
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
