@@ -29,10 +29,10 @@ jobs:
           TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
         run: xvfb-run python robot_snai.py
 
-      - name: 📸 Estrazione e Download Foto Errore Snaitech
+      - name: 📸 Estrazione e Download Sequenza Foto Snaitech
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: schermata-errore-ufficio
-          path: errore_visivo_snaitech.png
+          path: "*.png"
           retention-days: 1
