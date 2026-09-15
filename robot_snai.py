@@ -138,31 +138,40 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
+# =====================================================================================
+# BLOCCO 5: SBLOCCO VALIDATORI JS, SELEZIONE ORARI NATIVA E SALVATAGGIO FISSO SUL SERVER
+# =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ FORZATURA JAVASCRIPT DEFINITIVA: Sblocca i validatori ed inserisce i dati eludendo i blocchi del Watermark
+                    # 🛡️ INPUT DI MANUELA: Sincronizza le due 'T' maiuscole e forza l'evento change per dire al server che i campi sono pieni
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
-                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
-                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
+                        if(dal) {{ 
+                            dal.value = '{data_inizio_pulita}'; 
+                            dal.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                            dal.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+                        }}
+                        if(al) {{ 
+                            al.value = '{data_fine_pulita}'; 
+                            al.dispatchEvent(new Event('change', {{ bubbles: true }})); 
+                            al.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+                        }}
                         if(water1) {{ water1.value = 'true'; }}
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
                     time.sleep(2)
                     
-                    # Gestione dei menu a tendina orari
-                    # 🛡️ INPUT DI MANUELA: Forza la selezione fisica sul menu a tendina degli orari per sbloccare Barilott
+                    # Forza la selezione visiva reale sui menu a tendina orari di Snaitech per sbloccarli
                     try:
                         tendina_da = frame_date.locator("#ctl00_Cp1_fascia_from").first
-                        tendina_da.focus()
                         tendina_da.select_option(value="00:00")
                         tendina_da.dispatch_event("change")
                         time.sleep(1)
@@ -170,28 +179,23 @@ def avvia_sincronizzazione_automatica():
                     
                     try:
                         tendina_a = frame_date.locator("#ctl00_Cp1_fascia_to").first
-                        tendina_a.focus()
-                        # Seleziona l'opzione 23:30 muovendo l'indice del menu di Snaitech
                         tendina_a.select_option(value="23:30")
                         tendina_a.dispatch_event("change")
                         time.sleep(2)
                     except Exception: pass
-
-                    time.sleep(2)
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(8)
                     
-                    # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                    page.goto("https://snai.it")
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        page.goto("https://snai.it")
                         time.sleep(6)
                     except Exception: pass
                     continue
@@ -205,4 +209,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
