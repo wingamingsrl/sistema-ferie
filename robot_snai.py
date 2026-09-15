@@ -128,19 +128,19 @@ def avvia_sincronizzazione_automatica():
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
                     data_in_completa = str(row["INIZIO_FERIE"]).strip()
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
+                    mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
                     
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
-                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
-                    
                     # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
-                    mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
                     if mirino_azione not in ["NUOVA", "MODIFICA"]:
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
+                        
+                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-
+                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — MAI PIÙ TOCCATO
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -160,82 +160,68 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
-                    # 🛡️ MIRINO LASER DI MANUELA: Punta direttamente sulla cella della pianificazione estratta dall'HTML
-                    pulsante_pianificazione = target_frame.locator("td[onclick*='Pianificazione'], img[id*='img_pianificazione']").first
+                    icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
+                    cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                     
-                    if icona_modifica.count() > 0 and icona_modifica.is_visible():
+                    if icona_modifica.count() > 0:
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
-                    elif pulsante_pianificazione.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul comando Pianificazione reale di Snaitech...")
-                        pulsante_pianificazione.click(force=True, timeout=8000)
+                    elif icona_nuovo.count() > 0:
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
+                        icona_nuovo.click(force=True, timeout=8000)
                     else:
-                        print("   AM 🖱️ [Grid Mode] Clic sussidiario sulla cella della riga...")
-                        cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
+                        print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
                         cella_td.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-
+# =====================================================================================
+# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET REALE EXCEL
+# =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ DIGITAZIONE REALE DI MANUELA: Attiva i validatori Microsoft inserendo i dati tasto per tasto
-                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
-                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
-
-                    print("   📝 [Robot] STEP 9: Digitazione sequenziale data inizio...")
-                    campo_dal.wait_for(state="visible", timeout=12000)
-                    campo_dal.click()
-                    campo_dal.press("Control+A")
-                    campo_dal.press("Backspace")
-                    time.sleep(1)
-                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    campo_dal.press("Tab")
-                    time.sleep(1)
+                    # 🛡️ TUO CORPO JAVASCRIPT ORIGINALE: Corregge solo Txtfinechiusura con la T maiuscola per allinearsi all'HTML reale
+                    frame_date.evaluate(f"""() => {{
+                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
+                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
+                        var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
+                        
+                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
+                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
+                        if(water1) {{ water1.value = 'true'; }}
+                        if(water2) {{ water2.value = 'true'; }}
+                    }}""")
+                    time.sleep(2)
                     
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
-                    time.sleep(1)
-                    
-                    print("   📝 [Robot] STEP 9a: Digitazione sequenziale data fine...")
-                    campo_al.click()
-                    campo_al.press("Control+A")
-                    campo_al.press("Backspace")
-                    time.sleep(1)
-                    campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(1)
-                    campo_al.press("Tab")
-                    time.sleep(1)
-                    
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
                     time.sleep(2)
 
-
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(8)
+                    time.sleep(4)
                     
-                    # Forza il ripristino della bacheca tramite indirizzo URL nativo pulito per eliminare i conflitti di riga
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
-                    time.sleep(6)
-
-                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub
+                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Svuota la parola dall'Excel e aggiorna GitHub ad inserimento riuscito
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
-
+                    
+                    page.goto("https://partner.snai.it")
+                    time.sleep(6)
+                    
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        page.goto("https://partner.snai.it")
                         time.sleep(6)
                     except Exception: pass
                     continue
@@ -249,4 +235,3 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
-
