@@ -160,22 +160,24 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
-                    icona_nuovo = target_frame.locator("img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
+                    # 🛡️ MIRINO LASER DI MANUELA: Punta direttamente sulla cella della pianificazione estratta dall'HTML
+                    pulsante_pianificazione = target_frame.locator("td[onclick*='Pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
-                    cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                     
-                    if icona_modifica.count() > 0:
+                    if icona_modifica.count() > 0 and icona_modifica.is_visible():
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
-                    elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
-                        icona_nuovo.click(force=True, timeout=8000)
+                    elif pulsante_pianificazione.count() > 0:
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul comando Pianificazione reale di Snaitech...")
+                        pulsante_pianificazione.click(force=True, timeout=8000)
                     else:
-                        print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
+                        print("   AM 🖱️ [Grid Mode] Clic sussidiario sulla cella della riga...")
+                        cella_td = target_frame.locator("td[onclick*='Pianificazione']").first
                         cella_td.click(force=True, timeout=8000)
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
 
                     frame_date = page
                     for f in page.frames:
