@@ -1,11 +1,13 @@
 import os
 import io
 import time
-import pyotp
+import base64  # 🛡️ REINSERITO DA MANUELA: Sblocca la conversione per ripulire l'Excel
 import requests
+import pyotp
 import pandas as pd
 from datetime import datetime
 from playwright.sync_api import sync_playwright
+
 
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
 SNAI_USER = "2141ManuelaA"
