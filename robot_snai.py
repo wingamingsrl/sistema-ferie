@@ -205,6 +205,7 @@ def avvia_sincronizzazione_automatica():
                         var al = document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
+
                         
                         // 🛡️ FIX GRAFICO DI MANUELA: Inietta i valori, rimuove la maschera grigia e forza la scrittura nera attiva
                         if(dal) {{ 
