@@ -265,7 +265,7 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
                     
-                    # Svuota la cella Excel solo se siamo sicuri del giro, ma per ora lasciamolo scorrere
+                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Chiama la funzione corretta per svuotare la cella su GitHub
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
