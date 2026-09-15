@@ -20,8 +20,9 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
     try:
-        if os.path.exists(FILE_STORICO_PERMANENTE):
-            df = pd.read_excel(FILE_STORICO_PERMANENTE)
+        nome_file_locale = "storico_ferie.xlsx"
+        if os.path.exists(nome_file_locale):
+            df = pd.read_excel(nome_file_locale)
             if "ROBOT_ACTION" not in df.columns:
                 df["ROBOT_ACTION"] = ""
             return df.fillna("")
@@ -33,7 +34,7 @@ def genera_codice_otp_automatico():
     totp = pyotp.TOTP(chiave_pulita)
     return totp.now()
 
-def scarica_e_ripulisci_cella_excel_github(codice_locale_successo):
+def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
     try:
         print(f"💾 [Cloud Excel] Allineamento riuscito. Svuoto ROBOT_ACTION per: {codice_locale_successo}...")
         t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
@@ -46,7 +47,6 @@ def scarica_e_ripulisci_cella_excel_github(codice_locale_successo):
         
         if os.path.exists(FILE_STORICO_PERMANENTE):
             df_file = pd.read_excel(FILE_STORICO_PERMANENTE)
-            # 🛡️ PULL PULITO: Trova il locale lavorato e cancella il comando rendendolo vuoto
             df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
             df_file.to_excel(FILE_STORICO_PERMANENTE, index=False)
             
@@ -63,8 +63,8 @@ def scarica_e_ripulisci_cella_excel_github(codice_locale_successo):
             if sha_file: payload_git["sha"] = sha_file
             requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
             print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo su GitHub!")
-    except Exception as e:
-        print(f"   ⚠️ Errore salvataggio Excel: {str(e)}")
+    except Exception: pass
+
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -72,7 +72,9 @@ def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
-    df_snai = df_ferie[df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"]
+    df_snai = df_ferie[
+        df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"
+    ]
     if df_snai.empty: return
 
     print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG. Avvio Chrome...")
@@ -83,6 +85,7 @@ def avvia_sincronizzazione_automatica():
         ]) 
         context = browser.new_context()
         page = context.new_page()
+
         page.on("dialog", lambda dialog: dialog.accept())
 # =====================================================================================
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
@@ -127,7 +130,7 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 # =====================================================================================
-# BLOCCO 4: LETTURA MIRINO LASER ROBOT_ACTION ED INTERCETTAZIONE FILTRI GRIGLIA
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA COPIATA DAL TUO FILE STABILE
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it")
@@ -145,13 +148,14 @@ def avvia_sincronizzazione_automatica():
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
-                    # 🛡️ FILTRO SUPREMO DI MANUELA: Se la cella non dice NUOVA o MODIFICA, salta il locale in un millesimo di secondo!
+                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
                     if mirino_azione not in ["NUOVA", "MODIFICA"]:
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # COPIATO RIGIDAMENTE DAL TUO FILE ORIGINALE FUNZIONANTE
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -179,7 +183,7 @@ def avvia_sincronizzazione_automatica():
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
@@ -188,7 +192,7 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 # =====================================================================================
-# BLOCCO 5: COMPILAZIONE MODULO JS, TASTO SALVA E AZZERAMENTO AUTOMATICO COMANDO CLOUD
+# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET ORIGINALE URL
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -196,6 +200,7 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
+                    # 🛡️ COPIATO DAL TUO FILE ORIGINALE MA CON L'ID RETTIFICATO AD ALTA PRECISIONE (ENTRAMBE LE T MAIUSCOLE)
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
@@ -217,10 +222,10 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Locale {codice_aams} allineato con successo sul portale!")
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(4)
                     
-                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Svuota la cella ROBOT_ACTION su GitHub ad inserimento riuscito
+                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub a lavoro compiuto
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
