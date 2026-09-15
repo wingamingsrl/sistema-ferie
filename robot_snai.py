@@ -202,7 +202,8 @@ def avvia_sincronizzazione_automatica():
                     print(f"   📝 [Robot] STEP 9: Iniezione parametri puliti (Inizio: {data_inizio_pura} - Fine: {data_fine_pura}) e sblocco validatori...")
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura') || document.getElementById('ctl00_Cp1_txtiniziochiusura');
-                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        // 🛡️ ALLINEAMENTO HTML DI MANUELA: Cerca prima l'ID reale con la 't' minuscola estratto dal portale
+                        var al = document.getElementById('ctl00_Cp1_txtfinechiusura') || document.getElementById('ctl00_Cp1_Txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
@@ -220,6 +221,7 @@ def avvia_sincronizzazione_automatica():
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
                     time.sleep(2)
+
 
                     
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option(ora_inizio_pulita)
