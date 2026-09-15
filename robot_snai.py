@@ -222,13 +222,18 @@ def avvia_sincronizzazione_automatica():
                         print(f"   ⚠️ Impossibile scattare la foto: {str(e_foto)}")
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
-
-                    
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(8)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
+                    time.sleep(5)
                     
-                    # 🛡️ RESCRITTURA AUTOMATICA EXCEL CLOUD: Ripristinato lo svuotamento dopo lo STEP 11
+                    # 📸 CATTURA SPIA REALE: Fotografa la pagina intera per leggere il responso di Snaitech dopo il Salva
+                    try:
+                        page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
+                        print("   📸 [Spia] Fotografia della risposta catturata con successo sul server!")
+                    except Exception: pass
+                    time.sleep(3)
+                    
+                    # Svuota la cella Excel solo se siamo sicuri del giro, ma per ora lasciamolo scorrere
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
