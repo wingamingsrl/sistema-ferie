@@ -223,12 +223,19 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa stabilizzazione dello schermo...")
                     time.sleep(4)
                     
-                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Svuota la parola dall'Excel e aggiorna GitHub ad inserimento riuscito
-                    scarica_e_aggiorna_excel_su_github(codice_aams)
+                    # 📸 FOTOCAMERA SPIA: Cattura lo schermo esatto per leggere l'errore rosso di Snaitech
+                    try:
+                        page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
+                        print("   📸 [Spia] Fotografia dello schermo catturata con successo sul server!")
+                    except Exception: pass
                     time.sleep(4)
+                    
+                    page.goto("https://snai.it")
+                    time.sleep(6)
+
                     
                     page.goto("https://partner.snai.it")
                     time.sleep(6)
