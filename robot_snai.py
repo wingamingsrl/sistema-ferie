@@ -85,8 +85,11 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
+# =====================================================================================
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E MOTORE FILTRI CON DIGITAZIONE AUTOMATICA SBLOCCATA
+# =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://partner.snai.it")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -111,8 +114,15 @@ def avvia_sincronizzazione_automatica():
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=20000)
+                    
+                    # 🛡️ INPUT DI MANUELA: Simula la digitazione fisica reale per svegliare l'UpdatePanel senza bloccarlo
                     campo_ricerca.click()
-                    campo_ricerca.fill(codice_aams)
+                    campo_ricerca.press("Control+A")
+                    campo_ricerca.press("Backspace")
+                    time.sleep(1)
+                    campo_ricerca.press_sequentially(codice_aams, delay=100)
+                    time.sleep(1)
+                    campo_ricerca.press("Tab")
                     time.sleep(2)
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
@@ -129,7 +139,7 @@ def avvia_sincronizzazione_automatica():
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
