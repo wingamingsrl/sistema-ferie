@@ -75,6 +75,7 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             print(f"📊 [Step-by-Step] Risposta PUT Immediata -> Codice: {risposta_put.status_code} | Dettaglio: {risposta_put.text[:120]}")
             
             # Gestione sblocco collisioni simultanee (Codice 422 / 409)
+            # Gestione sblocco collisioni simultanee (Codice 422 / 409)
             if risposta_put.status_code in:
                 print("🔄 [Step-by-Step] Collisione intercettata! Eseguo secondo tentativo forzato...")
                 res_retry = requests.get(url_git, headers=headers_git, timeout=5)
