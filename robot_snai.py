@@ -30,12 +30,16 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
         print(f"💾 [Cloud Excel] Allineamento riuscito. Svuoto ROBOT_ACTION per: {codice_locale_successo}...")
         t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
         if not t_git:
-            try: t_git = str(pd.read_excel("token.xlsx").iloc).strip()
+            try: t_git = str(pd.read_excel("token.xlsx").iloc[0, 0]).strip()
             except Exception: return
             
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
-        headers_git = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github+json"}
+        headers_git = {
+            "Authorization": f"token {t_git}", 
+            "Accept": "application/vnd.github+json"
+        }
         
+        # Rilegge il file fisico presente sul server, azzera l'azione e salva
         if os.path.exists(FILE_STORICO_PERMANENTE):
             df_file = pd.read_excel(FILE_STORICO_PERMANENTE)
             df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
@@ -47,14 +51,21 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             res_get = requests.get(url_git, headers=headers_git, timeout=5)
             sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
             
+            # Payload rigido autenticato per sovrascrivere il repository di GitHub
             payload_git = {
                 "message": f"🤖 [Robot] Allineamento Snaitech OK. Reset azione locale {codice_locale_successo}", 
-                "content": dati_b64, "branch": "main"
+                "content": dati_b64, 
+                "sha": sha_file,
+                "branch": "main"
             }
-            if sha_file: payload_git["sha"] = sha_file
-            requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo su GitHub!")
-    except Exception: pass
+            res_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            if res_put.status_code in:
+                print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo su GitHub!")
+            else:
+                print(f"   ⚠️ Risposta server GitHub anomala: {res_put.status_code}")
+    except Exception as e:
+        print(f"   ⚠️ Errore durante la riscrittura dell'Excel: {str(e)}")
+
 
 
 def avvia_sincronizzazione_automatica():
