@@ -184,7 +184,7 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(7)
 
                     # =====================================================================================
-                    # BLOCCO 5: SINCRO PARAMETRI ORARI ORARI REALI, TRUPLO SCATTO SPIA E PULIZIA EXCEL
+                    # BLOCCO 5: PULIZIA STRINGA DATA FINE, CONVALIDA COMPLETA E RESET EXCEL CLOUD
                     # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -192,11 +192,12 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # 🛡️ ESTRAZIONE PARAMETRI ORARI REALI DALL'EXCEL DI MANUELA
+                    # 🛡️ ESTRAZIONE PURA DELLA DATA DI FINE (Prende solo i primi 10 caratteri escludendo l'orario nel testo)
+                    data_fine_pura = data_fine_pulita[:10].strip()
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
 
-                    print("   📝 [Robot] STEP 9: Iniezione parametri e validatori dinamici Snaitech...")
+                    print(f"   📝 [Robot] STEP 9: Iniezione parametri puliti (Fine: {data_fine_pura}) e attivazione validatori...")
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
@@ -204,39 +205,25 @@ def avvia_sincronizzazione_automatica():
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
                         if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
-                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
+                        if(al) {{ al.value = '{data_fine_pura}'; al.dispatchEvent(new Event('change')); }}
                         if(water1) {{ water1.value = 'true'; }}
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
                     time.sleep(2)
                     
-                    # Allineamento dinamico dei menu a tendina orari reali dell'ufficio
+                    # Allineamento dinamico delle tendine orarie speculari all'Excel dell'ufficio
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option(ora_inizio_pulita)
                     except Exception: pass
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option(ora_fine_pulita)
                     except Exception: pass
                     time.sleep(2)
 
-                    # 📸 FOTO SPIA 1: Modulo compilato prima di premere Salva
-                    try: page.screenshot(path="1_modulo_compilato.png", full_page=True)
-                    except Exception: pass
-
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
-                    time.sleep(4)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
+                    time.sleep(8)
                     
-                    # 📸 FOTO SPIA 2: Schermata un secondo dopo il click (Cattura l'errore immediato)
-                    try: page.screenshot(path="2_risposta_immediata.png", full_page=True)
-                    except Exception: pass
-                    time.sleep(4)
-                    
-                    # 📸 FOTO SPIA 3: Schermata stabilizzata finale prima del cambio pagina
-                    try: page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
-                    except Exception: pass
-                    time.sleep(2)
-                    
-                    # 🛡️ PULIZIA CLOUD DI MANUELA: Svuota la cella nell'Excel ed aggiorna GitHub
+                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub ad inserimento riuscito
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
