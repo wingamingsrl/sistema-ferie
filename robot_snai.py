@@ -28,46 +28,50 @@ def genera_codice_otp_automatico():
 def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
     try:
         print(f"💾 [Cloud Excel] Allineamento riuscito. Svuoto ROBOT_ACTION per: {codice_locale_successo}...")
+        
+        # Sfrutta il token nativo di GitHub Actions già presente nel server aziendale
         t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
-        if not t_git:
-            try: t_git = str(pd.read_excel("token.xlsx").iloc[0, 0]).strip()
-            except Exception: return
+        if not t_git: return
             
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         headers_git = {
             "Authorization": f"token {t_git}", 
-            "Accept": "application/vnd.github+json"
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "WinGaming-Cloud-App"
         }
         
-        # Rilegge il file fisico presente sul server, azzera l'azione e salva
         if os.path.exists(FILE_STORICO_PERMANENTE):
             df_file = pd.read_excel(FILE_STORICO_PERMANENTE)
-            df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
-            df_file.to_excel(FILE_STORICO_PERMANENTE, index=False)
             
-            with open(FILE_STORICO_PERMANENTE, "rb") as f_in:
-                dati_b64 = base64.b64encode(f_in.read()).decode('utf-8')
-                
+            # Svuota il comando ROBOT_ACTION riportandolo a stringa vuota
+            df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
+            
+            # 🛡️ SPECCHIO DEL CODICE DEI RAGAZZI: Conversione binaria in Base64 identica a test_app.py
+            df_pulito_salva = df_file.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
+            output_binario = io.BytesIO()
+            with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
+                df_pulito_salva.to_excel(writer, index=False)
+            dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+            
+            # Recupera lo SHA aggiornato per evitare collisioni di rete
             res_get = requests.get(url_git, headers=headers_git, timeout=5)
             sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
             
-            # Payload rigido autenticato per sovrascrivere il repository di GitHub
             payload_git = {
                 "message": f"🤖 [Robot] Allineamento Snaitech OK. Reset azione locale {codice_locale_successo}", 
-                "content": dati_b64, 
-                "sha": sha_file,
+                "content": str(dati_base64), 
                 "branch": "main"
             }
-            res_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            if res_put.status_code == 200 or res_put.status_code == 201:
+            if sha_file: 
+                payload_git["sha"] = str(sha_file)
+                
+            risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+            if risposta_put.status_code == 200 or risposta_put.status_code == 201:
                 print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo su GitHub!")
             else:
-                print(f"   ⚠️ Risposta server GitHub anomala: {res_put.status_code}")
-
+                print(f"   ⚠️ Risposta server GitHub anomala: {risposta_put.status_code}")
     except Exception as e:
-        print(f"   ⚠️ Errore durante la riscrittura dell'Excel: {str(e)}")
-
-
+        print(f"   ⚠️ Errore riscrittura Excel: {str(e)}")
 
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
