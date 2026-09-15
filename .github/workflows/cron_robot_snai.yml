@@ -37,10 +37,11 @@ jobs:
         TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
       run: |
         xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" python robot_snai.py
-    - name: 📸 Archiviazione ed Estrazione Foto Spia Snaitech WG
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: screenshot-spia-snaitech
-        path: "*.png"
-        retention-days: 1
+    - name: 📸 Estrazione e Download Foto Errore Snaitech
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schermata-errore-ufficio
+          path: errore_visivo_snaitech.png
+          retention-days: 1
+
