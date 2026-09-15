@@ -25,6 +25,8 @@ jobs:
           playwright install chromium
 
       - name: 🚀 ESECUZIONE CORSA ROBOT AUTOMATICO SNAITECH
+        permissions:
+          contents: write  # 🛡️ SBLOCCO REALE: Concede al robot le chiavi di scrittura per modificare l'Excel
         env:
           TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
         run: xvfb-run python robot_snai.py
