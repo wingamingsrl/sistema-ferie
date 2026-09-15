@@ -184,7 +184,7 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(7)
 
                     # =====================================================================================
-                    # BLOCCO 5: PULIZIA STRINGA DATA FINE, CONVALIDA COMPLETA E RESET EXCEL CLOUD
+                    # BLOCCO 5: PULIZIA DATA FINE, SEQUENZA FOTO SPIA E RESET REGISTRO EXCEL CLOUD
                     # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -192,7 +192,7 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # 🛡️ ESTRAZIONE PURA DELLA DATA DI FINE (Prende solo i primi 10 caratteri escludendo l'orario nel testo)
+                    # 🛡️ ESTRAZIONE PURA DATA FINE (Prende solo la data senza l'orario duplicato nel testo)
                     data_fine_pura = data_fine_pulita[:10].strip()
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
@@ -211,19 +211,32 @@ def avvia_sincronizzazione_automatica():
                     }}""")
                     time.sleep(2)
                     
-                    # Allineamento dinamico delle tendine orarie speculari all'Excel dell'ufficio
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option(ora_inizio_pulita)
                     except Exception: pass
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option(ora_fine_pulita)
                     except Exception: pass
                     time.sleep(2)
 
+                    # 📸 FOTO SPIA 1: Modulo compilato prima di premere Salva
+                    try: page.screenshot(path="1_modulo_compilato.png", full_page=True)
+                    except Exception: pass
+
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(8)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
+                    time.sleep(4)
                     
-                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub ad inserimento riuscito
+                    # 📸 FOTO SPIA 2: Schermata un secondo dopo il click (Cattura l'errore o il successo immediato)
+                    try: page.screenshot(path="2_risposta_immediata.png", full_page=True)
+                    except Exception: pass
+                    time.sleep(4)
+                    
+                    # 📸 FOTO SPIA 3: Schermata stabilizzata finale prima del cambio pagina
+                    try: page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
+                    except Exception: pass
+                    time.sleep(2)
+                    
+                    # Svuota la cella Excel solo se siamo sicuri del giro, ma per ora lasciamolo scorrere
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
