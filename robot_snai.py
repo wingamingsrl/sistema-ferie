@@ -26,13 +26,14 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
+    print(f"📡 [Step-by-Step] 1. Avvio pulizia Excel cloud per locale: {codice_locale_successo}...")
     try:
-        print(f"💾 [Cloud Excel] Allineamento riuscito. Svuoto ROBOT_ACTION per: {codice_locale_successo}...")
-        
-        # Sfrutta il token nativo di GitHub Actions già presente nel server aziendale
         t_git = os.environ.get("TOKEN_GITHUB_ACTIONS", "")
-        if not t_git: return
+        if not t_git:
+            print("❌ [Step-by-Step] Errore 1a: TOKEN_GITHUB_ACTIONS non trovato nel server!")
+            return
             
+        print("📝 [Step-by-Step] 2. Configurazione indirizzo API di rete GitHub...")
         url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
         headers_git = {
             "Authorization": f"token {t_git}", 
@@ -41,21 +42,25 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
         }
         
         if os.path.exists(FILE_STORICO_PERMANENTE):
+            print("📊 [Step-by-Step] 3. Rilettura file fisico locale sul server...")
             df_file = pd.read_excel(FILE_STORICO_PERMANENTE)
             
-            # Svuota il comando ROBOT_ACTION riportandolo a stringa vuota
+            # Esegue lo svuotamento chirurgico della cella
             df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
             
-            # 🛡️ SPECCHIO DEL CODICE DEI RAGAZZI: Conversione binaria in Base64 identica a test_app.py
+            # Compressione e conversione speculare Base64 allineata a test_app.py
             df_pulito_salva = df_file.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
             output_binario = io.BytesIO()
             with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
                 df_pulito_salva.to_excel(writer, index=False)
             dati_base64 = base64.b64encode(output_binario.getvalue()).decode('utf-8')
+            print("📦 [Step-by-Step] 4. Conversione binaria Base64 eseguita con successo.")
             
-            # Recupera lo SHA aggiornato per evitare collisioni di rete
+            # Interrogazione dello SHA per bloccare le collisioni di sovrascrittura
+            print("🔍 [Step-by-Step] 5. Interrogazione SHA del file remoto...")
             res_get = requests.get(url_git, headers=headers_git, timeout=5)
             sha_file = res_get.json().get("sha", "") if res_get.status_code == 200 else ""
+            print(f"📌 [Step-by-Step] SHA rintracciato -> {sha_file} (Risposta GET: {res_get.status_code})")
             
             payload_git = {
                 "message": f"🤖 [Robot] Allineamento Snaitech OK. Reset azione locale {codice_locale_successo}", 
@@ -65,13 +70,28 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             if sha_file: 
                 payload_git["sha"] = str(sha_file)
                 
+            print("🛰️ [Step-by-Step] 6. Spedizione pacchetto PUT di aggiornamento su GitHub...")
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            if risposta_put.status_code == 200 or risposta_put.status_code == 201:
-                print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo su GitHub!")
+            print(f"📊 [Step-by-Step] Risposta PUT Immediata -> Codice: {risposta_put.status_code} | Dettaglio: {risposta_put.text[:120]}")
+            
+            # Gestione sblocco collisioni simultanee (Codice 422 / 409)
+            if risposta_put.status_code in:
+                print("🔄 [Step-by-Step] Collisione intercettata! Eseguo secondo tentativo forzato...")
+                res_retry = requests.get(url_git, headers=headers_git, timeout=5)
+                if res_retry.status_code == 200:
+                    payload_git["sha"] = str(res_retry.json().get("sha", ""))
+                    risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
+                    print(f"📊 [Step-by-Step] Risposta secondo tentativo PUT -> Codice: {risposta_put.status_code}")
+                    
+            if risposta_put.status_code in:
+                print("✅ [Step-by-Step] 7. OPERAZIONE COMPLETATA! Cella svuotata e file aggiornato online!")
             else:
-                print(f"   ⚠️ Risposta server GitHub anomala: {risposta_put.status_code}")
+                print(f"❌ [Step-by-Step] 7. FALLITO! Il server ha rifiutato la scrittura. Codice finale: {risposta_put.status_code}")
+        else:
+            print(f"❌ [Step-by-Step] Errore 3b: Il file {FILE_STORICO_PERMANENTE} non esiste sul server!")
     except Exception as e:
-        print(f"   ⚠️ Errore riscrittura Excel: {str(e)}")
+        print(f"💥 [Step-by-Step] CRASH INTERNO: {str(e)}")
+
 
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
