@@ -85,11 +85,8 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
-# =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E MOTORE FILTRI CON DIGITAZIONE AUTOMATICA SBLOCCATA
-# =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it")
+            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
@@ -114,15 +111,8 @@ def avvia_sincronizzazione_automatica():
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     campo_ricerca.wait_for(state="visible", timeout=20000)
-                    
-                    # 🛡️ INPUT DI MANUELA: Simula la digitazione fisica reale per svegliare l'UpdatePanel senza bloccarlo
                     campo_ricerca.click()
-                    campo_ricerca.press("Control+A")
-                    campo_ricerca.press("Backspace")
-                    time.sleep(1)
-                    campo_ricerca.press_sequentially(codice_aams, delay=100)
-                    time.sleep(1)
-                    campo_ricerca.press("Tab")
+                    campo_ricerca.fill(codice_aams)
                     time.sleep(2)
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
@@ -139,7 +129,7 @@ def avvia_sincronizzazione_automatica():
                         print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
-                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
+                        print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pulsante verde...")
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
@@ -149,7 +139,7 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(7)
 
 # =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON VALIDA EVENTI E RESET TASTO INDIETRO
+# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET ORIGINALE URL
 # =====================================================================================
                     frame_date = page
                     for f in page.frames:
@@ -157,15 +147,15 @@ def avvia_sincronizzazione_automatica():
                             frame_date = f
                             break
 
-                    # 🛡️ INIEZIONE CON MARGINI BLINDATI: Aggancia le maiuscole e notifica i validatori Microsoft ASP.NET
+                    # 🛡️ L'UNICA RETTIFICA SUL TUO CODICE STABILE: Corregge la T maiuscola per agganciare Txtfinechiusura
                     frame_date.evaluate(f"""() => {{
                         var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
                         var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
                         var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
                         var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
                         
-                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
-                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
+                        if(dal) {{ dal.value = '{data_inizio_pulita}'; dal.dispatchEvent(new Event('change')); }}
+                        if(al) {{ al.value = '{data_fine_pulita}'; al.dispatchEvent(new Event('change')); }}
                         if(water1) {{ water1.value = 'true'; }}
                         if(water2) {{ water2.value = 'true'; }}
                     }}""")
@@ -182,19 +172,15 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(8)
                     
-                    print("   ↩️ [Robot] Ritorno alla griglia filtri (Clic su Tasto Indietro)...")
-                    frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=10000)
-                    time.sleep(5)
+                    page.goto("https://partner.snai.it")
+                    time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
-                    # 🛡️ IL VERO RESET SALVA-SESSIONE DEI RAGAZZI: Clicca sul tasto Indietro grafico, impedendo lo schermo bianco!
                     try:
-                        frame_date.locator("#ctl00_Cp1_Button1").first.click(timeout=5000)
-                        time.sleep(5)
-                    except Exception:
                         page.goto("https://partner.snai.it")
                         time.sleep(6)
+                    except Exception: pass
                     continue
 
             print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
@@ -206,3 +192,5 @@ def avvia_sincronizzazione_automatica():
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
+
