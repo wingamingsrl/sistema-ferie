@@ -27,7 +27,7 @@ jobs:
       - name: 🚀 ESECUZIONE CORSA ROBOT AUTOMATICO SNAITECH
         env:
           TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
-          run: xvfb-run python robot_snai.py
+        run: xvfb-run python robot_snai.py
 
       - name: 📸 Estrazione e Download Foto Errore Snaitech
         if: always()
