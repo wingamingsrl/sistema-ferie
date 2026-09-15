@@ -1,9 +1,9 @@
 name: Sincronizzazione Automatica Ferie Snaitech WG
 
 on:
-  workflow_dispatch: # 🛡️ REINSERITO IL TELECOMANDO DELLO SMARTPHONE DI MANUELA
+  workflow_dispatch:
   schedule:
-    - cron: '0 6 * * *' # Gira in automatico tutte le mattine alle 07:00 italiane
+    - cron: '0 6 * * *'
 
 jobs:
   run-robot-snai:
@@ -25,8 +25,6 @@ jobs:
           playwright install chromium
 
       - name: 🚀 ESECUZIONE CORSA ROBOT AUTOMATICO SNAITECH
-        permissions:
-          contents: write  # 🛡️ SBLOCCO REALE: Concede al robot le chiavi di scrittura per modificare l'Excel
         env:
           TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }}
         run: xvfb-run python robot_snai.py
@@ -38,3 +36,4 @@ jobs:
           name: schermata-errore-ufficio
           path: "*.png"
           retention-days: 1
+
