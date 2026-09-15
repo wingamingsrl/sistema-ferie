@@ -203,11 +203,21 @@ def avvia_sincronizzazione_automatica():
                     # Gestione dei menu a tendina orari originali
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
+                    
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
                     time.sleep(2)
 
+                    # 📸 FOTOCAMERA SPIA: Fotografa la maschera delle date compilata prima del clic su Salva
+                    try:
+                        frame_date.screenshot(path="errore_visivo_snaitech.png")
+                        print("   📸 [Spia] Fotografia della maschera catturata con successo sul server!")
+                    except Exception as e_foto:
+                        print(f"   ⚠️ Impossibile scattare la foto: {str(e_foto)}")
+
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
+
+                    
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
                     time.sleep(8)
