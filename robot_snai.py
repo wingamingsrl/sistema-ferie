@@ -180,6 +180,13 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 # BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET REALE EXCEL
 # =====================================================================================
+                    # 🛡️ RIPRISTINO ASSEGNAZIONE DI MANUELA: Aggancia il sotto-frame corretto prima della digitazione
+                    frame_date = page
+                    for f in page.frames:
+                        if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
+                            frame_date = f
+                            break                    
+                    
                     # 🛡️ DIGITAZIONE REALE DI MANUELA: Sveglia i validatori di Snaitech inserendo le date tasto per tasto
                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
