@@ -215,15 +215,24 @@ def avvia_sincronizzazione_automatica():
 
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
-                    time.sleep(8)
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
+                    time.sleep(5)
                     
-                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub ad inserimento riuscito
+                    # 📸 CATTURA SPIA REALE DI MANUELA: Fotografa l'Iframe delle date per leggere il responso di Snaitech
+                    try:
+                        frame_date.screenshot(path="errore_visivo_snaitech.png")
+                        print("   📸 [Spia] Fotografia dell'Iframe catturata con successo sul server!")
+                    except Exception as e_foto:
+                        print(f"   ⚠️ Impossibile scattare la foto: {str(e_foto)}")
+                    time.sleep(3)
+                    
+                    # Svuota la cella Excel solo se siamo sicuri del giro, ma per ora lasciamolo scorrere
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
-                
+                    
                     page.goto("https://partner.snai.it")
                     time.sleep(6)
+
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
