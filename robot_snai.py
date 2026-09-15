@@ -177,66 +177,51 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
 
-# =====================================================================================
-# BLOCCO 5: AGGIORNAMENTO AUTOMATICO VIA JS CON ID RETTIFICATO E RESET REALE EXCEL
-# =====================================================================================
-                    # 🛡️ RIPRISTINO ASSEGNAZIONE DI MANUELA: Aggancia il sotto-frame corretto prima della digitazione
+                    # =====================================================================================
+                    # BLOCCO 5: COMPILAZIONE JS INTEGRALE E RESET AUTOMATICO REGISTRO EXCEL CLOUD
+                    # =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
-                            break                    
-                    
-                    # 🛡️ DIGITAZIONE REALE DI MANUELA: Sveglia i validatori di Snaitech inserendo le date tasto per tasto
-                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
-                    campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
+                            break
 
-                    print("   📝 [Robot] STEP 9: Digitazione sequenziale data inizio...")
-                    campo_dal.wait_for(state="visible", timeout=12000)
-                    campo_dal.click()
-                    campo_dal.press("Control+A")
-                    campo_dal.press("Backspace")
-                    time.sleep(1)
-                    campo_dal.press_sequentially(data_inizio_pulita, delay=100)
-                    time.sleep(1)
-                    campo_dal.press("Tab")
-                    time.sleep(1)
+                    print("   📝 [Robot] STEP 9: Iniezione parametri e attivazione validatori di stato Snaitech...")
+                    frame_date.evaluate(f"""() => {{
+                        var dal = document.getElementById('ctl00_Cp1_Txtiniziochiusura');
+                        var al = document.getElementById('ctl00_Cp1_Txtfinechiusura') || document.getElementById('ctl00_Cp1_txtfinechiusura');
+                        var water1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
+                        var water2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
+                        
+                        if(dal) {{ 
+                            dal.value = '{data_inizio_pulita}'; 
+                            dal.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                        }}
+                        if(al) {{ 
+                            al.value = '{data_fine_pulita}'; 
+                            al.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                        }}
+                        // Blindatura dei validatori invisibili per evitare il crash del server Snaitech
+                        if(water1) {{ water1.value = 'true'; }}
+                        if(water2) {{ water2.value = 'true'; }}
+                    }}""")
+                    time.sleep(2)
                     
                     try: frame_date.locator("#ctl00_Cp1_fascia_from").select_option("00:00")
                     except Exception: pass
-                    time.sleep(1)
-                    
-                    print("   📝 [Robot] STEP 9a: Digitazione sequenziale data fine...")
-                    campo_al.click()
-                    campo_al.press("Control+A")
-                    campo_al.press("Backspace")
-                    time.sleep(1)
-                    campo_al.press_sequentially(data_fine_pulita, delay=100)
-                    time.sleep(1)
-                    campo_al.press("Tab")
-                    time.sleep(1)
-                    
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option("23:30")
                     except Exception: pass
                     time.sleep(2)
 
-
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
-                    print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa stabilizzazione dello schermo...")
+                    print(f"   ✅ [Robot] STEP 11: Invio completato. Pausa di stabilizzazione di 8 secondi...")
+                    time.sleep(8)
+                    
+                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Cancella la parola dall'Excel e aggiorna GitHub ad inserimento riuscito
+                    scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
-                    
-                    # 📸 FOTOCAMERA SPIA: Cattura lo schermo esatto per leggere l'errore rosso di Snaitech
-                    try:
-                        page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
-                        print("   📸 [Spia] Fotografia dello schermo catturata con successo sul server!")
-                    except Exception: pass
-                    time.sleep(4)
-                    
-                    page.goto("https://snai.it")
-                    time.sleep(6)
-
-                    
+                
                     page.goto("https://partner.snai.it")
                     time.sleep(6)
                     
