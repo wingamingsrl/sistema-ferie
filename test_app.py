@@ -146,8 +146,10 @@ def carica_database_locale():
     
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# 🛡️ AUTOMAZIONE DI MANUELA: Forza l'app a leggere l'Excel reale aggiornato dal robot, distruggendo la cache vecchia
+df_aggiornato_reale = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("") if os.path.exists(FILE_STORICO_PERMANENTE) else df_storico_file
+st.session_state.storico_cloud = df_aggiornato_reale.to_dict('records')
+
 
 def push_excel_su_github(df_da_salvare):
     try:
@@ -600,7 +602,13 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     
     if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU .SNAI.IT"):
         with st.spinner("Robot in azione sul portale Snaitech... Non chiudere la pagina..."):
-            esegui_sincronizzazione_robot_snai()
+            esito_corsa = esegui_sincronizzazione_robot_snai()
+            if esito_corsa:
+                time.sleep(5)
+                # Svuota la RAM dello smartphone e rilegge il file ripulito dal robot su GitHub
+                if os.path.exists(FILE_STORICO_PERMANENTE):
+                    st.session_state.storico_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("").to_dict('records')
+                st.rerun()
 
     righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()] if st.session_state.storico_cloud else []
     if righe_snaitech:
