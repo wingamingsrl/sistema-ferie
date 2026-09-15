@@ -34,22 +34,23 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             return
             
         print("📝 [Step-by-Step] 2. Configurazione indirizzo API di rete GitHub...")
-        url_git = f"https://github.com{FILE_STORICO_PERMANENTE}"
+        url_git = "https://github.com"
         headers_git = {
             "Authorization": f"token {t_git}", 
             "Accept": "application/vnd.github+json",
             "User-Agent": "WinGaming-Cloud-App"
         }
         
-        if os.path.exists(FILE_STORICO_PERMANENTE):
+        if os.path.exists("storico_ferie.xlsx"):
             print("📊 [Step-by-Step] 3. Rilettura file fisico locale sul server...")
-            df_file = pd.read_excel(FILE_STORICO_PERMANENTE)
+            df_file = pd.read_excel("storico_ferie.xlsx")
             
             # Esegue lo svuotamento chirurgico della cella
             df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
             
             # Compressione e conversione speculare Base64 allineata a test_app.py
-            df_pulito_salva = df_file.reindex(columns=COLONNE_REALI_UFFICIO).astype(str).fillna("")
+            colonne_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
+            df_pulito_salva = df_file.reindex(columns=colonne_ufficio).astype(str).fillna("")
             output_binario = io.BytesIO()
             with pd.ExcelWriter(output_binario, engine='openpyxl') as writer:
                 df_pulito_salva.to_excel(writer, index=False)
@@ -72,9 +73,8 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
                 
             print("🛰️ [Step-by-Step] 6. Spedizione pacchetto PUT di aggiornamento su GitHub...")
             risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-            print(f"📊 [Step-by-Step] Risposta PUT Immediata -> Codice: {risposta_put.status_code} | Dettaglio: {risposta_put.text[:120]}")
+            print(f"📊 [Step-by-Step] Risposta PUT Immediata -> Codice: {risposta_put.status_code}")
             
-
             # Gestione sblocco collisioni simultanee (Codice 422 / 409)
             if risposta_put.status_code == 422 or risposta_put.status_code == 409:
                 print("🔄 [Step-by-Step] Collisione intercettata! Eseguo secondo tentativo forzato...")
@@ -89,12 +89,9 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             else:
                 print(f"❌ [Step-by-Step] 7. FALLITO! Il server ha rifiutato la scrittura. Codice finale: {risposta_put.status_code}")
         else:
-            print(f"❌ [Step-by-Step] Errore 3b: Il file {FILE_STORICO_PERMANENTE} non esiste sul server!")
+            print("❌ [Step-by-Step] Errore 3b: Il file storico_ferie.xlsx non esiste sul server!")
     except Exception as e:
         print(f"💥 [Step-by-Step] CRASH INTERNO: {str(e)}")
-
-
-
 
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
