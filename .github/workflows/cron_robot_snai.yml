@@ -1,9 +1,5 @@
 name: Sincronizzazione Automatica Ferie Snaitech WG
 
-# 🛡️ CHIAVE LASER DI MANUELA: Sblocca i permessi di riscrittura dell'Excel per tutto il server
-permissions:
-  contents: write
-
 on:
   workflow_dispatch:
   schedule:
@@ -12,6 +8,9 @@ on:
 jobs:
   run-robot-snai:
     runs-on: ubuntu-latest
+    # 🛡️ BLINDATURA DI MANUELA: Concede l'autorizzazione ufficiale di riscrittura file al token nativo del server
+    permissions:
+      contents: write
 
     steps:
       - name: 📂 Clonazione ed Estrazione Repository
@@ -30,7 +29,7 @@ jobs:
 
       - name: 🚀 ESECUZIONE CORSA ROBOT AUTOMATICO SNAITECH
         env:
-          TOKEN_GITHUB_ACTIONS: ${{ secrets.TOKEN_ACCESSO }}
+          TOKEN_GITHUB_ACTIONS: ${{ secrets.GITHUB_TOKEN }} # <-- Ripristinato il gettone nativo sicuro del server
         run: xvfb-run python robot_snai.py
 
       - name: 📸 Estrazione e Download Sequenza Foto Snaitech
