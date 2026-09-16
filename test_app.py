@@ -429,7 +429,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     with col3: 
         # 🛡️ BLINDATURA CALENDARIO DI MANUELA: Ripristino layout classico con sblocco tendina dei mesi rapida sul telefono
         data_riapertura = st.date_input(
-            "Giorno Chiusura:", 
+            "Giorno Riapertura:", 
             value=datetime.now().date(), 
             min_value=datetime(2025, 1, 1).date(), 
             max_value=datetime(2030, 12, 31).date(),
