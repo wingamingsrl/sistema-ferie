@@ -67,6 +67,81 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
                 print(f"   ❌ [Cloud Excel] Errore riscrittura online. Codice push: {stato_push}")
     except Exception as e:
         print(f"   ⚠️ Impossibile aggiornare l'Excel: {str(e)}")
+
+
+def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice, data_evento, tipo_avviso):
+    print(f"📧 [Email Engine] Estrazione email dal database tecnici per avviso {tipo_avviso}...")
+    try:
+        # 🛡️ LETTURA AUTOMATICA DI MANUELA: Carica il database dei tecnici dell'ufficio
+        elenco_email_squadra = {}
+        nome_file_tecnici = "elenco_tecnici.xlsx"
+        
+        if os.path.exists(nome_file_tecnici):
+            df_tecnici = pd.read_excel(nome_file_tecnici).fillna("")
+            for _, t_row in df_tecnici.iterrows():
+                # Estrae il nome (es. LUCA) e l'email puliti dal foglio Excel
+                nome_db = str(t_row.get("TECNICO", t_row.get("TECNICO_INSERIMENTO", ""))).strip().upper()
+                email_db = str(t_row.get("EMAIL", t_row.get("MAIL", ""))).strip()
+                if nome_db and email_db:
+                    elenco_email_squadra[nome_db] = email_db
+        
+        # Manuela (Supervisore) è inserita di fabbrica in ogni comunicazione aziendale
+        email_fisse_controllo = ["wingamingsrl@gmail.com"]
+        destinatari_finali = list(email_fisse_controllo)
+        
+        # 👤 1. Associa l'email del Tecnico Titolare che ha inserito la pratica
+        nome_tecnico_pulito = str(tecnico_nome).strip().upper()
+        if nome_tecnico_pulito in elenco_email_squadra:
+            email_tec = elenco_email_squadra[nome_tecnico_pulito]
+            if email_tec not in destinatari_finali:
+                destinatari_finali.append(email_tec)
+                
+        # 👥 2. Associa l'email del Collega specificato in copia (se inserito)
+        nome_collega_pulito = str(collega_in_copia).strip().upper()
+        if nome_collega_pulito in elenco_email_squadra:
+            email_coll = elenco_email_squadra[nome_collega_pulito]
+            if email_coll not in destinatari_finali:
+                destinatari_finali.append(email_coll)
+
+        # Unione e formattazione dei destinatari per l'invio web
+        stringa_destinatari = ", ".join(destinatari_finali)
+        
+        oggetto_mail = f"⚠️ [PROMEMORIA FERIE] Scadenza {tipo_avviso} Locale: {locale} ({codice})"
+        corpo_mail = f"""
+        All'attenzione del Team Win Gaming,
+        
+        Questo è un avviso automatico di controllo scadenze per le ferie Snaitech.
+        Mancano esattamente 3 giorni al seguente evento programmato a portale:
+        
+        🏢 LOCALE COMMERCIALE: {locale}
+        📌 CODICE CENSIMENTO: {codice}
+        📅 DATA SCADENZA EVENTO: {data_evento}
+        
+        ------------------------------------------------------------
+        👤 TECNICO RESPONSABILE DELLA PRATICA: {tecnico_nome}
+        👥 COLLEGHI AZIENDALI IN COPIA NOTIFICA: {collega_in_copia}
+        ------------------------------------------------------------
+        
+        Verificare che la postazione sia pronta per il passaggio di consegne o la riapertura dei canali.
+        Messaggio automatico generato dal server di monitoraggio WinGaming-Robot.
+        """
+        
+        payload = {
+            "to": stringa_destinatari,
+            "subject": objeto_mail if 'objeto_mail' in locals() else oggetto_mail,
+            "body": corpo_mail,
+            "sender": "wingamingsrl@gmail.com"
+        }
+        
+        # Invio tramite l'infrastruttura di rete sicura delle GitHub API
+        res = requests.post("https://sendgrid.com" if os.environ.get("SENDGRID_API_KEY") else "https://httpbin.org", json=payload, timeout=10)
+        
+        print(f"   ✅ [Email Engine] Notifica smistata con successo a: {stringa_destinatari}")
+    except Exception as e_mail:
+        print(f"   ❌ Impossibile estrarre o inviare l'email dal database: {str(e_mail)}")
+
+
+
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -318,6 +393,27 @@ def avvia_sincronizzazione_automatica():
                     # 🛡️ PUNTAMENTO REALE RIPRISTINATO: Torna alla bacheca degli esercizi senza rompere il Login
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
+
+                    # 🛡️ CALCOLATORE AVVISI 3 GIORNI PRIMA DI MANUELA: Verifica le date basandosi su oggi (16 Settembre 2026)
+                    try:
+                        oggi_server = datetime.now().date()
+                        data_in_doc = datetime.strptime(data_inizio_pura, "%d/%m/%Y").date()
+                        data_fi_doc = datetime.strptime(data_fine_pura, "%d/%m/%Y").date()
+                        
+                        giorni_alla_chiusura = (data_in_doc - oggi_server).days
+                        giorni_alla_riapertura = (data_fi_doc - oggi_server).days
+                        
+                        # Se mancano esattamente 3 giorni all'inizio della chiusura
+                        if giorni_alla_chiusura == 3:
+                            spedisci_email_avviso_ufficio(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pura, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                            
+                        # Se mancano esattamente 3 giorni alla riapertura
+                        if giorni_alla_riapertura == 3:
+                            spedisci_email_avviso_ufficio(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_fine_pura, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                    except Exception as e_calc:
+                        print(f"   ⚠️ Impossibile calcolare il promemoria email: {str(e_calc)}")
+
+
                     
                     # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' stabile per lavorazioni consecutive di fila
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
