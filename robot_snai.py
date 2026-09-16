@@ -127,7 +127,7 @@ def avvia_sincronizzazione_automatica():
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
 
-            print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
+print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
@@ -149,11 +149,8 @@ def avvia_sincronizzazione_automatica():
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
-                    
-                    # 🛡️ FIX STABILIZZAZIONE DI MANUELA: Pausa di sicurezza per far assestare i frame di Snaitech dopo i salti riga veloci
-                    time.sleep(4)
 
-                    # 🔑 RIPRISTINO COMPLETO DELLA RICERCA VECCHIA ORIGINALE DEI RAGAZZI
+                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — MAI PIÙ TOCCATO
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
