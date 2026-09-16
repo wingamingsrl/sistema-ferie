@@ -639,9 +639,21 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                     st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
                     
-                    # Rimuove la riga selezionata
-                    st.session_state.storico_cloud.pop(idx_da_eliminare)
+                    # 🛡️ FIX CANCELLAZIONE DI MANUELA: Non cancella subito, marchia con ELIMINA per il robot
+                    st.session_state.storico_cloud[idx_da_eliminare]["ROBOT_ACTION"] = "ELIMINA"
                     df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                    
+                    # Forza la scrittura fisica dell'Excel su disco prima di inviarlo
+                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    
+                    # Spinge il file modificato su GitHub
+                    push_excel_su_github(df_nuovo_salva)
+                    
+                    st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
+                    st.success("🗑️ Richiesta di eliminazione inviata! Il robot rimuoverà la chiusura dal portale e pulirà la plancia.")
+                    time.sleep(2.0)
+                    st.rerun()
+
                     
                     # 🛡️ FIX FONDAMENTALE: Forza la scrittura fisica dell'Excel su disco prima di inviarlo
                     df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
