@@ -288,3 +288,12 @@ def avvia_sincronizzazione_automatica():
                         time.sleep(6)
                     except Exception: pass
                     continue
+            print("🔒 [Robot] STEP 12: Chiusura sessione formale (Logout di sicurezza)...")
+            try: page.locator("a:has-text('LogOut'), a:has-text('Esci'), [id*='btnLogOut']").first.click(timeout=8000)
+            except Exception: page.context.clear_cookies()
+
+        except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
+        finally: browser.close()
+
+if __name__ == "__main__":
+    avvia_sincronizzazione_automatica()
