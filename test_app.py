@@ -412,29 +412,31 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1: 
-        # 🛡️ SBLOCCO CALENDARIO DI MANUELA: Permette di saltare da un mese all'altro all'istante
+        # 🛡️ SBLOCCO CALENDARIO 1 DI MANUELA: Chiave univoca per evitare il crash di ID duplicato
         data_chiusura = st.date_input(
             "Giorno Chiusura:", 
             value=datetime.now(), 
             min_value=datetime(2026, 1, 1), 
             max_value=datetime(2028, 12, 31),
-            format="DD-MM-YYYY"
+            format="DD-MM-YYYY",
+            key="cal_chiusura_manuela"
         )
-
     with col2: ora_chiusura = st.time_input("Ora Chiusura:", dtime(6, 0))
     
     st.markdown("---")
     col3, col4 = st.columns(2)
     #with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col3: 
-        # 🛡️ SBLOCCO CALENDARIO DI MANUELA: Permette di saltare da un mese all'altro all'istante
-        data_riapertura = st.date_input(
+         # 🛡️ SBLOCCO CALENDARIO 2 DI MANUELA: Chiave univoca per la seconda data dell'applicazione
+            data_riapertura = st.date_input(
             "Giorno Chiusura:", 
             value=datetime.now(), 
             min_value=datetime(2026, 1, 1), 
             max_value=datetime(2028, 12, 31),
-            format="DD-MM-YYYY"
+            format="DD-MM-YYYY",
+            key="cal_riapertura_manuela"
         )
+
 
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
