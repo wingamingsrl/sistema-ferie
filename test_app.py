@@ -496,7 +496,7 @@ if submit_button:
                 "FINE_FERIE": str(str_r),
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
                 "STATO_INVIO": "In attesa",
-                "ROBOT_ACTION": str(tipo_azione_snai)  # <-- SCRITTURA RIGIDA CERTIFICATA
+                "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
             }
 
 
