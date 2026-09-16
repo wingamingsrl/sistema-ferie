@@ -583,14 +583,19 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.session_state.storico_cloud:
         df_completo = pd.DataFrame(st.session_state.storico_cloud)
         
-        # 🛡️ FILTRO OTTICO DI MANUELA: Nasconde istantaneamente dalla tabella i locali in fase di cancellazione
-        if "ROBOT_ACTION" in df_completo.columns:
+        # 🛡️ FILTRO ULTRA-CORAZZATO DI MANUELA: Verifica se la colonna esiste prima di filtrare, evitando il crash di Pandas
+        if df_completo.empty:
+            df_vis = df_completo
+        elif "ROBOT_ACTION" in df_completo.columns:
             df_vis = df_completo[df_completo["ROBOT_ACTION"].astype(str).str.strip().upper() != "ELIMINA"]
+        elif "robot_action" in df_completo.columns:
+            df_vis = df_completo[df_completo["robot_action"].astype(str).str.strip().upper() != "ELIMINA"]
         else:
             df_vis = df_completo
             
         df_vis = df_vis.reindex(columns=colonne_reali_ufficio).fillna("")
         st.dataframe(df_vis, hide_index=True)
+
 
         
         with io.BytesIO() as buffer:
