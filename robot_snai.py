@@ -241,7 +241,7 @@ def avvia_sincronizzazione_automatica():
                         scarica_e_aggiorna_excel_su_github(codice_aams)
                         time.sleep(4)
                         
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                         continue # Salta il resto del codice e passa al locale successivo della lista
                     
