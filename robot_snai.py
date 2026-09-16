@@ -10,8 +10,11 @@ from playwright.sync_api import sync_playwright
 
 
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
-SNAI_USER = "2141ManuelaA"
-SNAI_PASS = "Salmi123!"
+# SNAI_USER = "2141ManuelaA"
+# SNAI_PASS = "Salmi123!"
+
+SNAI_USER = "2141GestFerie"
+SNAI_PASS = "ks{6bv0Gjo"
 
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
