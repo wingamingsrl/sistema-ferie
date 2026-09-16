@@ -1,20 +1,20 @@
+# =====================================================================================
+# SW AUTOMATICO DI SINCRONIZZAZIONE LOCALI WIN GAMING — PRODUZIONE FINALE
+# BLOCCO 1: STRUTTURA LIBRERIE AZIENDALI, TOTP 2FA E RIPULITURA EXCEL VIA GIT
+# =====================================================================================
 import os
 import io
 import time
-import base64  # 🛡️ REINSERITO DA MANUELA: Sblocca la conversione per ripulire l'Excel
-import requests
+import base64
 import pyotp
+import requests
 import pandas as pd
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
-
 CHIAVE_SEGRETA_2FA = "FTIA6UQZM2LQLPYJ"
-# SNAI_USER = "2141ManuelaA"
-# SNAI_PASS = "Salmi123!"
-
-SNAI_USER = "2141GestFerie"
-SNAI_PASS = "ks{6bv0Gjo"
+SNAI_USER = "2141ManuelaA"
+SNAI_PASS = "Salmi123!"
 
 def preleva_storico_diretto_da_cloud():
     print("📡 [Robot] STEP 1: Lettura del database Excel locale...")
@@ -31,42 +31,36 @@ def genera_codice_otp_automatico():
     return totp.now()
 
 def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
-    print(f"📡 [Step-by-Step] 1. Avvio pulizia Excel cloud nativa per locale: {codice_locale_successo}...")
+    print(f"💾 [Cloud Excel] Svuoto ROBOT_ACTION per il locale: {codice_locale_successo}...")
     try:
         nome_file = "storico_ferie.xlsx"
         if os.path.exists(nome_file):
-            print("📊 [Step-by-Step] 2. Rilettura file fisico ed esecuzione svuotamento cella...")
             df_file = pd.read_excel(nome_file)
             
-            # Svuota il comando ROBOT_ACTION per il locale lavorato
+            # Azzera la cella d'azione per il locale completato
             df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
             
-            # Riassegna la struttura rigida dell'ufficio per sicurezza
+            # Riassegna la struttura colonne rigida dell'ufficio
             colonne_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
             df_pulito_salva = df_file.reindex(columns=colonne_ufficio).astype(str).fillna("")
             df_pulito_salva.to_excel(nome_file, index=False)
-            print("💾 [Step-by-Step] 3. Scrittura fisica delle modifiche completata su disco sul server.")
             
-            # 🛡️ SPINTA NATIVA GIT AUTOMATICA: Sovrascrive il file direttamente sul server GitHub con diritti amministrativi
-            print("🛰️ [Step-by-Step] 4. Configurazione credenziali server ed esecuzione Git Commit...")
+            # 🛡️ AUTOMAZIONE GIT NATIVA: Salva e spinge sul cloud senza conflitti di token API
             os.system("git config --global user.name 'WinGaming-Robot'")
             os.system("git config --global user.email 'wingamingsrl@gmail.com'")
             os.system(f"git add {nome_file}")
             os.system(f"git commit -m '🤖 [Robot] Allineamento Snaitech OK. Reset azione locale {codice_locale_successo}'")
-            
-            print("🚀 [Step-by-Step] 5. Lancio comando Git Push formale...")
             stato_push = os.system("git push origin main")
             
             if stato_push == 0:
-                print("✅ [Step-by-Step] 6. OPERAZIONE COMPLETATA! Il file Excel reale è stato aggiornato e ripulito online!")
+                print("   ✅ [Cloud Excel] Database ripulito e sincronizzato con successo online!")
             else:
-                print(f"❌ [Step-by-Step] 6. RIFIUTATO! Git push ha restituito il codice di blocco: {stato_push}")
-        else:
-            print(f"❌ [Step-by-Step] Errore: Il file {nome_file} non esiste sul server!")
+                print(f"   ❌ [Cloud Excel] Errore riscrittura online. Codice push: {stato_push}")
     except Exception as e:
-        print(f"💥 [Step-by-Step] CRASH INTERNO: {str(e)}")
-
-
+        print(f"   ⚠️ Impossibile aggiornare l'Excel: {str(e)}")
+# =====================================================================================
+# BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
+# =====================================================================================
 def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
@@ -86,7 +80,9 @@ def avvia_sincronizzazione_automatica():
         page = context.new_page()
 
         page.on("dialog", lambda dialog: dialog.accept())
-
+# =====================================================================================
+# BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
+# =====================================================================================
         try:
             print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
             page.goto("https://partner.snai.it")
@@ -126,7 +122,9 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
-
+# =====================================================================================
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA COPIATA COERENTEMENTE DAL TUO TESTO
+# =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
             page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
@@ -150,7 +148,7 @@ def avvia_sincronizzazione_automatica():
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — MAI PIÙ TOCCATO
+                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -163,7 +161,6 @@ def avvia_sincronizzazione_automatica():
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
-
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
@@ -171,11 +168,9 @@ def avvia_sincronizzazione_automatica():
                     print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
                     time.sleep(6)
 
-                    # 🛡️ PUNTATORE ROTANTE DI MANUELA: Attende che gli elementi grafici della tabella siano stabili a schermo
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione.jpg'], img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     
-                    # Aspetta un istante che almeno uno dei due comandi reali sia caricato dal server
                     try:
                         icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
@@ -193,24 +188,21 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
-
-                    # =====================================================================================
-                    # BLOCCO 5: PULIZIA STRINGHE DATE (INIZIO E FINE), FOTO SPIA E RESET EXCEL
-                    # =====================================================================================
+# =====================================================================================
+# BLOCCO 5: DATA FINE PURIFICATA, SEQUENZA FOTO REALE E RITORNO IN BACHECA PROTETTO
+# =====================================================================================
                     frame_date = page
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
 
-                    # 🛡️ FIX FINALE DI MANUELA: Estrae solo i primi 10 caratteri (la data pura) per ENTRAMBE le caselle
                     data_inizio_pura = data_inizio_pulita[:10].strip()
                     data_fine_pura = data_fine_pulita[:10].strip()
                     
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
 
-                    # 🛡️ STRATEGIA DI MANUELA: Clicca e digita tasto per tasto simulando la mano umana, eludendo il blocco Watermark
                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
@@ -230,7 +222,6 @@ def avvia_sincronizzazione_automatica():
                     campo_al.press("Control+A")
                     campo_al.press("Backspace")
                     time.sleep(1)
-                    # Digita la data come faresti tu dall'ufficio
                     campo_al.press_sequentially(data_fine_pura, delay=100)
                     campo_al.press("Tab")
                     time.sleep(2)
@@ -241,7 +232,6 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
 
-                    # 📸 FOTO SPIA 1: Modulo compilato prima di premere Salva
                     try: page.screenshot(path="1_modulo_compilato.png", full_page=True)
                     except Exception: pass
 
@@ -250,28 +240,26 @@ def avvia_sincronizzazione_automatica():
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
                     time.sleep(4)
                     
-                    # 📸 FOTO SPIA 2: Schermata un secondo dopo il click (Cattura l'errore o il successo immediato)
                     try: page.screenshot(path="2_risposta_immediata.png", full_page=True)
                     except Exception: pass
                     time.sleep(4)
                     
-                    # 📸 FOTO SPIA 3: Schermata stabilizzata finale prima del cambio pagina
                     try: page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
                     except Exception: pass
                     time.sleep(2)
                     
-                    # 🛡️ PULIZIA AUTOMATICA EXCEL: Chiama la funzione corretta per svuotare la cella su GitHub
+                    # 🛡️ RESET CELLA EXCEL CLOUD NATIVO VIA GIT PUSH
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
                     
-                    page.goto("https://partner.snai.it")
+                    # 🛡️ PUNTAMENTO REALE RIPRISTINATO: Torna alla bacheca degli esercizi senza rompere il Login
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                     time.sleep(6)
-
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                     except Exception: pass
                     continue
@@ -282,6 +270,9 @@ def avvia_sincronizzazione_automatica():
 
         except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
+
+if __name__ == "__main__":
+    avvia_sincronizzazione_automatica()
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
