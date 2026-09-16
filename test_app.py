@@ -676,7 +676,6 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 st.rerun()
         except Exception as e_del: 
             st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
-)
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
