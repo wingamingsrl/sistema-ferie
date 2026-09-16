@@ -36,7 +36,8 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
     try:
         nome_file = "storico_ferie.xlsx"
         if os.path.exists(nome_file):
-            df_file = pd.read_excel(nome_file)
+            # 🛡️ FIX FINALE DI MANUELA: Forza la lettura dei codici come testo puro (str) azzerando i conflitti di dtypes vuoti
+            df_file = pd.read_excel(nome_file, dtype={"CODICE_LOCALE": str})
             
             # Azzera la cella d'azione per il locale completato
             # 🛡️ SPAZZINO DOPPIO DI MANUELA: Se l'azione era ELIMINA cancella la riga, altrimenti svuota la cella
