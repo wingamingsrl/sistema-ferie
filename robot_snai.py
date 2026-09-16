@@ -303,47 +303,55 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 # BLOCCO 5: DATA FINE PURIFICATA, SEQUENZA FOTO REALE E RITORNO IN BACHECA PROTETTO
 # =====================================================================================
+                    # 🛡️ INIZIALIZZAZIONE DI SICUREZZA DI MANUELA: Azzera le variabili per evitare i crash di scope di Python
                     frame_date = page
+                    tasto_elimina_snai = None
+
+                    # Cerca l'Iframe protetto della maschera delle date di Snaitech
                     for f in page.frames:
                         if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
                             frame_date = f
                             break
+                    
+                    # 🛡️ PROTEZIONE POP-UP: Se frame_date è rimasto sulla pagina principale, aspetta 3 secondi e riprova
+                    if frame_date == page:
+                        time.sleep(3)
+                        for f in page.frames:
+                            if "Chiusura" in f.url or f.locator("#ctl00_Cp1_Txtiniziochiusura").count() > 0:
+                                frame_date = f
+                                break
 
                     data_inizio_pura = data_inizio_pulita[:10].strip()
                     data_fine_pura = data_fine_pulita[:10].strip()
                     
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
-                 
-                    # 🛡️ FIX RIGIDO DI MANUELA: Inizializza la variabile a None all'avvio del blocco per azzerare i crash di scopo di Python
-                    tasto_elimina_snai = None
                   
                     # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, gestisce anche l'annullamento ante-sincro senza crashare
                     if mirino_azione == "ELIMINA":
                         print("   🗑️ [Robot] STEP 9: Rilevato comando di rimozione. Verifico presenza campo su Snaitech...")
-                        
-                        # Controlla se il tasto Elimina esiste fisicamente nella pagina del portale
                         tasto_elimina_snai = frame_date.locator("#ctl00_Cp1_BtnElimina").first
                         
                         if tasto_elimina_snai.count() == 0 or not tasto_elimina_snai.is_visible():
                             print("   ℹ️ [Robot] Chiusura non presente su Snaitech (Annullamento immediato). Salto il sito e pulisco l'Excel...")
                             scarica_e_aggiorna_excel_su_github(codice_aams)
                             time.sleep(4)
+                            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                            time.sleep(6)
+                            continue
+                        
+                        # Se invece il tasto esiste, procede con la normale rimozione formale a portale
+                        tasto_elimina_snai.wait_for(state="visible", timeout=10000)
+                        tasto_elimina_snai.click(force=True)
+                        print("   💾 [Robot] STEP 10: Pulsante Elimina premuto. Attesa conferma dal server Snaitech...")
+                        time.sleep(6)
+                        scarica_e_aggiorna_excel_su_github(codice_aams)
+                        time.sleep(4)
                         page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
                         time.sleep(6)
                         continue
-                        
-                    # Se invece il tasto esiste, procede con la normale rimozione formale a portale
-                    tasto_elimina_snai.wait_for(state="visible", timeout=10000)
-                    tasto_elimina_snai.click(force=True)
-                    print("   💾 [Robot] STEP 10: Pulsante Elimina premuto. Attesa conferma dal server Snaitech...")
-                    time.sleep(6)
-                    scarica_e_aggiorna_excel_su_github(codice_aams)
-                    time.sleep(4)
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
-                    time.sleep(6)
-                    continue
                 
+                    # ALTRIMENTI (Se NUOVA o MODIFICA): Procede con la tua digitazione reale speculare
                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
@@ -392,12 +400,8 @@ def avvia_sincronizzazione_automatica():
                     # 🛡️ RESET CELLA EXCEL CLOUD NATIVO VIA GIT PUSH
                     scarica_e_aggiorna_excel_su_github(codice_aams)
                     time.sleep(4)
-                    
-                    # 🛡️ PUNTAMENTO REALE RIPRISTINATO: Torna alla bacheca degli esercizi senza rompere il Login
-                    scarica_e_aggiorna_excel_su_github(codice_aams)
-                    time.sleep(4)
 
-                    # 🛡️ CALCOLATORE AVVISI 3 GIORNI PRIMA DI MANUELA: Verifica le date basandosi su oggi (16 Settembre 2026)
+                    # 🛡️ CALCOLATORE AVVISI 3 GIORNI PRIMA DI MANUELA: Estrae tecnico e collega per l'invio dinamico
                     try:
                         oggi_server = datetime.now().date()
                         data_in_doc = datetime.strptime(data_inizio_pura, "%d/%m/%Y").date()
@@ -406,18 +410,16 @@ def avvia_sincronizzazione_automatica():
                         giorni_alla_chiusura = (data_in_doc - oggi_server).days
                         giorni_alla_riapertura = (data_fi_doc - oggi_server).days
                         
-                        # Se mancano esattamente 3 giorni all'inizio della chiusura
+                        tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
+                        collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
+                        
                         if giorni_alla_chiusura == 3:
-                            spedisci_email_avviso_ufficio(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pura, "CHIUSURA LOCALE (TRA 3 GIORNI)")
-                            
-                        # Se mancano esattamente 3 giorni alla riapertura
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_pura, "CHIUSURA LOCALE (TRA 3 GIORNI)")
                         if giorni_alla_riapertura == 3:
-                            spedisci_email_avviso_ufficio(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_fine_pura, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_pura, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
                     except Exception as e_calc:
                         print(f"   ⚠️ Impossibile calcolare il promemoria email: {str(e_calc)}")
 
-
-                    
                     # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' stabile per lavorazioni consecutive di fila
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
                     time.sleep(8)
@@ -436,6 +438,7 @@ def avvia_sincronizzazione_automatica():
 
         except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
+
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
