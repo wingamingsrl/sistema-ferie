@@ -412,12 +412,12 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1: 
-        # 🛡️ SBLOCCO CALENDARIO 1 DI MANUELA: Chiave univoca per evitare il crash di ID duplicato
+        # 🛡️ INTERFACCIA DI MANUELA: Formato date.date puro per sbloccare la tendina dei mesi rapida
         data_chiusura = st.date_input(
             "Giorno Chiusura:", 
-            value=datetime.now(), 
-            min_value=datetime(2026, 1, 1), 
-            max_value=datetime(2028, 12, 31),
+            value=datetime.now().date(), 
+            min_value=datetime(2025, 1, 1).date(), 
+            max_value=datetime(2028, 12, 31).date(),
             format="DD-MM-YYYY",
             key="cal_chiusura_manuela"
         )
@@ -427,15 +427,16 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     col3, col4 = st.columns(2)
     #with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col3: 
-         # 🛡️ SBLOCCO CALENDARIO 2 DI MANUELA: Chiave univoca per la seconda data dell'applicazione
-            data_riapertura = st.date_input(
+        # 🛡️ INTERFACCIA DI MANUELA: Formato date.date puro per sbloccare la tendina dei mesi rapida
+        data_riapertura = st.date_input(
             "Giorno Chiusura:", 
-            value=datetime.now(), 
-            min_value=datetime(2026, 1, 1), 
-            max_value=datetime(2028, 12, 31),
+            value=datetime.now().date(), 
+            min_value=datetime(2025, 1, 1).date(), 
+            max_value=datetime(2028, 12, 31).date(),
             format="DD-MM-YYYY",
             key="cal_riapertura_manuela"
         )
+
 
 
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
