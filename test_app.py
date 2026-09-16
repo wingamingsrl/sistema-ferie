@@ -411,12 +411,31 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     col1, col2 = st.columns(2)
-    with col1: data_chiusura = st.date_input("Giorno Chiusura:", datetime.now(), format="DD-MM-YYYY")
+        with col1: 
+        # 🛡️ SBLOCCO CALENDARIO DI MANUELA: Permette di saltare da un mese all'altro all'istante
+        data_chiusura = st.date_input(
+            "Giorno Chiusura:", 
+            value=datetime.now(), 
+            min_value=datetime(2026, 1, 1), 
+            max_value=datetime(2028, 12, 31),
+            format="DD-MM-YYYY"
+        )
+
     with col2: ora_chiusura = st.time_input("Ora Chiusura:", dtime(6, 0))
     
     st.markdown("---")
     col3, col4 = st.columns(2)
-    with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
+    #with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
+    with col3: 
+        # 🛡️ SBLOCCO CALENDARIO DI MANUELA: Permette di saltare da un mese all'altro all'istante
+        data_riapertura = st.date_input(
+            "Giorno Chiusura:", 
+            value=datetime.now(), 
+            min_value=datetime(2026, 1, 1), 
+            max_value=datetime(2028, 12, 31),
+            format="DD-MM-YYYY"
+        )
+
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
