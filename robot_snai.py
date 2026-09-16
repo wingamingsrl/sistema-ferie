@@ -94,7 +94,7 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
 # =====================================================================================
         try:
-            print("🌐 [Robot] STEP 4: Connessione a partner.snai.it...")
+            print("🌐 [Robot] STEP 4: Connessione a partner.partner.snai.it...")
             page.goto("https://partner.snai.it")
             time.sleep(3)
             
@@ -140,7 +140,7 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_snai.iterrows():
+            for _, row in df_partner.snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
@@ -230,7 +230,7 @@ def avvia_sincronizzazione_automatica():
                         scarica_e_aggiorna_excel_su_github(codice_aams)
                         time.sleep(4)
                         
-                        page.goto("https://partner.snai.it")
+                        page.goto("https://partner.partner.snai.it")
                         time.sleep(6)
                         continue # Salta il resto del codice e passa al locale successivo della lista
                     
