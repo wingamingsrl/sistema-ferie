@@ -149,8 +149,11 @@ def avvia_sincronizzazione_automatica():
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
+                    
+                    # 🛡️ FIX STABILIZZAZIONE DI MANUELA: Pausa di sicurezza per far assestare i frame di Snaitech dopo i salti riga veloci
+                    time.sleep(4)
 
-                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — MAI PIÙ TOCCATO
+                    # 🔑 RIPRISTINO COMPLETO DELLA RICERCA VECCHIA ORIGINALE DEI RAGAZZI
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -163,6 +166,7 @@ def avvia_sincronizzazione_automatica():
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
+
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
