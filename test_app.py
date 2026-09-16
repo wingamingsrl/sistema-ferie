@@ -411,7 +411,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     col1, col2 = st.columns(2)
-        with col1: 
+    with col1: 
         # 🛡️ SBLOCCO CALENDARIO DI MANUELA: Permette di saltare da un mese all'altro all'istante
         data_chiusura = st.date_input(
             "Giorno Chiusura:", 
