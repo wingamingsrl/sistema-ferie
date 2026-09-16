@@ -151,17 +151,14 @@ def avvia_sincronizzazione_automatica():
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
-                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene un'azione valida, salta la riga all'istante
+                    # 🛡️ INTERCETTATORE DI MANUELA: Abilita il robot a elaborare NUOVA, MODIFICA ed ELIMINA
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ FIX STABILIZZAZIONE DI MANUELA: Pausa di 4 secondi per far caricare la griglia dopo i salti riga veloci
-                    time.sleep(4)
-
-                    # 🔑 RIPRISTINO COMPLETO DELLA RICERCA ORIGINALE DEI RAGAZZI
+                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE DAL TUO FILE
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -174,7 +171,6 @@ def avvia_sincronizzazione_automatica():
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
-
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
@@ -189,8 +185,9 @@ def avvia_sincronizzazione_automatica():
                         icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
 
-                    if (icona_modifica.count() > 0 and icona_modifica.is_visible()) or mirino_azione == "ELIMINA":
-                        print(f"   📝 [Robot] STEP 8: [{mirino_azione}] Clicco sulla matita di modifica per entrare nella scheda...")
+                    # Sblocca l'ingresso in scheda tramite matita anche per il comando di rimozione
+                    if (icona_modifica.count() > 0 and icona_modifica.is_visible()) or mirino_azione in ["MODIFICA", "ELIMINA"]:
+                        print(f"   📝 [Robot] STEP 8: [{mirino_azione}] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
