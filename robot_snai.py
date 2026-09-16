@@ -160,6 +160,10 @@ def avvia_sincronizzazione_automatica():
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
+                    # 📸 FOTO SPIA A: Vediamo cosa c'è a schermo un attimo prima di cercare la barra filtri
+                    try: page.screenshot(path="A_prima_del_timeout.png", full_page=True)
+                    except Exception: pass
+
                     # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
                     target_frame = page
                     for f in page.frames:
@@ -169,10 +173,19 @@ def avvia_sincronizzazione_automatica():
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
-                    campo_ricerca.wait_for(state="visible", timeout=20000)
+                    
+                    try:
+                        campo_ricerca.wait_for(state="visible", timeout=20000)
+                    except Exception as e_time:
+                        # 📸 FOTO SPIA B: Cattura lo schermo ESATTAMENTE nel millesimo di secondo in cui scatta il timeout!
+                        try: page.screenshot(path="B_esplosione_timeout.png", full_page=True)
+                        except Exception: pass
+                        raise e_time # Fa proseguire l'errore per saltare la riga regolarmente
+                        
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
+
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
