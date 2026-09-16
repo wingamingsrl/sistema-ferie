@@ -412,15 +412,16 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1: 
-        # 🛡️ SBLOCCO SCORRIMENTO DI MANUELA: Attiva le frecce per scorrere i mesi liberamente sul telefono
+        # 🛡️ KALENDARIO ETERNO DI MANUELA: Nessun limite futuro (fino all'anno 9999) e scorrimento mesi sbloccato
         data_chiusura = st.date_input(
             "Giorno Chiusura:", 
             value=datetime.now().date(), 
-            min_value=datetime(2026, 1, 1).date(), 
-            max_value=datetime(2027, 12, 31).date(),
+            min_value=datetime(2024, 1, 1).date(), 
+            max_value=datetime.max.date(),
             format="DD-MM-YYYY",
-            key="cal_chiusura_scorrevole_manuela"
+            key="cal_chiusura_eterno_manuela"
         )
+
 
 
     with col2: ora_chiusura = st.time_input("Ora Chiusura:", dtime(6, 0))
@@ -430,14 +431,16 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     #with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col3: 
         # 🛡️ SBLOCCO SCORRIMENTO DI MANUELA: Attiva le frecce per scorrere i mesi liberamente sul telefono
+        # 🛡️ KALENDARIO ETERNO DI MANUELA: Nessun limite futuro (fino all'anno 9999) e scorrimento mesi sbloccato
         data_riapertura = st.date_input(
             "Giorno Chiusura:", 
             value=datetime.now().date(), 
-            min_value=datetime(2026, 1, 1).date(), 
-            max_value=datetime(2027, 12, 31).date(),
+            min_value=datetime(2024, 1, 1).date(), 
+            max_value=datetime.max.date(),
             format="DD-MM-YYYY",
-            key="cal_riapertura_scorrevole_manuela"
+            key="cal_riapertura_eterno_manuela"
         )
+
 
 
 
