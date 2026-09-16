@@ -411,31 +411,32 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     col1, col2 = st.columns(2)
-    with col1: 
-        # 🛡️ INTERFACCIA DI MANUELA: Formato date.date puro per sbloccare la tendina dei mesi rapida
-        data_chiusura = st.date_input(
-            "Giorno Chiusura:", 
-            value=datetime.now().date(), 
-            min_value=datetime(2025, 1, 1).date(), 
-            max_value=datetime(2028, 12, 31).date(),
-            format="DD-MM-YYYY",
-            key="cal_chiusura_manuela"
-        )
+    with col1:
+        # 🛡️ INTERFACCIA AVANZATA DI MANUELA: Menù a tendina rapidi per scegliere il mese in un clic sul telefono senza usare le freccette
+        st.write("**📅 Giorno e Mese della Chiusura:**")
+        giorno_scelto = st.selectbox("Seleziona il Giorno:", list(range(1, 32)), index=datetime.now().day - 1, key="giorno_ch_manuela")
+        
+        mesi_anno = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
+        mese_scelto_testo = st.selectbox("Seleziona il Mese:", mesi_anno, index=datetime.now().month - 1, key="mese_ch_manuela")
+        
+        # Converte la selezione in una data reale (fissando l'anno corrente 2026)
+        num_mese = mesi_anno.index(mese_scelto_testo) + 1
+        data_chiusura = datetime(2026, num_mese, giorno_scelto).date()
+
     with col2: ora_chiusura = st.time_input("Ora Chiusura:", dtime(6, 0))
     
     st.markdown("---")
     col3, col4 = st.columns(2)
     #with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col3: 
-        # 🛡️ INTERFACCIA DI MANUELA: Formato date.date puro per sbloccare la tendina dei mesi rapida
-        data_riapertura = st.date_input(
-            "Giorno Chiusura:", 
-            value=datetime.now().date(), 
-            min_value=datetime(2025, 1, 1).date(), 
-            max_value=datetime(2028, 12, 31).date(),
-            format="DD-MM-YYYY",
-            key="cal_riapertura_manuela"
-        )
+        # 🛡️ INTERFACCIA AVANZATA DI MANUELA: Menù a tendina rapidi per scegliere il mese in un clic sul telefono senza usare le freccette
+        st.write("**📅 Giorno e Mese della Riapertura:**")
+        giorno_riap = st.selectbox("Seleziona il Giorno:", list(range(1, 32)), index=datetime.now().day - 1, key="giorno_ri_manuela")
+        mese_riap_testo = st.selectbox("Seleziona il Mese:", mesi_anno, index=datetime.now().month - 1, key="mese_ri_manuela")
+        
+        num_mese_riap = mesi_anno.index(mese_riap_testo) + 1
+        data_riapertura = datetime(2026, num_mese_riap, giorno_riap).date()
+
 
 
 
