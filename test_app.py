@@ -578,23 +578,25 @@ for r in alert_r: st.warning(r)
 
 if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
-    colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
+    colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
     
     if st.session_state.storico_cloud:
-        df_completo = pd.DataFrame(st.session_state.storico_cloud)
+        # 🛡️ FILTRO DI MANUELA INTEGRALE: Scansiona la RAM e nasconde i locali da eliminare senza usare Pandas
+        lista_visibile = [
+            riga for riga in st.session_state.storico_cloud 
+            if str(riga.get("ROBOT_ACTION", "")).strip().upper() != "ELIMINA" and 
+               str(riga.get("robot_action", "")).strip().upper() != "ELIMINA"
+        ]
         
-        # 🛡️ FILTRO ULTRA-CORAZZATO DI MANUELA: Verifica se la colonna esiste prima di filtrare, evitando il crash di Pandas
-        if df_completo.empty:
-            df_vis = df_completo
-        elif "ROBOT_ACTION" in df_completo.columns:
-            df_vis = df_completo[df_completo["ROBOT_ACTION"].astype(str).str.strip().upper() != "ELIMINA"]
-        elif "robot_action" in df_completo.columns:
-            df_vis = df_completo[df_completo["robot_action"].astype(str).str.strip().upper() != "ELIMINA"]
+        # Genera la tabella solo con i locali rimasti attivi
+        df_vis = pd.DataFrame(lista_visibile)
+        
+        if not df_vis.empty:
+            df_vis = df_vis.reindex(columns=colonne_reali_ufficio).fillna("")
+            st.dataframe(df_vis, hide_index=True)
         else:
-            df_vis = df_completo
-            
-        df_vis = df_vis.reindex(columns=colonne_reali_ufficio).fillna("")
-        st.dataframe(df_vis, hide_index=True)
+            st.info("📭 Nessuna chiusura attiva presente nel registro storico.")
+
 
 
         
