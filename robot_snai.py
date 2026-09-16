@@ -231,6 +231,7 @@ def avvia_sincronizzazione_automatica():
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
 
               # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, preme il tasto nativo di Snaitech ed esce
+                    # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, preme il tasto di Snaitech ed esce dal ciclo
                     if mirino_azione == "ELIMINA":
                         print("   🗑️ [Robot] STEP 9: Rilevato comando di rimozione. Cerco il tasto Elimina di Snaitech...")
                         tasto_elimina_snai = frame_date.locator("#ctl00_Cp1_BtnElimina").first
@@ -241,10 +242,11 @@ def avvia_sincronizzazione_automatica():
                         scarica_e_aggiorna_excel_su_github(codice_aams)
                         time.sleep(4)
                         
-                        # 🔑 BLINDATURA DI MANUELA: Forza l'attesa del caricamento completo della pagina degli esercizi prima di passare alla riga dopo
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
-                        time.sleep(6)
-                        continue # Salta il resto del codice e passa al locale successivo della lista
+                        # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' con pausa fissa per evitare il blocco del networkidle
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                        time.sleep(8)
+                        continue
+
                     
                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
@@ -296,14 +298,18 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(4)
                     
                     # 🛡️ PUNTAMENTO REALE RIPRISTINATO: Torna alla bacheca degli esercizi senza rompere il Login
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle")
-                    time.sleep(6)
+                    scarica_e_aggiorna_excel_su_github(codice_aams)
+                    time.sleep(4)
+                    
+                    # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' stabile per lavorazioni consecutive di fila
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                    time.sleep(8)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle")
-                        time.sleep(6)
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                        time.sleep(8)
                     except Exception: pass
                     continue
 
