@@ -151,16 +151,17 @@ def avvia_sincronizzazione_automatica():
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
-                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
-                    # 🛡️ INTERCETTATORE DI MANUELA: Abilita il robot a elaborare anche i comandi di rimozione
+                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene un'azione valida, salta la riga all'istante
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
-
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
+                    # 🛡️ FIX STABILIZZAZIONE DI MANUELA: Pausa di 4 secondi per far caricare la griglia dopo i salti riga veloci
+                    time.sleep(4)
+
+                    # 🔑 RIPRISTINO COMPLETO DELLA RICERCA ORIGINALE DEI RAGAZZI
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -173,6 +174,7 @@ def avvia_sincronizzazione_automatica():
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
+
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
