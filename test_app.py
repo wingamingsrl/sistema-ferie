@@ -606,81 +606,77 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     else:
         st.info("📭 Nessuna chiusura presente in memoria. Trascina il file Excel storico in fondo per ripopolare la plancia.")
         
-    st.markdown("---")
-    st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
     # =====================================================================================
-    # PULSANTE DI FORZATURA MANUALE ROBOT TRANSMISSIONE PORTALE SNAITECH
+    # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'AZIONE DA FARE
     # =====================================================================================
     st.markdown("---")
-    st.markdown("### 🤖 Sincronizzazione Diretta Portale Snaitech")
+    st.markdown("### 🏢 Locali SNAITECH pronti da inviare a sistema")
     st.write("Questo comando attiva il robot Playwright che effettua il login automatico con OTP su .snai.it e compila le scadenze.")
     
     if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU .SNAI.IT"):
         with st.spinner("Robot in azione sul portale Snaitech... Non chiudere la pagina..."):
-            esito_corsa = esegui_sincronizzazione_robot_snai()
-            if esito_corsa:
-                time.sleep(5)
-                # Svuota la RAM dello smartphone e rilegge il file ripulito dal robot su GitHub
-                if os.path.exists(FILE_STORICO_PERMANENTE):
-                    st.session_state.storico_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("").to_dict('records')
-                st.rerun()
+            esegui_sincronizzazione_robot_snai()
 
-    righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()] if st.session_state.storico_cloud else []
-    if righe_snaitech:
-        df_snai = pd.DataFrame(righe_snaitech).reindex(columns=colonne_reali_ufficio).fillna("")
-        st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
+    # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella SOLO le righe che hanno un'azione reale da compiere (NUOVA, MODIFICA, ELIMINA)
+    righe_lavorazione_snai = [
+        row for row in st.session_state.storico_cloud 
+        if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
+        and str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+    ] if st.session_state.storico_cloud else []
+    
+    if righe_lavorazione_snai:
+        df_snai = pd.DataFrame(righe_lavorazione_snai)
+        colonne_snai_vis = ["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+        df_snai_vis = df_snai.reindex(columns=colonne_snai_vis).fillna("")
+        st.dataframe(df_snai_vis, hide_index=True)
     else:
-        st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
+        st.success("✅ Nessun locale Snaitech in attesa. Tutte le chiusure sono allineate sul portale!")
 
-# =====================================================================================
-# BLOCCO 6 - PARTE C: TASTO CANCELLAZIONE EXCEL REALE, CARICATORE UFFICIO E LOGOUT
-# =====================================================================================
+    # =====================================================================================
+    # PANNELLO CANCELLAZIONE - COMPRESSIONE MENÙ A TENDINA E SPARIZIONE TASTO SMARTPHONE
+    # =====================================================================================
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
+    
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
+    mappa_indici_reali = {}
+    
+    # 🛡️ FILTRO MENÙ DI MANUELA: Scansiona la RAM e inserisce nella tendina SOLO i locali che non sono già in stato ELIMINA
     if st.session_state.storico_cloud:
         for idx, row in enumerate(st.session_state.storico_cloud):
-            opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})")
+            azione_corrente = str(row.get("ROBOT_ACTION", "")).strip().upper()
+            if azione_corrente != "ELIMINA":
+                testo_opzione = f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})"
+                opzioni_cancellazione.append(testo_opzione)
+                mappa_indici_reali[testo_opzione] = idx
             
-    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
-    if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
+    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=len(opzioni_cancellazione) <= 1)
+    
+    # 🛡️ BOTTONE FANTASMA DI MANUELA: Il tasto compare SOLO se hai selezionato un locale valido, se rimetti la voce standard sparisce nel nulla!
+    if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete in mappa_indici_reali:
         try:
-            parti_s = selezione_delete.split("ID ")
-            if len(parti_s) > 1:
-                sub_stringa = parti_s[1]
-                idx_isolato_str = sub_stringa.split(" |")[0]
-                idx_da_eliminare = int(idx_isolato_str)
+            idx_da_eliminare = mappa_indici_reali[selezione_delete]
                 
-                if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                    st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
-                    
-                    # 🛡️ FIX CANCELLAZIONE DI MANUELA: Non cancella subito, marchia con ELIMINA per il robot
-                    st.session_state.storico_cloud[idx_da_eliminare]["ROBOT_ACTION"] = "ELIMINA"
-                    df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    
-                    # Forza la scrittura fisica dell'Excel su disco prima di inviarlo
-                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    
-                    # Spinge il file modificato su GitHub
-                    push_excel_su_github(df_nuovo_salva)
-                    
-                    st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
-                    st.success("🗑️ Richiesta di eliminazione inviata! Il robot rimuoverà la chiusura dal portale e pulirà la plancia.")
-                    time.sleep(2.0)
-                    st.rerun()
-
-                    
-                    # 🛡️ FIX FONDAMENTALE: Forza la scrittura fisica dell'Excel su disco prima di inviarlo
-                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    
-                    # Spinge il file modificato su GitHub
-                    push_excel_su_github(df_nuovo_salva)
-                    
-                    st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
-                    st.success("🗑️ Chiusura rimossa con successo sia dalla plancia che dall'Excel cloud!")
-                    time.sleep(1.0)
-                    st.rerun()
-        except Exception as e_del: st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+                st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
+                
+                # Marchia con la parola chiave per il robot
+                st.session_state.storico_cloud[idx_da_eliminare]["ROBOT_ACTION"] = "ELIMINA"
+                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                
+                # Forza la scrittura fisica dell'Excel su disco prima di inviarlo
+                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                
+                # Spinge il file modificato su GitHub
+                push_excel_su_github(df_nuovo_salva)
+                
+                st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
+                st.success("🗑️ Richiesta di eliminazione inviata! La riga è stata nascosta. Il robot la rimuoverà da Snaitech.")
+                time.sleep(1.5)
+                st.rerun()
+        except Exception as e_del: 
+            st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+)
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
