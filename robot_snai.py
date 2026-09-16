@@ -234,8 +234,21 @@ def avvia_sincronizzazione_automatica():
                         time.sleep(6)
                         continue # Salta il resto del codice e passa al locale successivo della lista
                     
-                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
+                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
+
+                    # 🛡️ SBLOCCO STATO MICROSOFT: Ordina a JavaScript di spegnere i blocchi di validazione data prima di digitare
+                    try:
+                        frame_date.evaluate("""() => {
+                            var w1 = document.getElementById('ctl00_Cp1_WatermarkExtender_0_ClientState');
+                            var w2 = document.getElementById('ctl00_Cp1_TextBoxWatermarkExtender1_ClientState');
+                            if(w1) w1.value = 'true';
+                            if(w2) w2.value = 'true';
+                            // Forza i validatori di pagina a considerarsi sempre validi e conformi
+                            if(typeof(Page_IsValid) !== 'undefined') Page_IsValid = true;
+                        }""")
+                    except Exception: pass
+                    time.sleep(1)
 
                     print("   📝 [Robot] STEP 9: Digitazione reale data inizio...")
                     campo_dal.wait_for(state="visible", timeout=10000)
@@ -262,6 +275,7 @@ def avvia_sincronizzazione_automatica():
                     try: frame_date.locator("#ctl00_Cp1_fascia_to").select_option(ora_fine_pulita)
                     except Exception: pass
                     time.sleep(2)
+
 
                     try: page.screenshot(path="1_modulo_compilato.png", full_page=True)
                     except Exception: pass
