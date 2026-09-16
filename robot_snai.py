@@ -234,7 +234,7 @@ def avvia_sincronizzazione_automatica():
                         time.sleep(6)
                         continue # Salta il resto del codice e passa al locale successivo della lista
                     
-                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
+                    campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
                     # 🛡️ SBLOCCO STATO MICROSOFT: Ordina a JavaScript di spegnere i blocchi di validazione data prima di digitare
