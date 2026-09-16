@@ -412,41 +412,30 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1: 
-        # 🛡️ SBLOCCO TOTALE DI MANUELA: Casella di testo libera ed eterna per scrivere qualsiasi data futura in un secondo
-        data_chiusura_testo = st.text_input(
-            "Giorno Chiusura (Formato: GG-MM-AAAA):", 
-            value=datetime.now().strftime("%d-%m-%Y"),
-            key="txt_chiusura_eterno_manuela"
+        # 🛡️ BLINDATURA CALENDARIO DI MANUELA: Ripristino layout classico con sblocco tendina dei mesi rapida sul telefono
+        data_chiusura = st.date_input(
+            "Giorno Chiusura:", 
+            value=datetime.now().date(), 
+            min_value=datetime(2025, 1, 1).date(), 
+            max_value=datetime(2030, 12, 31).date(),
+            format="DD-MM-YYYY",
+            key="cal_chiusura_definitivo_manuela"
         )
-        # Converte il testo digitato in data reale per l'Excel aziendale
-        try: data_chiusura = datetime.strptime(data_chiusura_testo.strip(), "%d-%m-%Y").date()
-        except Exception: data_chiusura = datetime.now().date()
-
-
-
-
     with col2: ora_chiusura = st.time_input("Ora Chiusura:", dtime(6, 0))
     
     st.markdown("---")
     col3, col4 = st.columns(2)
     #with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
     with col3: 
-        # 🛡️ SBLOCCO SCORRIMENTO DI MANUELA: Attiva le frecce per scorrere i mesi liberamente sul telefono
-        # 🛡️ SBLOCCO TOTALE DI MANUELA: Casella di testo libera ed eterna per scrivere qualsiasi data futura in un secondo
-        data_riapertura_testo = st.text_input(
-            "Giorno Chiusura (Formato: GG-MM-AAAA):", 
-            value=datetime.now().strftime("%d-%m-%Y"),
-            key="txt_riapertura_eterno_manuela"
+        # 🛡️ BLINDATURA CALENDARIO DI MANUELA: Ripristino layout classico con sblocco tendina dei mesi rapida sul telefono
+        data_riapertura = st.date_input(
+            "Giorno Chiusura:", 
+            value=datetime.now().date(), 
+            min_value=datetime(2025, 1, 1).date(), 
+            max_value=datetime(2030, 12, 31).date(),
+            format="DD-MM-YYYY",
+            key="cal_riapertura_definitivo_manuela"
         )
-        # Converte il testo digitato in data reale per l'Excel aziendale
-        try: data_riapertura = datetime.strptime(data_riapertura_testo.strip(), "%d-%m-%Y").date()
-        except Exception: data_riapertura = datetime.now().date()
-
-
-
-
-
-
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
