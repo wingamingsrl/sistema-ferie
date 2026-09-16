@@ -609,6 +609,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     # =====================================================================================
     # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'AZIONE DA FARE
     # =====================================================================================
+        # =====================================================================================
+    # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'ACTION DA FARE
+    # =====================================================================================
     st.markdown("---")
     st.markdown("### 🏢 Locali SNAITECH pronti da inviare a sistema")
     st.write("Questo comando attiva il robot Playwright che effettua il login automatico con OTP su .snai.it e compila le scadenze.")
@@ -616,6 +619,14 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU .SNAI.IT"):
         with st.spinner("Robot in azione sul portale Snaitech... Non chiudere la pagina..."):
             esegui_sincronizzazione_robot_snai()
+            
+            # 🛡️ AUTOMAZIONE REFRESH DI MANUELA: Pausa di sicurezza, svuota la RAM vecchia e pulisce lo smartphone al 100%
+            time.sleep(3)
+            if os.path.exists(FILE_STORICO_PERMANENTE):
+                st.session_state.storico_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("").to_dict('records')
+            
+            # Fa sparire i locali inseriti e rimette il tabellone a specchio della bacheca online
+            st.rerun()
 
     # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella SOLO le righe che hanno un'azione reale da compiere (NUOVA, MODIFICA, ELIMINA)
     righe_lavorazione_snai = [
