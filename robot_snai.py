@@ -199,6 +199,15 @@ def avvia_sincronizzazione_automatica():
                         icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
 
+                    # 🛡️ INTELLIGENZA DI MANUELA: Se l'azione è ELIMINA ma non esiste la matita a portale, pulisce l'Excel direttamente da qui!
+                    if mirino_azione == "ELIMINA" and icona_modifica.count() == 0:
+                        print("   ℹ️ [Robot] Comando ELIMINA su locale vergine a portale. Cancello la riga dall'Excel cloud all'istante...")
+                        scarica_e_aggiorna_excel_su_github(codice_aams)
+                        time.sleep(4)
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                        time.sleep(6)
+                        continue
+                   
                     if (icona_modifica.count() > 0 and icona_modifica.is_visible()) or mirino_azione == "ELIMINA":
                         print(f"   📝 [Robot] STEP 8: [{mirino_azione}] Clicco sulla matita di modifica per entrare nella scheda...")
                         icona_modifica.click(force=True, timeout=8000)
