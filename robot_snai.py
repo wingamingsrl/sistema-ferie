@@ -140,7 +140,7 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            for _, row in df_partner.snai.iterrows():
+            for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
