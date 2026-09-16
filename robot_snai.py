@@ -296,13 +296,13 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(4)
                     
                     # 🛡️ PUNTAMENTO REALE RIPRISTINATO: Torna alla bacheca degli esercizi senza rompere il Login
-                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle")
                     time.sleep(6)
                     
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="networkidle")
                         time.sleep(6)
                     except Exception: pass
                     continue
