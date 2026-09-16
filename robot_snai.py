@@ -203,6 +203,10 @@ def avvia_sincronizzazione_automatica():
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
+                        
+                        # 🛡️ BLINDATURA DI MANUELA: Forza lo scroll visivo esplicito al centro dello schermo prima di fare il click sul pallino
+                        icona_nuovo.scroll_into_view_if_needed(timeout=5000)
+                        time.sleep(1)
                         icona_nuovo.click(force=True, timeout=8000)
                     else:
                         print("   AM 🖱️ [Grid Mode] Clic sulla cella td nativa della riga...")
