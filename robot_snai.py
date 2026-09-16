@@ -41,7 +41,14 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
             df_file = pd.read_excel(nome_file)
             
             # Azzera la cella d'azione per il locale completato
-            df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
+            # 🛡️ SPAZZINO DOPPIO DI MANUELA: Se l'azione era ELIMINA cancella la riga, altrimenti svuota la cella
+            df_filtrato_locale = df_file[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip()]
+            if not df_filtrato_locale.empty and str(df_filtrato_locale.iloc[0].get("ROBOT_ACTION", "")).strip().upper() == "ELIMINA":
+                df_file = df_file[df_file["CODICE_LOCALE"].astype(str).str.strip() != str(codice_locale_successo).strip()]
+                print("   🗑️ [Cloud Excel] Rilevato comando ELIMINA: Riga rimossa definitivamente dal database.")
+            else:
+                df_file.loc[df_file["CODICE_LOCALE"].astype(str).str.strip() == str(codice_locale_successo).strip(), "ROBOT_ACTION"] = ""
+
             
             # Riassegna la struttura colonne rigida dell'ufficio
             colonne_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
@@ -145,7 +152,9 @@ def avvia_sincronizzazione_automatica():
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
                     # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
-                    if mirino_azione not in ["NUOVA", "MODIFICA"]:
+                    # 🛡️ INTERCETTATORE DI MANUELA: Abilita il robot a elaborare anche i comandi di rimozione
+                    if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
+
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
                         
@@ -178,8 +187,8 @@ def avvia_sincronizzazione_automatica():
                         icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
 
-                    if icona_modifica.count() > 0 and icona_modifica.is_visible():
-                        print("   📝 [Robot] STEP 8: [MODIFICA] Rilevato cambio URL ChiusuraEsercizio.aspx. Clicco...")
+                    if (icona_modifica.count() > 0 and icona_modifica.is_visible()) or mirino_azione == "ELIMINA":
+                        print(f"   📝 [Robot] STEP 8: [{mirino_azione}] Clicco sulla matita di modifica per entrare nella scheda...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
@@ -206,6 +215,25 @@ def avvia_sincronizzazione_automatica():
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
 
+                    # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, clicca sul tasto di rimozione ed esce
+                    if mirino_azione == "ELIMINA":
+                        print("   🗑️ [Robot] STEP 9: Rilevato comando di rimozione. Cerco il tasto Elimina di Snaitech...")
+                        tasto_elimina_snai = frame_date.locator("#ctl00_Cp1_BtnElimina").first
+                        tasto_elimina_snai.wait_for(state="visible", timeout=10000)
+                        
+                        # Clicca sul tasto Elimina nativo estratto dal tuo HTML
+                        tasto_elimina_snai.click(force=True)
+                        print("   💾 [Robot] STEP 10: Pulsante Elimina premuto. Attesa conferma dal server Snaitech...")
+                        time.sleep(6)
+                        
+                        # Svuota ed elimina la riga dal cloud
+                        scarica_e_aggiorna_excel_su_github(codice_aams)
+                        time.sleep(4)
+                        
+                        page.goto("https://partner.snai.it")
+                        time.sleep(6)
+                        continue # Salta il resto del codice e passa al locale successivo della lista
+                    
                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
