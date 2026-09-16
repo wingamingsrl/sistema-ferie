@@ -314,7 +314,10 @@ def avvia_sincronizzazione_automatica():
                     
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
-
+                 
+                    # 🛡️ FIX RIGIDO DI MANUELA: Inizializza la variabile a None all'avvio del blocco per azzerare i crash di scopo di Python
+                    tasto_elimina_snai = None
+                  
                     # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, gestisce anche l'annullamento ante-sincro senza crashare
                     if mirino_azione == "ELIMINA":
                         print("   🗑️ [Robot] STEP 9: Rilevato comando di rimozione. Verifico presenza campo su Snaitech...")
@@ -327,7 +330,7 @@ def avvia_sincronizzazione_automatica():
                             scarica_e_aggiorna_excel_su_github(codice_aams)
                             time.sleep(4)
                         page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
-                        time.sleep(8)
+                        time.sleep(6)
                         continue
                         
                     # Se invece il tasto esiste, procede con la normale rimozione formale a portale
