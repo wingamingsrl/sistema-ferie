@@ -231,24 +231,32 @@ def avvia_sincronizzazione_automatica():
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
 
-              # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, preme il tasto nativo di Snaitech ed esce
-                    # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, preme il tasto di Snaitech ed esce dal ciclo
+                    # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, gestisce anche l'annullamento ante-sincro senza crashare
                     if mirino_azione == "ELIMINA":
-                        print("   🗑️ [Robot] STEP 9: Rilevato comando di rimozione. Cerco il tasto Elimina di Snaitech...")
-                        tasto_elimina_snai = frame_date.locator("#ctl00_Cp1_BtnElimina").first
-                        tasto_elimina_snai.wait_for(state="visible", timeout=10000)
-                        tasto_elimina_snai.click(force=True)
-                        print("   💾 [Robot] STEP 10: Pulsante Elimina premuto. Attesa conferma dal server Snaitech...")
-                        time.sleep(6)
-                        scarica_e_aggiorna_excel_su_github(codice_aams)
-                        time.sleep(4)
+                        print("   🗑️ [Robot] STEP 9: Rilevato comando di rimozione. Verifico presenza campo su Snaitech...")
                         
-                        # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' con pausa fissa per evitare il blocco del networkidle
+                        # Controlla se il tasto Elimina esiste fisicamente nella pagina del portale
+                        tasto_elimina_snai = frame_date.locator("#ctl00_Cp1_BtnElimina").first
+                        
+                        if tasto_elimina_snai.count() == 0 or not tasto_elimina_snai.is_visible():
+                            print("   ℹ️ [Robot] Chiusura non presente su Snaitech (Annullamento immediato). Salto il sito e pulisco l'Excel...")
+                            scarica_e_aggiorna_excel_su_github(codice_aams)
+                            time.sleep(4)
                         page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
                         time.sleep(8)
                         continue
-
-                    
+                        
+                    # Se invece il tasto esiste, procede con la normale rimozione formale a portale
+                    tasto_elimina_snai.wait_for(state="visible", timeout=10000)
+                    tasto_elimina_snai.click(force=True)
+                    print("   💾 [Robot] STEP 10: Pulsante Elimina premuto. Attesa conferma dal server Snaitech...")
+                    time.sleep(6)
+                    scarica_e_aggiorna_excel_su_github(codice_aams)
+                    time.sleep(4)
+                    page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                    time.sleep(6)
+                    continue
+                
                     campo_dal = frame_date.locator("#ctl00_Cp1_Txtiniziochiusura, input[id*='Txtiniziochiusura']").first
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
