@@ -230,21 +230,18 @@ def avvia_sincronizzazione_automatica():
                     ora_inizio_pulita = "06:00" if "06:00" in str(row["INIZIO_FERIE"]) else "00:00"
                     ora_fine_pulita = "12:00" if "12:00" in str(row["FINE_FERIE"]) else "23:30"
 
-                    # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, clicca sul tasto di rimozione ed esce
+              # 🛡️ BIVIO CANCELLAZIONE DI MANUELA: Se l'azione è ELIMINA, preme il tasto nativo di Snaitech ed esce
                     if mirino_azione == "ELIMINA":
                         print("   🗑️ [Robot] STEP 9: Rilevato comando di rimozione. Cerco il tasto Elimina di Snaitech...")
                         tasto_elimina_snai = frame_date.locator("#ctl00_Cp1_BtnElimina").first
                         tasto_elimina_snai.wait_for(state="visible", timeout=10000)
-                        
-                        # Clicca sul tasto Elimina nativo estratto dal tuo HTML
                         tasto_elimina_snai.click(force=True)
                         print("   💾 [Robot] STEP 10: Pulsante Elimina premuto. Attesa conferma dal server Snaitech...")
                         time.sleep(6)
-                        
-                        # Svuota ed elimina la riga dal cloud
                         scarica_e_aggiorna_excel_su_github(codice_aams)
                         time.sleep(4)
                         
+                        # 🔑 BLINDATURA DI MANUELA: Forza l'attesa del caricamento completo della pagina degli esercizi prima di passare alla riga dopo
                         page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
                         time.sleep(6)
                         continue # Salta il resto del codice e passa al locale successivo della lista
