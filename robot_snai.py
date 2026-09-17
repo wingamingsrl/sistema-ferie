@@ -135,22 +135,37 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         👥 COLLEGHI AZIENDALI IN COPIA NOTIFICA: {collega_in_copia}
         ------------------------------------------------------------
         
-        Messaggio automatico generato dal server di monitoraggio WinGaming-Robot.
-        """
+        # =====================================================================================
+        # 🛡️ INVIO NATIVO DI MANUELA: Copiato speculare dal metodo Streamlit funzionante al 100%
+        # =====================================================================================
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.header import Header
+
+        # Configurazione rigida dei server Gmail aziendali dell'ufficio
+        SMTP_SERVER = "://gmail.com"
+        SMTP_PORT = 587
+        SMTP_USER = "wingamingsrl@gmail.com"
+        SMTP_PASS = "Salmi123!" # Usa la stessa identica password o password app dell'ufficio
+
+        msg = MIMEText(corpo_mail, 'plain', 'utf-8')
+        msg['Subject'] = Header(oggetto_mail, 'utf-8')
+        msg['From'] = SMTP_USER
+        msg['To'] = stringa_destinatari
+
+        # Apre la connessione protetta sulla porta SMTP dell'ufficio
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASS)
         
-        # Spedizione web reale: Mittente fisso WinGaming e Destinatari estratti dal tuo file excel
-        res = requests.post(
-            "https://mailgun.net",
-            auth=("api", "key-3ax657uw1qq7tt69176181vx6"),
-            data={"from": "WinGaming Robot <wingamingsrl@gmail.com>",
-                  "to": destinatari_finali,
-                  "subject": oggetto_mail,
-                  "text": corpo_mail},
-            timeout=12
-        )
-        print(f"   ✅ [Email Engine] Notifica spedita con successo a: {stringa_destinatari}")
+        # Spedisce fisicamente l'email alla lista dei tecnici estratti dall'Excel
+        server.sendmail(SMTP_USER, destinatari_finali, msg.as_string())
+        server.quit()
+        
+        print(f"   ✅ [Email Engine] Notifica spedita e CONSEGNATA REALMENTE a: {stringa_destinatari}")
     except Exception as e_mail:
-        print(f"   ❌ Errore durante lo smistamento email tarato sul file dei tecnici: {str(e_mail)}")
+        print(f"   ❌ Errore durante l'invio SMTP nativo dell'ufficio: {str(e_mail)}")
+
 
 
 
