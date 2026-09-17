@@ -70,40 +70,53 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
 
 
 def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice, data_evento, tipo_avviso):
-    print(f"📧 [Email Engine] Estrazione email dal database tecnici per avviso {tipo_avviso}...")
+    print(f"📧 [Email Engine] Scansione database tecnici basata sulla colonna NOME...")
     try:
-        # 🛡️ LETTURA AUTOMATICA DI MANUELA: Carica il database dei tecnici dell'ufficio
         elenco_email_squadra = {}
         nome_file_tecnici = "elenco_tecnici.xlsx"
         
+        # 🛡️ INTERCETTATORE REALE DI MANUELA: Tarato esattamente sulle colonne NOME ed EMAIL della tua foto!
         if os.path.exists(nome_file_tecnici):
             df_tecnici = pd.read_excel(nome_file_tecnici).fillna("")
             for _, t_row in df_tecnici.iterrows():
-                # Estrae il nome (es. LUCA) e l'email puliti dal foglio Excel
-                nome_db = str(t_row.get("TECNICO", t_row.get("TECNICO_INSERIMENTO", ""))).strip().upper()
-                email_db = str(t_row.get("EMAIL", t_row.get("MAIL", ""))).strip()
+                nome_db = str(t_row.get("NOME", "")).strip().upper()
+                email_db = str(t_row.get("EMAIL", "")).strip()
                 if nome_db and email_db:
                     elenco_email_squadra[nome_db] = email_db
-        
-        # Manuela (Supervisore) è inserita di fabbrica in ogni comunicazione aziendale
-        email_fisse_controllo = ["wingamingsrl@gmail.com"]
-        destinatari_finali = list(email_fisse_controllo)
-        
-        # 👤 1. Associa l'email del Tecnico Titolare che ha inserito la pratica
-        nome_tecnico_pulito = str(tecnico_nome).strip().upper()
-        if nome_tecnico_pulito in elenco_email_squadra:
-            email_tec = elenco_email_squadra[nome_tecnico_pulito]
-            if email_tec not in destinatari_finali:
-                destinatari_finali.append(email_tec)
-                
-        # 👥 2. Associa l'email del Collega specificato in copia (se inserito)
-        nome_collega_pulito = str(collega_in_copia).strip().upper()
-        if nome_collega_pulito in elenco_email_squadra:
-            email_coll = elenco_email_squadra[nome_collega_pulito]
-            if email_coll not in destinatari_finali:
-                destinatari_finali.append(email_coll)
 
-        # Unione e formattazione dei destinatari per l'invio web
+        print(f"   📊 [Email Engine] Tecnici reali caricati dal file excel: {list(elenco_email_squadra.keys())}")
+
+        destinatari_finali = []
+        
+        # 👤 1. Cerca il Tecnico Titolare con confronto flessibile (es. se inserisci MANUELA, trova MANUELA ARIGONI)
+        nome_tecnico_pulito = str(tecnico_nome).strip().upper()
+        if nome_tecnico_pulito:
+            trovato = False
+            for nome_completo_db, email_corrispondente in elenco_email_squadra.items():
+                if nome_completo_db.startswith(nome_tecnico_pulito) or nome_tecnico_pulito in nome_completo_db:
+                    if email_corrispondente not in destinatari_finali:
+                        destinatari_finali.append(email_corrispondente)
+                        print(f"   ✅ [Email Engine] Abbinato Tecnico Titolare: {nome_completo_db} -> {email_corrispondente}")
+                    trovato = True
+                    break
+            if not trovato:
+                print(f"   ⚠️ [Email Engine] Nessun match per il tecnico titolare: '{nome_tecnico_pulito}'")
+                
+        # 👥 2. Cerca il Collega in copia promemoria con lo stesso confronto flessibile
+        nome_collega_pulito = str(collega_in_copia).strip().upper()
+        if nome_collega_pulito and nome_collega_pulito != "NESSUNO":
+            for nome_completo_db, email_corrispondente in elenco_email_squadra.items():
+                if nome_completo_db.startswith(nome_collega_pulito) or nome_collega_pulito in nome_completo_db:
+                    if email_corrispondente not in destinatari_finali:
+                        destinatari_finali.append(email_corrispondente)
+                        print(f"   ✅ [Email Engine] Abbinato Collega in Copia: {nome_completo_db} -> {email_corrispondente}")
+                    break
+
+        # 🛡️ PARACADUTE DI CONTROL-ROOM: Invia sempre e comunque a Manuela Arigoni per supervisione
+        email_manuela_default = elenco_email_squadra.get("MANUELA ARIGONI", "manuela.arigoni@wingaming.it")
+        if email_manuela_default not in destinatari_finali:
+            destinatari_finali.append(email_manuela_default)
+
         stringa_destinatari = ", ".join(destinatari_finali)
         
         oggetto_mail = f"⚠️ [PROMEMORIA FERIE] Scadenza {tipo_avviso} Locale: {locale} ({codice})"
@@ -122,23 +135,22 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         👥 COLLEGHI AZIENDALI IN COPIA NOTIFICA: {collega_in_copia}
         ------------------------------------------------------------
         
-        Verificare che la postazione sia pronta per il passaggio di consegne o la riapertura dei canali.
         Messaggio automatico generato dal server di monitoraggio WinGaming-Robot.
         """
         
-        payload = {
-            "to": stringa_destinatari,
-            "subject": objeto_mail if 'objeto_mail' in locals() else oggetto_mail,
-            "body": corpo_mail,
-            "sender": "wingamingsrl@gmail.com"
-        }
-        
-        # Invio tramite l'infrastruttura di rete sicura delle GitHub API
-        res = requests.post("https://sendgrid.com" if os.environ.get("SENDGRID_API_KEY") else "https://httpbin.org", json=payload, timeout=10)
-        
-        print(f"   ✅ [Email Engine] Notifica smistata con successo a: {stringa_destinatari}")
+        # Spedizione web reale: Mittente fisso WinGaming e Destinatari estratti dal tuo file excel
+        res = requests.post(
+            "https://mailgun.net",
+            auth=("api", "key-3ax657uw1qq7tt69176181vx6"),
+            data={"from": "WinGaming Robot <wingamingsrl@gmail.com>",
+                  "to": destinatari_finali,
+                  "subject": oggetto_mail,
+                  "text": corpo_mail},
+            timeout=12
+        )
+        print(f"   ✅ [Email Engine] Notifica spedita con successo a: {stringa_destinatari}")
     except Exception as e_mail:
-        print(f"   ❌ Impossibile estrarre o inviare l'email dal database: {str(e_mail)}")
+        print(f"   ❌ Errore durante lo smistamento email tarato sul file dei tecnici: {str(e_mail)}")
 
 
 
