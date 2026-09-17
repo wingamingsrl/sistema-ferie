@@ -53,7 +53,8 @@ def invia_file_pulito_a_github(df_da_salvare):
             payload_git["sha"] = sha_file
             
         risposta_put = requests.put(url_git, json=payload_git, headers=headers_git, timeout=5)
-        if risposta_put.status_code in:
+        # 🛡️ BYPASS DI MANUELA: Scritto con l'uguaglianza per evitare che il firewall dell'IA tagli il codice
+        if risposta_put.status_code == 200 or risposta_put.status_code == 201:
             print("✅ [Cloud] Database ripulito e sincronizzato su GitHub Main con successo!")
             return True
         else:
