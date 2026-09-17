@@ -72,6 +72,10 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
 def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice, data_evento, tipo_avviso):
     print(f"📧 [Email Engine] Scansione database tecnici basata sulla colonna NOME...")
     try:
+        # 🛡️ IMPORTAZIONI LOCALI DI MANUELA: Sblocca le librerie e-mail direttamente nella funzione azzerando il NameError
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.header import Header
         elenco_email_squadra = {}
         nome_file_tecnici = "elenco_tecnici.xlsx"
         if os.path.exists(nome_file_tecnici):
