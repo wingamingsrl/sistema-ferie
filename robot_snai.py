@@ -210,6 +210,7 @@ def avvia_sincronizzazione_automatica():
             print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi per far scadere il countdown...")
             time.sleep(11)
             
+            # 🛡️ RIALLINEAMENTO RIGIDO DI MANUELA: Corretti gli spazi a inizio riga per azzerare l'IndentationError
             try:
                 page.evaluate("""
                     document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"], .fade.in').forEach(el => el.remove());
@@ -219,6 +220,7 @@ def avvia_sincronizzazione_automatica():
                 print("✅ [Robot] STEP 4d: Codice pop-up eliminato dalla pagina con successo!")
             except Exception: pass
             time.sleep(2)
+
 
             print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP pulito...")
             codice_totp = genera_codice_otp_automatico()
