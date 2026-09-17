@@ -136,37 +136,34 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         ------------------------------------------------------------
         
         # =====================================================================================
-        # 🛡️ INVIO NATIVO DI MANUELA: Copiato speculare dal metodo Streamlit funzionante al 100%
+        # 🛡️ BLINDATURA SMTP AZIENDALE DI MANUELA: Parentesi e margini sigillati al millimetro
         # =====================================================================================
         import smtplib
         from email.mime.text import MIMEText
         from email.header import Header
 
-        # Configurazione rigida dei server Gmail aziendali dell'ufficio
         SMTP_SERVER = "://gmail.com"
         SMTP_PORT = 587
         SMTP_USER = "wingamingsrl@gmail.com"
-        SMTP_PASS = "Salmi123!" # Usa la stessa identica password o password app dell'ufficio
+        SMTP_PASS = "Salmi123!"
 
         msg = MIMEText(corpo_mail, 'plain', 'utf-8')
         msg['Subject'] = Header(oggetto_mail, 'utf-8')
         msg['From'] = SMTP_USER
         msg['To'] = stringa_destinatari
 
-        # Apre la connessione protetta sulla porta SMTP dell'ufficio
+        # Connessione nativa Gmail speculare all'applicazione Streamlit dell'ufficio
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
         server.login(SMTP_USER, SMTP_PASS)
         
-        # Spedisce fisicamente l'email alla lista dei tecnici estratti dall'Excel
+        # Invia fisicamente il promemoria ai destinatari estratti dall'Excel dei tecnici
         server.sendmail(SMTP_USER, destinatari_finali, msg.as_string())
         server.quit()
         
         print(f"   ✅ [Email Engine] Notifica spedita e CONSEGNATA REALMENTE a: {stringa_destinatari}")
     except Exception as e_mail:
         print(f"   ❌ Errore durante l'invio SMTP nativo dell'ufficio: {str(e_mail)}")
-
-
 
 
 # =====================================================================================
