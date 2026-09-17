@@ -74,8 +74,6 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
     try:
         elenco_email_squadra = {}
         nome_file_tecnici = "elenco_tecnici.xlsx"
-        
-        # 🛡️ INTERCETTATORE REALE DI MANUELA: Tarato esattamente sulle colonne NOME ed EMAIL della tua foto!
         if os.path.exists(nome_file_tecnici):
             df_tecnici = pd.read_excel(nome_file_tecnici).fillna("")
             for _, t_row in df_tecnici.iterrows():
@@ -87,22 +85,15 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         print(f"   📊 [Email Engine] Tecnici reali caricati dal file excel: {list(elenco_email_squadra.keys())}")
 
         destinatari_finali = []
-        
-        # 👤 1. Cerca il Tecnico Titolare con confronto flessibile (es. se inserisci MANUELA, trova MANUELA ARIGONI)
         nome_tecnico_pulito = str(tecnico_nome).strip().upper()
         if nome_tecnico_pulito:
-            trovato = False
             for nome_completo_db, email_corrispondente in elenco_email_squadra.items():
                 if nome_completo_db.startswith(nome_tecnico_pulito) or nome_tecnico_pulito in nome_completo_db:
                     if email_corrispondente not in destinatari_finali:
                         destinatari_finali.append(email_corrispondente)
                         print(f"   ✅ [Email Engine] Abbinato Tecnico Titolare: {nome_completo_db} -> {email_corrispondente}")
-                    trovato = True
                     break
-            if not trovato:
-                print(f"   ⚠️ [Email Engine] Nessun match per il tecnico titolare: '{nome_tecnico_pulito}'")
                 
-        # 👥 2. Cerca il Collega in copia promemoria con lo stesso confronto flessibile
         nome_collega_pulito = str(collega_in_copia).strip().upper()
         if nome_collega_pulito and nome_collega_pulito != "NESSUNO":
             for nome_completo_db, email_corrispondente in elenco_email_squadra.items():
@@ -112,35 +103,13 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
                         print(f"   ✅ [Email Engine] Abbinato Collega in Copia: {nome_completo_db} -> {email_corrispondente}")
                     break
 
-        # 🛡️ PARACADUTE DI CONTROL-ROOM: Invia sempre e comunque a Manuela Arigoni per supervisione
         email_manuela_default = elenco_email_squadra.get("MANUELA ARIGONI", "manuela.arigoni@wingaming.it")
         if email_manuela_default not in destinatari_finali:
             destinatari_finali.append(email_manuela_default)
 
         stringa_destinatari = ", ".join(destinatari_finali)
-        
         oggetto_mail = f"⚠️ [PROMEMORIA FERIE] Scadenza {tipo_avviso} Locale: {locale} ({codice})"
-        corpo_mail = f"""
-        All'attenzione del Team Win Gaming,
-        
-        Questo è un avviso automatico di controllo scadenze per le ferie Snaitech.
-        Mancano esattamente 3 giorni al seguente evento programmato a portale:
-        
-        🏢 LOCALE COMMERCIALE: {locale}
-        📌 CODICE CENSIMENTO: {codice}
-        📅 DATA SCADENZA EVENTO: {data_evento}
-        
-        ------------------------------------------------------------
-        👤 TECNICO RESPONSABILE DELLA PRATICA: {tecnico_nome}
-        👥 COLLEGHI AZIENDALI IN COPIA NOTIFICA: {collega_in_copia}
-        ------------------------------------------------------------
-        
-        # =====================================================================================
-        # 🛡️ BLINDATURA SMTP AZIENDALE DI MANUELA: Parentesi e margini sigillati al millimetro
-        # =====================================================================================
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.header import Header
+        corpo_mail = f"""All'attenzione del Team Win Gaming,\n\nQuesto è un avviso automatico di controllo scadenze per le ferie Snaitech.\nMancano esattamente 3 giorni al seguente evento programmato a portale:\n\n🏢 LOCALE COMMERCIALE: {locale}\n📌 CODICE CENSIMENTO: {codice}\n📅 DATA SCADENZA EVENTO: {data_evento}\n\n------------------------------------------------------------\n👤 TECNICO RESPONSABILE DELLA PRATICA: {tecnico_nome}\n👥 COLLEGHI AZIENDALI IN COPIA NOTIFICA: {collega_in_copia}\n------------------------------------------------------------\n\nMessaggio automatico generato dal server di monitoraggio WinGaming-Robot."""
 
         SMTP_SERVER = "://gmail.com"
         SMTP_PORT = 587
@@ -152,18 +121,15 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         msg['From'] = SMTP_USER
         msg['To'] = stringa_destinatari
 
-        # Connessione nativa Gmail speculare all'applicazione Streamlit dell'ufficio
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
         server.login(SMTP_USER, SMTP_PASS)
-        
-        # Invia fisicamente il promemoria ai destinatari estratti dall'Excel dei tecnici
         server.sendmail(SMTP_USER, destinatari_finali, msg.as_string())
         server.quit()
-        
-        print(f"   ✅ [Email Engine] Notifica spedita e CONSEGNATA REALMENTE a: {stringa_destinatari}")
+        print(f"   ✅ [Email Engine] Notifica spedita con successo a: {stringa_destinatari}")
     except Exception as e_mail:
         print(f"   ❌ Errore durante l'invio SMTP nativo dell'ufficio: {str(e_mail)}")
+
 
 
 # =====================================================================================
@@ -423,10 +389,6 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
                     
-                    # 🛡️ RESET CELLA EXCEL CLOUD NATIVO VIA GIT PUSH
-                    scarica_e_aggiorna_excel_su_github(codice_aams)
-                    time.sleep(4)
-
                     # 🛡️ CALCOLATORE AVVISI 3 GIORNI PRIMA DI MANUELA: Estrae tecnico e collega per l'invio dinamico
                     try:
                         oggi_server = datetime.now().date()
@@ -448,8 +410,12 @@ def avvia_sincronizzazione_automatica():
 
                     # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' stabile per lavorazioni consecutive di fila
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
-                    time.sleep(8)
+                    time.sleep(4)
                     
+                    # 🛡️ RESET CELLA EXCEL CLOUD NATIVO VIA GIT PUSH
+                    scarica_e_aggiorna_excel_su_github(codice_aams)
+                    time.sleep(8)
+                
                 except Exception as row_err:
                     print(f"   ⚠️ Nota compilazione: Scavalco riga. Errore: {str(row_err)}")
                     try:
