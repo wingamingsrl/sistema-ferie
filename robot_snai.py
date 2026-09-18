@@ -487,11 +487,16 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(4)
                     
                    
-                    # 🛡️ CALCOLATORE AVVISI 3 GIORNI PRIMA DI MANUELA: Estrae tecnico e collega per l'invio dinamico
+                    # 🛡️ CALCOLATORE AVVISI DI MANUELA CORRAZZATO: Supporta sia il formato con i punti (.) che con le barre (/)
                     try:
                         oggi_server = datetime.now().date()
-                        data_in_doc = datetime.strptime(data_inizio_pura, "%d/%m/%Y").date()
-                        data_fi_doc = datetime.strptime(data_fine_pura, "%d/%m/%Y").date()
+                        
+                        # Converte in modo flessibile la data di inizio pulendo punti o barre oblique
+                        data_in_punti = data_inizio_pulita.replace("/", ".").strip()
+                        data_fi_punti = data_fine_pulita.replace("/", ".").strip()
+                        
+                        data_in_doc = datetime.strptime(data_in_punti, "%d.%m.%Y").date()
+                        data_fi_doc = datetime.strptime(data_fi_punti, "%d.%m.%Y").date()
                         
                         giorni_alla_chiusura = (data_in_doc - oggi_server).days
                         giorni_alla_riapertura = (data_fi_doc - oggi_server).days
@@ -499,12 +504,17 @@ def avvia_sincronizzazione_automatica():
                         tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
                         collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
                         
+                        # Genera le date testuali pulite in formato classico italiano per il testo della mail
+                        data_inizio_italiana = data_in_doc.strftime("%d/%m/%Y")
+                        data_fine_italiana = data_fi_doc.strftime("%d/%m/%Y")
+                        
                         if giorni_alla_chiusura == 3:
-                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_pura, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_italiana, "CHIUSURA LOCALE (TRA 3 GIORNI)")
                         if giorni_alla_riapertura == 3:
-                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_pura, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_italiana, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
                     except Exception as e_calc:
                         print(f"   ⚠️ Impossibile calcolare il promemoria email: {str(e_calc)}")
+
 
                     # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' stabile per lavorazioni consecutive di fila
                     page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
