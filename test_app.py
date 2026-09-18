@@ -637,13 +637,18 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         with st.spinner("Robot in azione sui sistemi dei Concessionari... Non chiudere la pagina..."):
             esegui_sincronizzazione_robot_snai()
             
-            # 🛡️ AUTOMAZIONE REFRESH DI MANUELA: Pausa di sicurezza, svuota la RAM vecchia e pulisce lo smartphone al 100%
-            time.sleep(3)
-            if os.path.exists(FILE_STORICO_PERMANENTE):
-                st.session_state.storico_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("").to_dict('records')
+            # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
+            time.sleep(5)
             
-            # Fa sparire i locali inseriti e rimette il tabellone a specchio della bacheca online
+            # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
+            if os.path.exists(FILE_STORICO_PERMANENTE):
+                # Rilegge il file fisico aggiornato dallo spazzino del robot
+                df_aggiornato_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+                st.session_state.storico_cloud = df_aggiornato_cloud.to_dict('records')
+            
+            # Rinfresca l'interfaccia eliminando le righe azzerate
             st.rerun()
+
 
     # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella TUTTI i locali pronti (SNAI + NTS) con un'azione reale da compiere
     righe_lavorazione_generiche = [
