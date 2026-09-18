@@ -220,7 +220,7 @@ def esegui_sincronizzazione_robot_snai():
         # 🛡️ COSTRUZIONE STRUTTURALE PEZZO PER PEZZO: Impedisce la sovrascrittura o il troncamento della cache di Streamlit
         protocollo = "https://"
         dominio_api = "api.github.com"
-        percorso_repo = "/repos/wingamingsrl/sistema-ferie"
+        percorso_repo = "/repos/wingamingsrl/sistema-ferie"    
         percorso_workflow = "/actions/workflows/cron_robot_snai.yml/dispatches"
         
         # Unisce i blocchi creando la stringa estesa senza rischiare tagli
