@@ -170,20 +170,25 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con l'email di NTS reale finiti i test
         msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
         msg['Reply-To'] = "tecnico@wingaming.it"
+        # 🛡️ CONTROLLO BLOCCO PREU DI MANUELA: Se l'azione è NUOVA o MODIFICA inserisce la richiesta, altrimenti la lascia vuota
+        testo_preu = ""
+        if azione == "NUOVA" or azione == "MODIFICA":
+            testo_preu = "\nSi richiede il blocco Preu\n"
 
+        # Formattazione del testo ufficiale unificato con l'inserimento dinamico del Preu
         corpo_nts = f"""Buongiorno,
  
 {testo_azione} per l’esercizio indicato in oggetto e per gli apparecchi ivi ubicati per il periodo:
  
 dal\t{data_in}
-al\t{data_fi}"""
+al\t{data_fi}
+{testo_preu}
 
-    if azione == "NUOVA" or azione == "MODIFICA":
-        Si richiede il blocco Preu
-     endif
-
-"""Grazie
+Grazie
 Cordiali saluti
+
+
+Arigoni Manuela
 
 Wingaming S.r.l.
 Sede Legale e Operativa: Via Roma, 32/F - 23855 Pescate (LC)
@@ -191,6 +196,7 @@ P.Iva Gruppo IVA: 12027280960
 C.F. 03371290135
 CODICE UNIVOCO INTERSCAMBIO: SUBM70N
 Tel. 0341.1917908"""
+
 
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
