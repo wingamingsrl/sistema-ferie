@@ -350,11 +350,16 @@ def avvia_sincronizzazione_automatica():
                     try:
                         campo_ricerca.wait_for(state="visible", timeout=20000)
                     except Exception as e_time:
+                        # 📸 FOTO SPIA DI MANUELA: Scatta lo screenshot d'emergenza se la barra filtri non appare!
+                        try: page.screenshot(path="SITUAZIONE_BLOCCO_SNAITECH.png", full_page=True)
+                        except Exception: pass
+                        print("   📸 [Robot] Errore riscontrato! Scattata foto spia 'SITUAZIONE_BLOCCO_SNAITECH.png'.")
                         raise e_time # Fa proseguire l'errore per saltare la riga regolarmente
                         
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
+
 
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
