@@ -300,9 +300,8 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            # Rilegge lo storico aggiornato per fare il giro dei soli locali Snaitech rimasti
-            df_ferie_aggiornato = preleva_storico_diretto_da_cloud()
-            df_snai = df_ferie_aggiornato[df_ferie_aggiornato["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"]
+ # 🛡️ RIPRISTINO RIGIDO DI MANUELA: Ciclo nativo sul tracciato iniziale senza ri-letture orfane che rompono i frame
+            df_snai = df_ferie[df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"]
 
             for _, row in df_snai.iterrows():
                 try:
@@ -312,7 +311,6 @@ def avvia_sincronizzazione_automatica():
                     data_fi_completa = str(row["FINE_FERIE"]).strip()
                     mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
                     
-                    # 🚨 FORMATO VERGINE DI SNAITECH: Ripristinato rigorosamente con le barre oblique per non fallire il Salva
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
