@@ -490,16 +490,16 @@ def avvia_sincronizzazione_automatica():
                     time.sleep(4)
                     
                    
-                    # 🛡️ CALCOLATORE AVVISI DI MANUELA CORRAZZATO: Supporta sia il formato con i punti (.) che con le barre (/)
+                    # 🛡️ CALCOLATORE AVVISI DI MANUELA CON PURIFICAZIONE ORARIO: Taglia via lo sporco delle ore (es. 06:00) per azzerare l'unconverted data
                     try:
                         oggi_server = datetime.now().date()
                         
-                        # Converte in modo flessibile la data di inizio pulendo punti o barre oblique
-                        data_in_punti = data_inizio_pulita.replace("/", ".").strip()
-                        data_fi_punti = data_fine_pulita.replace("/", ".").strip()
+                        # Isola solo i primi 10 caratteri (GG/MM/AAAA) pulendo l'orario se presente
+                        data_inizio_estratta = data_inizio_pura.replace("-", "/").replace(".", "/").strip()[:10]
+                        data_fine_estratta = data_fine_pura.replace("-", "/").replace(".", "/").strip()[:10]
                         
-                        data_in_doc = datetime.strptime(data_in_punti, "%d.%m.%Y").date()
-                        data_fi_doc = datetime.strptime(data_fi_punti, "%d.%m.%Y").date()
+                        data_in_doc = datetime.strptime(data_inizio_estratta, "%d/%m/%Y").date()
+                        data_fi_doc = datetime.strptime(data_fine_estratta, "%d/%m/%Y").date()
                         
                         giorni_alla_chiusura = (data_in_doc - oggi_server).days
                         giorni_alla_riapertura = (data_fi_doc - oggi_server).days
@@ -507,16 +507,16 @@ def avvia_sincronizzazione_automatica():
                         tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
                         collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
                         
-                        # Genera le date testuali pulite in formato classico italiano per il testo della mail
-                        data_inizio_italiana = data_in_doc.strftime("%d/%m/%Y")
-                        data_fine_italiana = data_fi_doc.strftime("%d/%m/%Y")
+                        data_inizio_stampa = data_in_doc.strftime("%d/%m/%Y")
+                        data_fine_stampa = data_fi_doc.strftime("%d/%m/%Y")
                         
                         if giorni_alla_chiusura == 3:
-                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_italiana, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CHIUSURA LOCALE (TRA 3 GIORNI)")
                         if giorni_alla_riapertura == 3:
-                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_italiana, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
                     except Exception as e_calc:
                         print(f"   ⚠️ Impossibile calcolare il promemoria email: {str(e_calc)}")
+
 
 
                     # 🛡️ FIX MULTIPLO DI MANUELA: Caricamento standard 'load' stabile per lavorazioni consecutive di fila
