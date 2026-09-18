@@ -308,7 +308,7 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
- # 🛡️ RIPRISTINO RIGIDO DI MANUELA: Ciclo nativo sul tracciato iniziale senza ri-letture orfane che rompono i frame
+            # Ciclo nativo senza ri-letture orfane che rompono i frame
             df_snai = df_ferie[df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"]
 
             for _, row in df_snai.iterrows():
@@ -325,9 +325,9 @@ def avvia_sincronizzazione_automatica():
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
                         continue
                         
-                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
+                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ PUNTAMENTO ASSOLUTO DI MANUELA: Aggancia direttamente l'Iframe principale di Snaitech tramite il suo nome nativo
+                    # Puntamento assoluto all'Iframe nativo principale di Snaitech
                     try:
                         target_frame = page.frame_locator("iframe[name='st_main'], iframe[id='st_main'], iframe[src*='Esercizi']").first
                     except Exception:
@@ -342,8 +342,6 @@ def avvia_sincronizzazione_automatica():
                     campo_ricerca.wait_for(state="visible", timeout=25000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
-                    time.sleep(2)
-
                     time.sleep(2)
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
