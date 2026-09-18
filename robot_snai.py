@@ -328,79 +328,49 @@ def avvia_sincronizzazione_automatica():
                     data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
                     data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
+                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
+                    # 🛡️ INTERCETTATORE DI MANUELA: Abilita il robot a elaborare anche i comandi di rimozione
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
+
+                        print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # Puntamento assoluto all'Iframe nativo principale di Snaitech
-                    try:
-                        target_frame = page.frame_locator("iframe[name='st_main'], iframe[id='st_main'], iframe[src*='Esercizi']").first
-                    except Exception:
-                        target_frame = page
-                        for f in page.frames:
-                            if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
-                                target_frame = f
-                                break
-
-                    print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    
-                    # 🛡️ SCOSSA DI MANUELA: Clicca sullo sfondo del frame per sbloccare la pagina ed attivare la barra dei filtri
-                    try:
-                        target_frame.locator("body").click(timeout=3000)
-                        time.sleep(2)
-                    except Exception: pass
-
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
-                    
-                    # Tenta la digitazione standard; se la grafica è congelata, forza l'inserimento via codice nativo JavaScript
-                    try:
-                        campo_ricerca.wait_for(state="visible", timeout=6000)
-                        campo_ricerca.click()
-                        campo_ricerca.fill(codice_aams)
-                    except Exception:
-                        print("   ⚠️ [Robot] Grafica bloccata. Forzo inserimento nativo JavaScript per il codice...")
-                        try:
-                            target_frame.evaluate(f"document.getElementById('ctl00_Cp1_txtCodiceCensimentoesercizio').value = '{codice_aams}';")
-                        except Exception as e_js:
-                            print(f"   ❌ Fallito anche inserimento JavaScript: {str(e_js)}")
-                            raise e_time if 'e_time' in locals() else Exception("Impossibile digitare il codice")
-                    
-                    time.sleep(2)                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
-
-                    # 🛡️ RIPRISTINO FRAME REALE DI MANUELA: Estrae l'oggetto Frame nativo (non FrameLocator) per sbloccare i comandi
+                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
                             target_frame = f
                             break
 
-                    print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    
-                    # Clicca sullo sfondo del frame reale per risvegliare la pagina Snaitech
-                    try:
-                        target_frame.locator("body").click(timeout=3000)
-                        time.sleep(1)
-                    except Exception: pass
-
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
+                   print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     
                     try:
-                        campo_ricerca.wait_for(state="visible", timeout=6000)
-                        campo_ricerca.click()
-                        campo_ricerca.fill(codice_aams)
-                    except Exception:
-                        print("   ⚠️ [Robot] Puntamento standard lento. Forzo inserimento JavaScript su Frame Nativo...")
-                        # Ora funziona al 100% perché target_frame è un Frame reale e possiede l'attributo evaluate!
-                        target_frame.evaluate(f"document.getElementById('ctl00_Cp1_txtCodiceCensimentoesercizio').value = '{codice_aams}';")
-                    
+                        campo_ricerca.wait_for(state="visible", timeout=20000)
+                    except Exception as e_time:
+                        raise e_time # Fa proseguire l'errore per saltare la riga regolarmente
+                        
+                    campo_ricerca.click()
+                    campo_ricerca.fill(codice_aams)
                     time.sleep(2)
+
+                    
+                    tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
+                    tasto_ricerca.click(timeout=10000)
+                    
+                    print("   ⏳ [Robot] STEP 7b: Attesa caricamento risultati filtrati (6 secondi)...")
+                    time.sleep(6)
+
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione.jpg'], img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     
-                    try: icona_nuovo.wait_for(state="attached", timeout=4000)
+                    try:
+                        icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
-
+                        
+                    # 🛡️ INTELLIGENZA DI MANUELA: Se l'azione è ELIMINA ma non esiste la matita a portale, pulisce l'Excel direttamente da qui!
                     if mirino_azione == "ELIMINA" and icona_modifica.count() == 0:
                         print("   ℹ️ [Robot] Comando ELIMINA su locale vergine a portale. Cancello la riga dall'Excel cloud all'istante...")
                         scarica_e_aggiorna_excel_su_github(codice_aams)
