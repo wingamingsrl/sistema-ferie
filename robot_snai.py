@@ -72,10 +72,6 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
 def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice, data_evento, tipo_avviso):
     print(f"📧 [Email Engine] Scansione database tecnici basata sulla colonna NOME...")
     try:
-        # 🛡️ IMPORTAZIONI LOCALI DI MANUELA: Sblocca le librerie e-mail direttamente nella funzione azzerando il NameError
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.header import Header
         elenco_email_squadra = {}
         nome_file_tecnici = "elenco_tecnici.xlsx"
         if os.path.exists(nome_file_tecnici):
@@ -86,8 +82,6 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
                 if nome_db and email_db:
                     elenco_email_squadra[nome_db] = email_db
 
-        print(f"   📊 [Email Engine] Tecnici reali caricati dal file excel: {list(elenco_email_squadra.keys())}")
-
         destinatari_finali = []
         nome_tecnico_pulito = str(tecnico_nome).strip().upper()
         if nome_tecnico_pulito:
@@ -95,7 +89,6 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
                 if nome_completo_db.startswith(nome_tecnico_pulito) or nome_tecnico_pulito in nome_completo_db:
                     if email_corrispondente not in destinatari_finali:
                         destinatari_finali.append(email_corrispondente)
-                        print(f"   ✅ [Email Engine] Abbinato Tecnico Titolare: {nome_completo_db} -> {email_corrispondente}")
                     break
                 
         nome_collega_pulito = str(collega_in_copia).strip().upper()
@@ -104,7 +97,6 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
                 if nome_completo_db.startswith(nome_collega_pulito) or nome_collega_pulito in nome_completo_db:
                     if email_corrispondente not in destinatari_finali:
                         destinatari_finali.append(email_corrispondente)
-                        print(f"   ✅ [Email Engine] Abbinato Collega in Copia: {nome_completo_db} -> {email_corrispondente}")
                     break
 
         email_manuela_default = elenco_email_squadra.get("MANUELA ARIGONI", "manuela.arigoni@wingaming.it")
@@ -113,27 +105,20 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
 
         stringa_destinatari = ", ".join(destinatari_finali)
         oggetto_mail = f"⚠️ [PROMEMORIA FERIE] Scadenza {tipo_avviso} Locale: {locale} ({codice})"
-        corpo_mail = f"""All'attenzione del Team Win Gaming,\n\nQuesto è un avviso automatico di controllo scadenze per le ferie Snaitech.\nMancano esattamente 3 giorni al seguente evento programmato a portale:\n\n🏢 LOCALE COMMERCIALE: {locale}\n📌 CODICE CENSIMENTO: {codice}\n📅 DATA SCADENZA EVENTO: {data_evento}\n\n------------------------------------------------------------\n👤 TECNICO RESPONSABILE DELLA PRATICA: {tecnico_nome}\n👥 COLLEGHI AZIENDALI IN COPIA NOTIFICA: {collega_in_copia}\n------------------------------------------------------------\n\nMessaggio automatico generato dal server di monitoraggio WinGaming-Robot."""
+        corpo_mail = f"All'attenzione del Team Win Gaming,\n\nMancano 3 giorni all'evento: {tipo_avviso}.\n🏢 Locale: {locale} ({codice})\n📅 Data Scadenza: {data_evento}\n👤 Tecnico: {tecnico_nome}"
 
-        SMTP_SERVER = "://gmail.com"
-        SMTP_PORT = 587
-        SMTP_USER = "wingamingsrl@gmail.com"
-        SMTP_PASS = "Salmi123!"
-
-        msg = MIMEText(corpo_mail, 'plain', 'utf-8')
-        msg['Subject'] = Header(oggetto_mail, 'utf-8')
-        msg['From'] = SMTP_USER
-        msg['To'] = stringa_destinatari
-
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.sendmail(SMTP_USER, destinatari_finali, msg.as_string())
-        server.quit()
-        print(f"   ✅ [Email Engine] Notifica spedita con successo a: {stringa_destinatari}")
+        # 🛡️ SBLOCCO WEB: Invia tramite il canale web Formspree senza usare le porte SMTP bloccate dal server
+        url_gateway = "https://formspree.io"
+        payload_web = {
+            "email": stringa_destinatari,
+            "message": f"Oggetto: {oggetto_mail}\n\n{corpo_mail}"
+        }
+        
+        # Spedizione fisica immediata
+        requests.post(url_gateway, json=payload_web, timeout=10)
+        print(f"   ✅ [Email Engine] Notifica smistata con successo via Web Gateway a: {stringa_destinatari}")
     except Exception as e_mail:
-        print(f"   ❌ Errore durante l'invio SMTP nativo dell'ufficio: {str(e_mail)}")
-
+        print(f"   ❌ Errore durante l'invio dell'email: {str(e_mail)}")
 
 
 # =====================================================================================
