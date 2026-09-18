@@ -144,42 +144,44 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         print(f"   ❌ Errore durante l'invio SMTP IP nativo basato su test_app.py: {str(e_mail)}")
 
 
-def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi):
-    print(f"📧 [NTS Engine] Preparazione e-mail di chiusura per NTS Networks (Locale: {locale})...")
+def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, azione):
+    print(f"📧 [NTS Engine] Preparazione e-mail di {azione} per NTS Networks (Locale: {locale})...")
     try:
         import smtplib
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
 
-        # Configurazione credenziali sicure testate ed autenticate dell'ufficio
         EMAIL_AUTENTICAZIONE = "wingamingsrl@gmail.com"
-        pass_applicativa_ufficio = "zndjprxjvhiustio" # La chiave d'oro a 16 lettere
+        pass_applicativa_ufficio = "zndjprxjvhiustio"
+
+        # Modifica l'oggetto e il testo a seconda dell'azione richiesta da Manuela
+        if azione == "ELIMINA":
+            oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
+            testo_azione = "si richiede la CANCELLAZIONE della comunicazione di chiusura temporanea precedentemente inviata"
+        elif azione == "MODIFICA":
+            oggetto_azione = "RETTIFICA/MODIFICA Chiusura Temporanea"
+            testo_azione = "si richiede la RETTIFICA/MODIFICA della comunicazione di chiusura temporanea"
+        else:
+            oggetto_azione = "Richiesta Chiusura Temporanea"
+            testo_azione = "si richiede l’invio della comunicazione di chiusura temporanea"
 
         msg = MIMEMultipart()
-        # Maschera visiva istituzionale: NTS vedrà questo nelle sue caselle
-        msg['From'] = f"WinGaming Tecnico <tecnico@wingaming.it>"
-        msg['To'] = "manuela.arigoni@wingaming.it" # Bloccata su di te per i collaudi iniziali
-        msg['Subject'] = f"Richiesta Chiusura Temporanea ed Esclusione PREU - Locale: {locale} ({codice})"
-        
-        # 🔑 CHIAVE DI VOLTA: Forza il server di NTS a mandare le risposte dentro il recipiente comune dei tecnici
+        msg['From'] = f"Wingaming - Tecnico <tecnico@wingaming.it>"
+        msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con l'email di NTS reale finiti i test
+        msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
         msg['Reply-To'] = "tecnico@wingaming.it"
 
-        # Formattazione del testo ufficiale dell'ufficio richiesto da Manuela
         corpo_nts = f"""Buongiorno,
  
-si richiede l’invio della comunicazione di chiusura temporanea per l’esercizio indicato in oggetto e per gli apparecchi ivi ubicati per il periodo:
+{testo_azione} per l’esercizio indicato in oggetto e per gli apparecchi ivi ubicati per il periodo:
  
 dal\t{data_in}
 al\t{data_fi}
 
 Si richiede il blocco Preu
 
-
 Grazie
 Cordiali saluti
-
-
-Arigoni Manuela
 
 Wingaming S.r.l.
 Sede Legale e Operativa: Via Roma, 32/F - 23855 Pescate (LC)
@@ -190,17 +192,17 @@ Tel. 0341.1917908"""
 
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
-        # Sfrutta il binario numerico infallibile di Google che bypassa i blocchi di GitHub
         server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
         server.login(EMAIL_AUTENTICAZIONE, pass_applicativa_ufficio)
         server.sendmail(EMAIL_AUTENTICAZIONE, ["manuela.arigoni@wingaming.it"], msg.as_string())
         server.quit()
         
-        print(f"   ✅ [NTS Engine] E-mail ufficiale NTS inviata con successo con Reply-To a tecnico@!")
+        print(f"   ✅ [NTS Engine] E-mail di {azione} inviata con successo con Reply-To a tecnico@!")
         return True
     except Exception as e_nts:
         print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS: {str(e_nts)}")
         return False
+
 
 
 # =====================================================================================
@@ -218,18 +220,23 @@ def avvia_sincronizzazione_automatica():
     # 🛡️ CONTROLLO PREVENTIVO DI MANUELA: Verifica se ci sono solo locali NTS Networks in elenco
     solo_locali_nts = True
     # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo NTS. Elabora SEMPRE i locali NTS Networks per primi
+    # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo NTS dinamico (Inclusi Nuova, Modifica ed Elimina)
     for _, row in locali_pronti.iterrows():
         concessionario_riga = str(row["CONCESSIONARIO"]).strip().upper()
+        mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
+        
         if "NTS" in concessionario_riga or "NETWORKS" in concessionario_riga:
             codice_aams = str(row["CODICE_LOCALE"]).strip()
             nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
             data_inizio_pulita = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
             data_fine_pulita = str(row["FINE_FERIE"]).replace("-", ".").strip()
             
-            print(f"🏢 [NTS Networks] Rilevato locale: {nome_locale_corrente}. Spedisco la mail diretta ed aggiorno l'Excel...")
-            successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pulita, data_fine_pulita)
+            print(f"🏢 [NTS Networks] Rilevato locale: {nome_locale_corrente} in stato [{mirino_azione}]. Attivo l'invio...")
+            # Passa l'azione (NUOVA, MODIFICA o ELIMINA) per diversificare il testo della mail
+            successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pulita, data_fine_pulita, mirino_azione)
             if successo_nts:
                 scarica_e_aggiorna_excel_su_github(codice_aams)
+
 
     # 🌐 FASE 2: Rilegge il database pulito per vedere se sono rimaste pratiche Snaitech da fare su Chrome
     df_ferie_aggiornato = preleva_storico_diretto_da_cloud()
