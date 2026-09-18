@@ -144,6 +144,65 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         print(f"   ❌ Errore durante l'invio SMTP IP nativo basato su test_app.py: {str(e_mail)}")
 
 
+def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi):
+    print(f"📧 [NTS Engine] Preparazione e-mail di chiusura per NTS Networks (Locale: {locale})...")
+    try:
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        # Configurazione credenziali sicure testate ed autenticate dell'ufficio
+        EMAIL_AUTENTICAZIONE = "wingamingsrl@gmail.com"
+        pass_applicativa_ufficio = "zndjprxjvhiustio" # La chiave d'oro a 16 lettere
+
+        msg = MIMEMultipart()
+        # Maschera visiva istituzionale: NTS vedrà questo nelle sue caselle
+        msg['From'] = f"WinGaming Tecnico <tecnico@wingaming.it>"
+        msg['To'] = "manuela.arigoni@wingaming.it" # Bloccata su di te per i collaudi iniziali
+        msg['Subject'] = f"Richiesta Chiusura Temporanea ed Esclusione PREU - Locale: {locale} ({codice})"
+        
+        # 🔑 CHIAVE DI VOLTA: Forza il server di NTS a mandare le risposte dentro il recipiente comune dei tecnici
+        msg['Reply-To'] = "tecnico@wingaming.it"
+
+        # Formattazione del testo ufficiale dell'ufficio richiesto da Manuela
+        corpo_nts = f"""Buongiorno,
+ 
+si richiede l’invio della comunicazione di chiusura temporanea per l’esercizio indicato in oggetto e per gli apparecchi ivi ubicati per il periodo:
+ 
+dal\t{data_in}
+al\t{data_fi}
+
+Si richiede il blocco Preu
+
+
+Grazie
+Cordiali saluti
+
+
+Arigoni Manuela
+
+Wingaming S.r.l.
+Sede Legale e Operativa: Via Roma, 32/F - 23855 Pescate (LC)
+P.Iva Gruppo IVA: 12027280960
+C.F. 03371290135
+CODICE UNIVOCO INTERSCAMBIO: SUBM70N
+Tel. 0341.1917908"""
+
+        msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
+
+        # Sfrutta il binario numerico infallibile di Google che bypassa i blocchi di GitHub
+        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+        server.login(EMAIL_AUTENTICAZIONE, pass_applicativa_ufficio)
+        server.sendmail(EMAIL_AUTENTICAZIONE, ["manuela.arigoni@wingaming.it"], msg.as_string())
+        server.quit()
+        
+        print(f"   ✅ [NTS Engine] E-mail ufficiale NTS inviata con successo con Reply-To a tecnico@!")
+        return True
+    except Exception as e_nts:
+        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS: {str(e_nts)}")
+        return False
+
+
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -218,24 +277,32 @@ def avvia_sincronizzazione_automatica():
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
+            # --- AGGIORNAMENTO DEL FILTRO CONCESSIONARI DI MANUELA (SNAITECH + NTS) ---
             for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
-                    data_in_completa = str(row["INIZIO_FERIE"]).strip()
-                    data_fi_completa = str(row["FINE_FERIE"]).strip()
+                    data_in_doc = str(row["INIZIO_FERIE"]).strip()
+                    data_fi_doc = str(row["FINE_FERIE"]).strip()
+                    concessionario_riga = str(row["CONCESSIONARIO"]).strip()
                     mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
                     
-                    data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
-                    data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
+                    # Formatta le date con i punti (es. 08.08.2026 h. 12.00) come richiesto nel testo istituzionale
+                    data_inizio_pulita = str(data_in_doc).replace("-", ".").strip()
+                    data_fine_pulita = str(data_fi_doc).replace("-", ".").strip()
                     
-                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
-                    # 🛡️ INTERCETTATORE DI MANUELA: Abilita il robot a elaborare anche i comandi di rimozione
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
-
-                        print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
-                        
+
+                    # 🛡️ INTERCETTATORE AUTOMATICO NTS: Se la riga appartiene a NTS Networks, spende l'email ed aggiorna l'Excel cloud
+                    if "NTS" in concessionario_riga or "Networks" in concessionario_riga:
+                        print(f"🏢 [Robot] Rilevato locale NTS Networks: {nome_locale_corrente}. Attivo l'invio diretto...")
+                        successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pulita, data_fine_pulita)
+                        if successo_nts:
+                            scarica_e_aggiorna_excel_su_github(codice_aams)
+                        continue
+
+                    # Se invece è Snaitech, procede normalmente con lo STEP 7 classico ed i clic sul portale web
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
                     # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
