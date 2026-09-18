@@ -344,11 +344,30 @@ def avvia_sincronizzazione_automatica():
                                 break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
+                    
+                    # 🛡️ SCOSSA DI MANUELA: Clicca sullo sfondo del frame per sbloccare la pagina ed attivare la barra dei filtri
+                    try:
+                        target_frame.locator("body").click(timeout=3000)
+                        time.sleep(2)
+                    except Exception: pass
+
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
-                    campo_ricerca.wait_for(state="visible", timeout=25000)
-                    campo_ricerca.click()
-                    campo_ricerca.fill(codice_aams)
+                    
+                    # Tenta la digitazione standard; se la grafica è congelata, forza l'inserimento via codice nativo JavaScript
+                    try:
+                        campo_ricerca.wait_for(state="visible", timeout=6000)
+                        campo_ricerca.click()
+                        campo_ricerca.fill(codice_aams)
+                    except Exception:
+                        print("   ⚠️ [Robot] Grafica bloccata. Forzo inserimento nativo JavaScript per il codice...")
+                        try:
+                            target_frame.evaluate(f"document.getElementById('ctl00_Cp1_txtCodiceCensimentoesercizio').value = '{codice_aams}';")
+                        except Exception as e_js:
+                            print(f"   ❌ Fallito anche inserimento JavaScript: {str(e_js)}")
+                            raise e_time if 'e_time' in locals() else Exception("Impossibile digitare il codice")
+                    
                     time.sleep(2)
+
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
