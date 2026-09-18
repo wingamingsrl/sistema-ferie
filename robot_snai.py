@@ -176,11 +176,13 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
 {testo_azione} per l’esercizio indicato in oggetto e per gli apparecchi ivi ubicati per il periodo:
  
 dal\t{data_in}
-al\t{data_fi}
+al\t{data_fi}"""
 
-Si richiede il blocco Preu
+    if azione == "NUOVA" or azione == "MODIFICA":
+        Si richiede il blocco Preu
+     endif
 
-Grazie
+"""Grazie
 Cordiali saluti
 
 Wingaming S.r.l.
@@ -317,19 +319,25 @@ def avvia_sincronizzazione_automatica():
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
                         continue
                         
-                    print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
+                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    target_frame = page
-                    for f in page.frames:
-                        if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
-                            target_frame = f
-                            break
+                    # 🛡️ PUNTAMENTO ASSOLUTO DI MANUELA: Aggancia direttamente l'Iframe principale di Snaitech tramite il suo nome nativo
+                    try:
+                        target_frame = page.frame_locator("iframe[name='st_main'], iframe[id='st_main'], iframe[src*='Esercizi']").first
+                    except Exception:
+                        target_frame = page
+                        for f in page.frames:
+                            if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
+                                target_frame = f
+                                break
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
-                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
-                    campo_ricerca.wait_for(state="visible", timeout=20000)
+                    campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio, input[id*='txtCodiceCensimentoesercizio']").first
+                    campo_ricerca.wait_for(state="visible", timeout=25000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
+                    time.sleep(2)
+
                     time.sleep(2)
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
