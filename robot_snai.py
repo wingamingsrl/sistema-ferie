@@ -238,10 +238,6 @@ def avvia_sincronizzazione_automatica():
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 📸 FOTO SPIA A: Vediamo cosa c'è a schermo un attimo prima di cercare la barra filtri
-                    try: page.screenshot(path="A_prima_del_timeout.png", full_page=True)
-                    except Exception: pass
-
                     # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
                     target_frame = page
                     for f in page.frames:
@@ -255,9 +251,6 @@ def avvia_sincronizzazione_automatica():
                     try:
                         campo_ricerca.wait_for(state="visible", timeout=20000)
                     except Exception as e_time:
-                        # 📸 FOTO SPIA B: Cattura lo schermo ESATTAMENTE nel millesimo di secondo in cui scatta il timeout!
-                        try: page.screenshot(path="B_esplosione_timeout.png", full_page=True)
-                        except Exception: pass
                         raise e_time # Fa proseguire l'errore per saltare la riga regolarmente
                         
                     campo_ricerca.click()
@@ -385,22 +378,12 @@ def avvia_sincronizzazione_automatica():
                     except Exception: pass
                     time.sleep(2)
 
-                    try: page.screenshot(path="1_modulo_compilato.png", full_page=True)
-                    except Exception: pass
-
                     print("   💾 [Robot] STEP 10: Invio moduli di chiusura a Snaitech (Clic su Tasto Salva)...")
                     frame_date.locator("#ctl00_Cp1_BtnOk").first.click(timeout=10000)
                     print(f"   ✅ [Robot] STEP 11: Invio completato. Attesa risposta visiva del portale...")
                     time.sleep(4)
                     
-                    try: page.screenshot(path="2_risposta_immediata.png", full_page=True)
-                    except Exception: pass
-                    time.sleep(4)
-                    
-                    try: page.screenshot(path="errore_visivo_snaitech.png", full_page=True)
-                    except Exception: pass
-                    time.sleep(2)
-                    
+                   
                     # 🛡️ CALCOLATORE AVVISI 3 GIORNI PRIMA DI MANUELA: Estrae tecnico e collega per l'invio dinamico
                     try:
                         oggi_server = datetime.now().date()
