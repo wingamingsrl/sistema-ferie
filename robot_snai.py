@@ -210,17 +210,40 @@ def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
-    df_snai = df_ferie[
-        df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"
-    ]
+    # Estrae solo i record che il robot deve realmente lavorare
+    locali_pronti = df_ferie[df_ferie["ROBOT_ACTION"].astype(str).str.strip().upper().isin(["NUOVA", "MODIFICA", "ELIMINA"])]
+    if locales_pronti.empty if 'locales_pronti' in locals() else locali_pronti.empty: return
+
+    # 🛡️ CONTROLLO PREVENTIVO DI MANUELA: Verifica se ci sono solo locali NTS Networks in elenco
+    solo_locali_nts = True
+    for _, row in locali_pronti.iterrows():
+        if "SNAI" in str(row["CONCESSIONARIO"]).upper():
+            solo_locali_nts = False
+            break
+
+    # Se in elenco ci sono solo ed esclusivamente pratiche NTS, invia le email ed esce senza aprire Chrome!
+    if solo_locali_nts:
+        print("🏢 [Robot] In elenco sono presenti SOLO locali NTS Networks. Elaborazione e-mail diretta senza login Snai...")
+        for _, row in locali_pronti.iterrows():
+            codice_aams = str(row["CODICE_LOCALE"]).strip()
+            nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
+            data_inizio_pulita = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
+            data_fine_pulita = str(row["FINE_FERIE"]).replace("-", ".").strip()
+            
+            successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pulita, data_fine_pulita)
+            if successo_nts:
+                scarica_e_aggiorna_excel_su_github(codice_aams)
+        print("✅ [Robot] Tutti i locali NTS evasi. Evitato l'accesso a Snaitech inutile!")
+        return
+
+    # 🌐 ALTRIMENTI: Se ci sono anche locali Snaitech, accende Chrome e procede normalmente con il flusso vecchio immutato
+    df_snai = df_ferie[df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"]
     if df_snai.empty: return
 
     print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG. Avvio Chrome...")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, args=[
-            "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"
-        ]) 
+        browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
         context = browser.new_context()
         page = context.new_page()
 
