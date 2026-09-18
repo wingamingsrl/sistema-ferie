@@ -217,34 +217,39 @@ def avvia_sincronizzazione_automatica():
 
     # 🛡️ CONTROLLO PREVENTIVO DI MANUELA: Verifica se ci sono solo locali NTS Networks in elenco
     solo_locali_nts = True
+    # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo NTS. Elabora SEMPRE i locali NTS Networks per primi
     for _, row in locali_pronti.iterrows():
-        if "SNAI" in str(row["CONCESSIONARIO"]).upper():
-            solo_locali_nts = False
-            break
-
-    # Se in elenco ci sono solo ed esclusivamente pratiche NTS, invia le email ed esce senza aprire Chrome!
-    if solo_locali_nts:
-        print("🏢 [Robot] In elenco sono presenti SOLO locali NTS Networks. Elaborazione e-mail diretta senza login Snai...")
-        for _, row in locali_pronti.iterrows():
+        concessionario_riga = str(row["CONCESSIONARIO"]).strip().upper()
+        if "NTS" in concessionario_riga or "NETWORKS" in concessionario_riga:
             codice_aams = str(row["CODICE_LOCALE"]).strip()
             nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
             data_inizio_pulita = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
             data_fine_pulita = str(row["FINE_FERIE"]).replace("-", ".").strip()
             
+            print(f"🏢 [NTS Networks] Rilevato locale: {nome_locale_corrente}. Spedisco la mail diretta ed aggiorno l'Excel...")
             successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pulita, data_fine_pulita)
             if successo_nts:
                 scarica_e_aggiorna_excel_su_github(codice_aams)
-        print("✅ [Robot] Tutti i locali NTS evasi. Evitato l'accesso a Snaitech inutile!")
+
+    # 🌐 FASE 2: Rilegge il database pulito per vedere se sono rimaste pratiche Snaitech da fare su Chrome
+    df_ferie_aggiornato = preleva_storico_diretto_da_cloud()
+    if df_ferie_aggiornato.empty: return
+
+    df_snai = df_ferie_aggiornato[
+        (df_ferie_aggiornato["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG") & 
+        (df_ferie_aggiornato["ROBOT_ACTION"].astype(str).str.strip().str.upper().isin(["NUOVA", "MODIFICA", "ELIMINA"]))
+    ]
+    
+    if df_snai.empty:
+        print("✅ [Robot] Tutte le pratiche correnti evase con successo. Nessun locale Snaitech in attesa. Evito il login!")
         return
 
-    # 🌐 ALTRIMENTI: Se ci sono anche locali Snaitech, accende Chrome e procede normalmente con il flusso vecchio immutato
-    df_snai = df_ferie[df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"]
-    if df_snai.empty: return
-
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG. Avvio Chrome...")
+    # Se invece ci sono ancora locali Snaitech residui, allora accende Chrome e procede
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG da elaborare. Avvio Chrome...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
+ 
         context = browser.new_context()
         page = context.new_page()
 
