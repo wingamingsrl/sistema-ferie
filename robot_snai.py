@@ -212,15 +212,12 @@ def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
-        # 🛡️ FIX SINTASSI DI MANUELA: Inserito .str.upper() corretto per Pandas per azzerare il crash all'avvio
+    # Estrae solo i record che il robot deve realmente lavorare
     locali_pronti = df_ferie[df_ferie["ROBOT_ACTION"].astype(str).str.strip().str.upper().isin(["NUOVA", "MODIFICA", "ELIMINA"])]
+    if locali_pronti.empty: return
 
-    if locales_pronti.empty if 'locales_pronti' in locals() else locali_pronti.empty: return
-
-    # 🛡️ CONTROLLO PREVENTIVO DI MANUELA: Verifica se ci sono solo locali NTS Networks in elenco
-    solo_locali_nts = True
-    # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo NTS. Elabora SEMPRE i locali NTS Networks per primi
     # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo NTS dinamico (Inclusi Nuova, Modifica ed Elimina)
+    rimangono_locali_snai = False
     for _, row in locali_pronti.iterrows():
         concessionario_riga = str(row["CONCESSIONARIO"]).strip().upper()
         mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
@@ -228,38 +225,29 @@ def avvia_sincronizzazione_automatica():
         if "NTS" in concessionario_riga or "NETWORKS" in concessionario_riga:
             codice_aams = str(row["CODICE_LOCALE"]).strip()
             nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
-            data_inizio_pulita = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
-            data_fine_pulita = str(row["FINE_FERIE"]).replace("-", ".").strip()
+            # Per NTS formatta le date con i punti senza toccare le variabili globali
+            data_nts_in = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
+            data_nts_fi = str(row["FINE_FERIE"]).replace("-", ".").strip()
             
             print(f"🏢 [NTS Networks] Rilevato locale: {nome_locale_corrente} in stato [{mirino_azione}]. Attivo l'invio...")
-            # Passa l'azione (NUOVA, MODIFICA o ELIMINA) per diversificare il testo della mail
-            successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pulita, data_fine_pulita, mirino_azione)
+            successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_nts_in, data_nts_fi, mirino_azione)
             if successo_nts:
                 scarica_e_aggiorna_excel_su_github(codice_aams)
+        else:
+            rimangono_locali_snai = True
 
-
-    # 🌐 FASE 2: Rilegge il database pulito per vedere se sono rimaste pratiche Snaitech da fare su Chrome
-    df_ferie_aggiornato = preleva_storico_diretto_da_cloud()
-    if df_ferie_aggiornato.empty: return
-
-    df_snai = df_ferie_aggiornato[
-        (df_ferie_aggiornato["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG") & 
-        (df_ferie_aggiornato["ROBOT_ACTION"].astype(str).str.strip().str.upper().isin(["NUOVA", "MODIFICA", "ELIMINA"]))
-    ]
-    
-    if df_snai.empty:
-        print("✅ [Robot] Tutte le pratiche correnti evase con successo. Nessun locale Snaitech in attesa. Evito il login!")
+    # Se dopo il giro di NTS non ci sono locali Snaitech, si ferma qui ed evita il login Snai
+    if not rimangono_locali_snai:
+        print("✅ [Robot] Tutti i locali NTS evasi con successo. Nessun locale Snaitech in attesa.")
         return
 
-    # Se invece ci sono ancora locali Snaitech residui, allora accende Chrome e procede
-    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG da elaborare. Avvio Chrome...")
-
+    # 🌐 SE CI SONO LOCALI SNAI: Accende Chrome ed effettua la trafila del login classico immutato
+    print("🤖 [Robot] Ci sono locali Snaitech da elaborare. Avvio Chrome...")
+    
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
- 
         context = browser.new_context()
         page = context.new_page()
-
         page.on("dialog", lambda dialog: dialog.accept())
 # =====================================================================================
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
@@ -280,7 +268,6 @@ def avvia_sincronizzazione_automatica():
             print("⏳ [Robot] STEP 4c: Pausa di sicurezza di 11 secondi per far scadere il countdown...")
             time.sleep(11)
             
-            # 🛡️ RIALLINEAMENTO RIGIDO DI MANUELA: Corretti gli spazi a inizio riga per azzerare l'IndentationError
             try:
                 page.evaluate("""
                     document.querySelectorAll('.modal, .modal-backdrop, [id*="modal"], [class*="modal"], .fade.in').forEach(el => el.remove());
@@ -290,7 +277,6 @@ def avvia_sincronizzazione_automatica():
                 print("✅ [Robot] STEP 4d: Codice pop-up eliminato dalla pagina con successo!")
             except Exception: pass
             time.sleep(2)
-
 
             print("🔑 [Robot] STEP 4e: Generazione ed immissione codice 2FA TOTP pulito...")
             codice_totp = genera_codice_otp_automatico()
@@ -305,43 +291,36 @@ def avvia_sincronizzazione_automatica():
             
             print("🔓 [Robot] STEP 5: ACCESSO EFFETTUATO CON SUCCESSO SUL PORTALE PARTNER SNAITECH!")
             print("----------------------------------------------------------------------")
+
 # =====================================================================================
-# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA COPIATA COERENTEMENTE DAL TUO TESTO
+# BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA LOCALI SNAI NATIVI
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
-            # --- AGGIORNAMENTO DEL FILTRO CONCESSIONARI DI MANUELA (SNAITECH + NTS) ---
+            # Rilegge lo storico aggiornato per fare il giro dei soli locali Snaitech rimasti
+            df_ferie_aggiornato = preleva_storico_diretto_da_cloud()
+            df_snai = df_ferie_aggiornato[df_ferie_aggiornato["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"]
+
             for _, row in df_snai.iterrows():
                 try:
                     codice_aams = str(row["CODICE_LOCALE"]).strip()
                     nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
-                    data_in_doc = str(row["INIZIO_FERIE"]).strip()
-                    data_fi_doc = str(row["FINE_FERIE"]).strip()
-                    concessionario_riga = str(row["CONCESSIONARIO"]).strip()
+                    data_in_completa = str(row["INIZIO_FERIE"]).strip()
+                    data_fi_completa = str(row["FINE_FERIE"]).strip()
                     mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
                     
-                    # Formatta le date con i punti (es. 08.08.2026 h. 12.00) come richiesto nel testo istituzionale
-                    data_inizio_pulita = str(data_in_doc).replace("-", ".").strip()
-                    data_fine_pulita = str(data_fi_doc).replace("-", ".").strip()
+                    # 🚨 FORMATO VERGINE DI SNAITECH: Ripristinato rigorosamente con le barre oblique per non fallire il Salva
+                    data_inizio_pulita = str(data_in_completa).replace("-", "/").strip()
+                    data_fine_pulita = str(data_fi_completa).replace("-", "/").strip()
                     
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
                         continue
-
-                    # 🛡️ INTERCETTATORE AUTOMATICO NTS: Se la riga appartiene a NTS Networks, spende l'email ed aggiorna l'Excel cloud
-                    if "NTS" in concessionario_riga or "Networks" in concessionario_riga:
-                        print(f"🏢 [Robot] Rilevato locale NTS Networks: {nome_locale_corrente}. Attivo l'invio diretto...")
-                        successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_inizio_pulita, data_fine_pulita)
-                        if successo_nts:
-                            scarica_e_aggiorna_excel_su_github(codice_aams)
-                        continue
-
-                    # Se invece è Snaitech, procede normalmente con lo STEP 7 classico ed i clic sul portale web
+                        
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -350,16 +329,10 @@ def avvia_sincronizzazione_automatica():
 
                     print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
-                    
-                    try:
-                        campo_ricerca.wait_for(state="visible", timeout=20000)
-                    except Exception as e_time:
-                        raise e_time # Fa proseguire l'errore per saltare la riga regolarmente
-                        
+                    campo_ricerca.wait_for(state="visible", timeout=20000)
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
-
                     
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
@@ -370,26 +343,22 @@ def avvia_sincronizzazione_automatica():
                     icona_nuovo = target_frame.locator("img[src*='insert_pianificazione.jpg'], img[src*='insert_pianificazione'], img[id*='img_pianificazione']").first
                     icona_modifica = target_frame.locator("img[src*='edit_pianificazione']").first
                     
-                    try:
-                        icona_nuovo.wait_for(state="attached", timeout=4000)
+                    try: icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
 
-                    # 🛡️ INTELLIGENZA DI MANUELA: Se l'azione è ELIMINA ma non esiste la matita a portale, pulisce l'Excel direttamente da qui!
                     if mirino_azione == "ELIMINA" and icona_modifica.count() == 0:
                         print("   ℹ️ [Robot] Comando ELIMINA su locale vergine a portale. Cancello la riga dall'Excel cloud all'istante...")
                         scarica_e_aggiorna_excel_su_github(codice_aams)
                         time.sleep(4)
-                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                        page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
                         time.sleep(6)
                         continue
-                   
+
                     if (icona_modifica.count() > 0 and icona_modifica.is_visible()) or mirino_azione == "ELIMINA":
                         print(f"   📝 [Robot] STEP 8: [{mirino_azione}] Clicco sulla matita di modifica per entrare nella scheda...")
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
-                        
-                        # 🛡️ BLINDATURA DI MANUELA: Forza lo scroll visivo esplicito al centro dello schermo prima di fare il click sul pallino
                         icona_nuovo.scroll_into_view_if_needed(timeout=5000)
                         time.sleep(1)
                         icona_nuovo.click(force=True, timeout=8000)
@@ -400,6 +369,10 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
+# =====================================================================================
+# BLOCCO 5: DATA FINE PURIFICATA, SEQUENZA DIGITAZIONE REALE E SALVATAGGIO REALE
+# ==============================================================================
 # =====================================================================================
 # BLOCCO 5: DATA FINE PURIFICATA, SEQUENZA FOTO REALE E RITORNO IN BACHECA PROTETTO
 # =====================================================================================
