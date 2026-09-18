@@ -70,8 +70,12 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
 
 
 def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice, data_evento, tipo_avviso):
-    print(f"📧 [Email Engine] Scansione database tecnici basata sulla colonna NOME...")
+    print(f"📧 [Email Engine] Avvio invio nativo con lo stesso sistema di Streamlit...")
     try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.header import Header
+
         elenco_email_squadra = {}
         nome_file_tecnici = "elenco_tecnici.xlsx"
         if os.path.exists(nome_file_tecnici):
@@ -105,20 +109,27 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
 
         stringa_destinatari = ", ".join(destinatari_finali)
         oggetto_mail = f"⚠️ [PROMEMORIA FERIE] Scadenza {tipo_avviso} Locale: {locale} ({codice})"
-        corpo_mail = f"All'attenzione del Team Win Gaming,\n\nMancano 3 giorni all'evento: {tipo_avviso}.\n🏢 Locale: {locale} ({codice})\n📅 Data Scadenza: {data_evento}\n👤 Tecnico: {tecnico_nome}"
+        corpo_mail = f"All'attenzione del Team Win Gaming,\n\nMancano 3 giorni al seguente evento programmato:\n\n🏢 LOCALE: {locale} ({codice})\n📅 DATA EVENTO: {data_evento}\n👤 RESPONSABILE: {tecnico_nome}\n👥 IN COPIA: {collega_in_copia}\n\nMessaggio automatico generato da WinGaming-Robot."
 
-        # 🛡️ SBLOCCO WEB: Invia tramite il canale web Formspree senza usare le porte SMTP bloccate dal server
-        url_gateway = "https://formspree.io"
-        payload_web = {
-            "email": stringa_destinatari,
-            "message": f"Oggetto: {oggetto_mail}\n\n{corpo_mail}"
-        }
+        # 🛡️ IL MOTORE IDENTICO A STREAMLIT: Usa il server SMTP di Gmail con sblocco TLS
+        msg = MIMEText(corpo_mail, 'plain', 'utf-8')
+        msg['Subject'] = Header(oggetto_mail, 'utf-8')
+        msg['From'] = "wingamingsrl@gmail.com"
+        msg['To'] = stringa_destinatari
+
+        # Connessione diretta e forzata ai server ufficiali di Google
+        server_smtp = smtplib.SMTP("://gmail.com", 587, timeout=15)
+        server_smtp.starttls()
         
-        # Spedizione fisica immediata
-        requests.post(url_gateway, json=payload_web, timeout=10)
-        print(f"   ✅ [Email Engine] Notifica smistata con successo via Web Gateway a: {stringa_destinatari}")
+        # 🔑 NOTA DI SICUREZZA: Usa la password o la Password per le App configurata per le automazioni dell'ufficio
+        server_smtp.login("wingamingsrl@gmail.com", "Salmi123!")
+        
+        server_smtp.sendmail("wingamingsrl@gmail.com", destinatari_finali, msg.as_string())
+        server_smtp.quit()
+        
+        print(f"   ✅ [Email Engine] Notifica inviata e CONSEGNATA REALMENTE a: {stringa_destinatari}")
     except Exception as e_mail:
-        print(f"   ❌ Errore durante l'invio dell'email: {str(e_mail)}")
+        print(f"   ❌ Errore durante l'invio SMTP speculare a Streamlit: {str(e_mail)}")
 
 
 # =====================================================================================
