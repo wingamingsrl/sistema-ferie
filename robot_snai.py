@@ -344,7 +344,7 @@ def avvia_sincronizzazione_automatica():
                             target_frame = f
                             break
 
-                   print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
+                    print("   🔍 [Robot] STEP 7a: Inserimento codice censimento nella barra filtri...")
                     campo_ricerca = target_frame.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").first
                     
                     try:
