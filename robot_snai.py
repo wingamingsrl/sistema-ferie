@@ -123,7 +123,7 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
         
         # Recupera in automatico la password applicativa salvata in modo sicuro nei segreti di GitHub
-        pass_gmail = os.environ.get("GMAIL_PASSWORD_APPLICATIVA", "Salmi123!").strip()
+        pass_gmail = str(st.secrets["gmail"]["password_applicativa"]).strip()
         
         msg = MIMEMultipart()
         msg['From'] = EMAIL_MITTENTE_GMAIL
