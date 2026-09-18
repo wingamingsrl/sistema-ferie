@@ -310,7 +310,7 @@ def avvia_sincronizzazione_automatica():
 # BLOCCO 4: SPOSTAMENTO IN ANAGRAFICA E STRUTTURA RICERCA LOCALI SNAI NATIVI
 # =====================================================================================
             print("📬 [Robot] STEP 6: Spostamento sulla pagina degli Esercizi censiti...")
-            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx")
+            page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
             print("   ⏳ [Robot] STEP 6a: Attesa stabilizzazione della pagina (10 secondi)...")
             time.sleep(10)
 
