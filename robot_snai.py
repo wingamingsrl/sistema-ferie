@@ -144,6 +144,9 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
         print(f"   ❌ Errore durante l'invio SMTP IP nativo basato su test_app.py: {str(e_mail)}")
 
 
+# =====================================================================================
+# 🛡️ FUNZIONE NUOVA: MOTORE EMAIL DIRETTO SPECIFICO PER NTS NETWORKS (CON PREU DINAMICO)
+# =====================================================================================
 def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, azione):
     print(f"📧 [NTS Engine] Preparazione e-mail di {azione} per NTS Networks (Locale: {locale})...")
     try:
@@ -154,7 +157,6 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         EMAIL_AUTENTICAZIONE = "wingamingsrl@gmail.com"
         pass_applicativa_ufficio = "zndjprxjvhiustio"
 
-        # Modifica l'oggetto e il testo a seconda dell'azione richiesta da Manuela
         if azione == "ELIMINA":
             oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
             testo_azione = "si richiede la CANCELLAZIONE della comunicazione di chiusura temporanea precedentemente inviata"
@@ -165,17 +167,17 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
             oggetto_azione = "Richiesta Chiusura Temporanea"
             testo_azione = "si richiede l’invio della comunicazione di chiusura temporanea"
 
-        msg = MIMEMultipart()
-        msg['From'] = f"Wingaming - Tecnico <tecnico@wingaming.it>"
-        msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con l'email di NTS reale finiti i test
-        msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
-        msg['Reply-To'] = "tecnico@wingaming.it"
-        # 🛡️ CONTROLLO BLOCCO PREU DI MANUELA: Se l'azione è NUOVA o MODIFICA inserisce la richiesta, altrimenti la lascia vuota
+        # 🛡️ CONTROLLO BLOCCO PREU: Se l'azione è NUOVA o MODIFICA inserisce la richiesta, altrimenti la lascia vuota
         testo_preu = ""
         if azione == "NUOVA" or azione == "MODIFICA":
             testo_preu = "\nSi richiede il blocco Preu\n"
 
-        # Formattazione del testo ufficiale unificato con l'inserimento dinamico del Preu
+        msg = MIMEMultipart()
+        msg['From'] = f"WinGaming Tecnico <tecnico@wingaming.it>"
+        msg['To'] = "manuela.arigoni@wingaming.it"  # Cambiala con la mail reale di NTS finiti i test
+        msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
+        msg['Reply-To'] = "tecnico@wingaming.it"
+
         corpo_nts = f"""Buongiorno,
  
 {testo_azione} per l’esercizio indicato in oggetto e per gli apparecchi ivi ubicati per il periodo:
@@ -183,12 +185,9 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
 dal\t{data_in}
 al\t{data_fi}
 {testo_preu}
-
 Grazie
 Cordiali saluti
 
-
-Arigoni Manuela
 
 Wingaming S.r.l.
 Sede Legale e Operativa: Via Roma, 32/F - 23855 Pescate (LC)
@@ -196,7 +195,6 @@ P.Iva Gruppo IVA: 12027280960
 C.F. 03371290135
 CODICE UNIVOCO INTERSCAMBIO: SUBM70N
 Tel. 0341.1917908"""
-
 
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
@@ -213,6 +211,7 @@ Tel. 0341.1917908"""
 
 
 
+
 # =====================================================================================
 # BLOCCO 2: FILTRO SELEZIONE ANAGRAFICA AZIENDALE ED ACCENSIONE BROWSER CHROME
 # =====================================================================================
@@ -220,11 +219,11 @@ def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
-    # Estrae solo i record che il robot deve realmente lavorare
+    # Estrae solo i record che hanno un'azione reale da compiere
     locali_pronti = df_ferie[df_ferie["ROBOT_ACTION"].astype(str).str.strip().str.upper().isin(["NUOVA", "MODIFICA", "ELIMINA"])]
     if locali_pronti.empty: return
 
-    # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo NTS dinamico (Inclusi Nuova, Modifica ed Elimina)
+    # 🛡️ ACCELERATORE PREVENTIVO NTS: Invia le mail a NTS per prime ed esce subito se non ci sono locali Snaitech
     rimangono_locali_snai = False
     for _, row in locali_pronti.iterrows():
         concessionario_riga = str(row["CONCESSIONARIO"]).strip().upper()
@@ -233,7 +232,6 @@ def avvia_sincronizzazione_automatica():
         if "NTS" in concessionario_riga or "NETWORKS" in concessionario_riga:
             codice_aams = str(row["CODICE_LOCALE"]).strip()
             nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
-            # Per NTS formatta le date con i punti senza toccare le variabili globali
             data_nts_in = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
             data_nts_fi = str(row["FINE_FERIE"]).replace("-", ".").strip()
             
@@ -244,19 +242,27 @@ def avvia_sincronizzazione_automatica():
         else:
             rimangono_locali_snai = True
 
-    # Se dopo il giro di NTS non ci sono locali Snaitech, si ferma qui ed evita il login Snai
     if not rimangono_locali_snai:
-        print("✅ [Robot] Tutti i locali NTS evasi con successo. Nessun locale Snaitech in attesa.")
+        print("✅ [Robot] Tutti i locali NTS evasi con successo. Nessun locale Snaitech in coda. Evito login inutile!")
         return
 
-    # 🌐 SE CI SONO LOCALI SNAI: Accende Chrome ed effettua la trafila del login classico immutato
-    print("🤖 [Robot] Ci sono locali Snaitech da elaborare. Avvio Chrome...")
-    
+    # Sfrutta il tracciato originale pulito per Snaitech
+    df_snai = df_ferie[
+        df_ferie["CONCESSIONARIO"].astype(str).str.strip() == "Snaitech Spa WG"
+    ]
+    if df_snai.empty: return
+
+    print(f"🤖 [Robot] STEP 3: Rilevati {len(df_snai)} locali Snaitech Spa WG. Avvio Chrome...")
+
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]) 
+        browser = p.chromium.launch(headless=False, args=[
+            "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"
+        ]) 
         context = browser.new_context()
         page = context.new_page()
+
         page.on("dialog", lambda dialog: dialog.accept())
+
 # =====================================================================================
 # BLOCCO 3: ACCESSO SUL PORTALE PARTNER ED IMMISSIONE CHIAVE DINAMICA OTP (LINK CORTO)
 # =====================================================================================
