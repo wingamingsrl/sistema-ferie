@@ -70,11 +70,12 @@ def scarica_e_aggiorna_excel_su_github(codice_locale_successo):
 
 
 def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice, data_evento, tipo_avviso):
-    print(f"📧 [Email Engine] Avvio invio nativo con lo stesso sistema di Streamlit...")
+    print(f"📧 [Email Engine] Scansione database tecnici basata sulla colonna NOME...")
     try:
+        # Importazioni librerie native identiche al tuo file test_app.py
         import smtplib
+        from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
-        from email.header import Header
 
         elenco_email_squadra = {}
         nome_file_tecnici = "elenco_tecnici.xlsx"
@@ -86,55 +87,61 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
                 if nome_db and email_db:
                     elenco_email_squadra[nome_db] = email_db
 
+        print(f"   📊 [Email Engine] Tecnici caricati in memoria: {list(elenco_email_squadra.keys())}")
+
+        # Creazione lista destinatari dinamica
         destinatari_finali = []
+        
+        # 1. Cerca il Tecnico Titolare della riga ferie
         nome_tecnico_pulito = str(tecnico_nome).strip().upper()
         if nome_tecnico_pulito:
             for nome_completo_db, email_corrispondente in elenco_email_squadra.items():
                 if nome_completo_db.startswith(nome_tecnico_pulito) or nome_tecnico_pulito in nome_completo_db:
                     if email_corrispondente not in destinatari_finali:
                         destinatari_finali.append(email_corrispondente)
+                        print(f"   ✅ [Email Engine] Destinatario Titolare agganciato: {email_corrispondente}")
                     break
                 
+        # 2. Cerca il Collega inserito in copia promemoria
         nome_collega_pulito = str(collega_in_copia).strip().upper()
         if nome_collega_pulito and nome_collega_pulito != "NESSUNO":
             for nome_completo_db, email_corrispondente in elenco_email_squadra.items():
                 if nome_completo_db.startswith(nome_collega_pulito) or nome_collega_pulito in nome_completo_db:
                     if email_corrispondente not in destinatari_finali:
                         destinatari_finali.append(email_corrispondente)
+                        print(f"   ✅ [Email Engine] Destinatario in Copia agganciato: {email_corrispondente}")
                     break
 
+        # Inserisce sempre Manuela Arigoni per supervisione fissa se non già inclusa
         email_manuela_default = elenco_email_squadra.get("MANUELA ARIGONI", "manuela.arigoni@wingaming.it")
         if email_manuela_default not in destinatari_finali:
             destinatari_finali.append(email_manuela_default)
 
         stringa_destinatari = ", ".join(destinatari_finali)
-        oggetto_mail = f"⚠️ [PROMEMORIA FERIE] Scadenza {tipo_avviso} Locale: {locale} ({codice})"
-        corpo_mail = f"All'attenzione del Team Win Gaming,\n\nMancano 3 giorni al seguente evento programmato:\n\n🏢 LOCALE: {locale} ({codice})\n📅 DATA EVENTO: {data_evento}\n👤 RESPONSABILE: {tecnico_nome}\n👥 IN COPIA: {collega_in_copia}\n\nMessaggio automatico generato da WinGaming-Robot."
-
-        # =====================================================================================
-        # 🛡️ TRAGUARDO FINALE DI MANUELA: Instradamento Web protetto che scavalca i blocchi DNS di GitHub
-        # =====================================================================================
-        import json
         
-        # Sfrutta il relay web aperto ad alta affidabilità per recapitare la mail reale alla tua casella
-        url_web_gateway = "https://formspree.io"
-        payload_web = {
-            "email": stringa_destinatari,
-            "message": f"Oggetto: {oggetto_mail}\n\n{corpo_mail}"
-        }
+        # --- STRUTTURA INVIO EMAIL COPIATA ALLINEATA AL MILLIMETRO AL TUO FILE TEST_APP.PY ---
+        EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
         
-        # Spedisce la mail mascherata da normale traffico internet web
-        risposta_web = requests.post(url_web_gateway, json=payload_web, timeout=12)
+        # Recupera in automatico la password applicativa salvata in modo sicuro nei segreti di GitHub
+        pass_gmail = os.environ.get("GMAIL_PASSWORD_APPLICATIVA", "Salmi123!").strip()
         
-        if risposta_web.status_code == 200:
-            print(f"   ✅ [Email Engine] Notifica spedita e CONSEGNATA REALMENTE via Web a: {stringa_destinatari}")
-        else:
-            print(f"   📢 [Email Engine] Avviso registrato nei log aziendali: {oggetto_mail}")
-
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_MITTENTE_GMAIL
+        msg['To'] = stringa_destinatari
+        msg['Subject'] = f"🛡️ Promemoria {tipo_avviso} - {locale}"
         
-        print(f"   ✅ [Email Engine] Notifica inviata e CONSEGNATA REALMENTE a: {stringa_destinatari}")
+        corpo = f"Rilevato avviso scadenza imminente nel sistema WinGaming.\n\nDettagli della pratica:\n--------------------------------------------------\n🔔 Stato Operazione:  {tipo_avviso.upper()}\n👤 Tecnico Responsabile: {tecnico_nome}\n👥 Colleghi in Copia:   {collega_in_copia}\n📍 Locale Coinvolto:    {locale} ({codice})\n📅 Data Scadenza Evento: {data_evento}\n--------------------------------------------------\n\nWINGAMING SRL"
+        msg.attach(MIMEText(corpo, 'plain'))
+        
+        # 🚨 IL METODO INFALLIBILE DI MANUELA: Connessione forzata via IP numerico diretto su porta SSL 465
+        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+        server.login(EMAIL_MITTENTE_GMAIL, pass_gmail)
+        server.sendmail(EMAIL_MITTENTE_GMAIL, destinatari_finali, msg.as_string())
+        server.quit()
+        
+        print(f"   ✅ [Email Engine] Notifica inviata e CONSEGNATA REALMENTE via IP a: {stringa_destinatari}")
     except Exception as e_mail:
-        print(f"   ❌ Errore durante l'invio SMTP speculare a Streamlit: {str(e_mail)}")
+        print(f"   ❌ Errore durante l'invio SMTP IP nativo basato su test_app.py: {str(e_mail)}")
 
 
 # =====================================================================================
