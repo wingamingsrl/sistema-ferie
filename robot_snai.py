@@ -210,8 +210,9 @@ def avvia_sincronizzazione_automatica():
     df_ferie = preleva_storico_diretto_da_cloud()
     if df_ferie.empty: return
 
-    # Estrae solo i record che il robot deve realmente lavorare
-    locali_pronti = df_ferie[df_ferie["ROBOT_ACTION"].astype(str).str.strip().upper().isin(["NUOVA", "MODIFICA", "ELIMINA"])]
+        # 🛡️ FIX SINTASSI DI MANUELA: Inserito .str.upper() corretto per Pandas per azzerare il crash all'avvio
+    locali_pronti = df_ferie[df_ferie["ROBOT_ACTION"].astype(str).str.strip().str.upper().isin(["NUOVA", "MODIFICA", "ELIMINA"])]
+
     if locales_pronti.empty if 'locales_pronti' in locals() else locali_pronti.empty: return
 
     # 🛡️ CONTROLLO PREVENTIVO DI MANUELA: Verifica se ci sono solo locali NTS Networks in elenco
