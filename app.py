@@ -8,6 +8,7 @@ import time
 import base64
 import requests
 import smtplib
+import pyotp  # 🛡️ INTEGRATO PER LA GENERAZIONE AUTOMATICA OTP 2FA
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import streamlit as st
@@ -18,7 +19,7 @@ from datetime import datetime, timedelta, time as dtime
 icona_app = "logo.png" if os.path.exists("logo.png") else "📅"
 
 st.set_page_config(
-    page_title="Ferie Gestori", 
+    page_title="Ferie Gestori - Sandbox Test", 
     page_icon=icona_app, 
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -48,6 +49,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
+
 # =====================================================================================
 # BLOCCO 2: COLLEGAMENTO FILE EXCEL PERMANENTI E PARSAMENTO REALE CONTRACCOSMICO
 # VERSIONE DI PRODUZIONE 100% EXCEL NATIVO — BLINDATURA CANCELLAZIONI E MODIFICHE REALI
@@ -59,7 +62,7 @@ FILE_STORICO_PERMANENTE = "storico_ferie.xlsx"
 EMAIL_MITTENTE_GMAIL = "wingamingsrl@gmail.com"
 EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
-COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
+COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
 
 def scarica_file_da_github_se_esiste(nome_file):
     try:
@@ -86,60 +89,67 @@ def carica_database_locale():
     df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
-    # Se abbiamo appena fatto una cancellazione o modifica, impedisce a GitHub di sovrascrivere la RAM con i dati vecchi di rete
     if st.session_state.get("congelamento_sincro_attivo", False):
         if "storico_cloud" in st.session_state:
             df_s = pd.DataFrame(st.session_state.storico_cloud)
         else:
             df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
     else:
-        df_s = scarica_file_da_github_se_esiste(FILE_STORICO_PERMANENTE)
-        if df_s is None or df_s.empty:
-            if os.path.exists(FILE_STORICO_PERMANENTE):
-                df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-            else:
-                df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
+        df_s = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("") if os.path.exists(FILE_STORICO_PERMANENTE) else pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
             
     df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
+    return df_l, df_t, df_s
     
-    # Pulizia automatica rigida delle ferie già trascorse rispetto ad oggi
-    righe_valide = []
-    oggi_ora = datetime.now()
-    file_modificato_pulizia = False
-    
-    for _, row in df_s.iterrows():
-        testo_fine = str(row.get("FINE_FERIE", "")).strip()
-        if testo_fine:
-            try:
-                data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
-                if data_fine_valida < oggi_ora:
-                    file_modificato_pulizia = True
-                    continue
-            except Exception:
+    # 🧹 MOTORE AUTOMATICO GIORNALIERO (REPLICA ESATTA DEL TASTO ELIMINA MANUALE)
+    # Si attiva in automatico solo se l'utente è loggato e la memoria cloud è pronta
+    if "user_nome" in st.session_state and "storico_cloud" in st.session_state:
+        oggi_ora = datetime.now()
+        indici_da_eliminare = []
+        
+        # Scansiona lo storico cloud individuando la posizione esatta (ID) dei locali con ferie passate rispetto a oggi (Settembre 2026)
+        for idx, row in enumerate(st.session_state.storico_cloud):
+            testo_fine = str(row.get("FINE_FERIE", "")).strip()
+            if testo_fine:
                 try:
-                    data_fine_valida = datetime.strptime(testo_fine.split(" "), "%d-%m-%Y")
-                    if data_fine_valida.date() < oggi_ora.date():
-                        file_modificato_pulizia = True
-                        continue
-                except Exception: pass
-        righe_valide.append(row)
+                    data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
+                    if data_fine_valida < oggi_ora:
+                        indici_da_eliminare.append(idx)
+                except Exception:
+                    try:
+                        data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
+                        if data_fine_valida.date() < oggi_ora.date():
+                            indici_da_eliminare.append(idx)
+                    except Exception: pass
         
-    if righe_valide:
-        df_s = pd.DataFrame(righe_valide)
-    else:
-        df_s = pd.DataFrame(columns=COLONNE_REALI_UFFICIO)
-        
-    df_s = df_s.reindex(columns=COLONNE_REALI_UFFICIO).fillna("")
-    
-    if file_modificato_pulizia and not st.session_state.get("congelamento_sincro_attivo", False):
-        push_excel_su_github(df_s)
-        
+        # 🛡️ SE CI SONO SCADENZE: Esegue la rimozione col .pop() identica al comando manuale
+        if indici_da_eliminare:
+            st.session_state.congelamento_sincro_attivo = True  # Blocca temporaneamente la RAM
+            
+            # Rimuove i record partendo dall'ultimo per non sfasare gli indici della lista
+            for idx in sorted(indici_da_eliminare, reverse=True):
+                st.session_state.storico_cloud.pop(idx)
+                
+            # Rigenera il database aggiornato dall'elenco rimasto
+            df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+            
+            # Forza la stesura su disco e la spinta cloud con la sequenza collaudata
+            df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+            push_excel_su_github(df_nuovo_salva)
+            
+            st.session_state.congelamento_sincro_attivo = False  # Sblocca la RAM
+            st.toast("🧹 Pulizia automatica: Rimossi i locali che hanno terminato le ferie!")
+            time.sleep(0.5)
+            st.rerun()
+            
     return df_l, df_t, df_s
 
+    
 df_locali, df_tecnici, df_storico_file = carica_database_locale()
 
-if "storico_cloud" not in st.session_state:
-    st.session_state.storico_cloud = df_storico_file.to_dict('records')
+# 🛡️ AUTOMAZIONE DI MANUELA: Forza l'app a leggere l'Excel reale aggiornato dal robot, distruggendo la cache vecchia
+df_aggiornato_reale = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("") if os.path.exists(FILE_STORICO_PERMANENTE) else df_storico_file
+st.session_state.storico_cloud = df_aggiornato_reale.to_dict('records')
+
 
 def push_excel_su_github(df_da_salvare):
     try:
@@ -192,8 +202,62 @@ def push_excel_su_github(df_da_salvare):
         return False
     except Exception:
         return False
+# =====================================================================================
+# FUNZIONI INTEGRATE DEL ROBOT AUTOMATICO DI SINCRONIZZAZIONE .SNAI.IT
+# =====================================================================================
+def genera_codice_otp_automatico():
+    chiave_pulita = CHIAVE_SEGRETA_2FA.strip().upper().replace(" ", "")
+    totp = pyotp.TOTP(chiave_pulita)
+    return totp.now()
 
-
+def esegui_sincronizzazione_robot_snai():
+    # 🛡️ BLINDATURA TOTALE: Cambiamo il testo in 'Fase Finale' per verificare l'effettivo aggiornamento del file
+    st.info("🎯 TELECOMANDO CLOUD — Fase Finale: Verifica credenziali...")
+    try:
+        t_git = str(st.secrets["github"]["token_accesso"]).strip()
+        st.write("📝 Fase 1a: Gettone di sicurezza rintracciato in memoria.")
+            
+        # 🛡️ COSTRUZIONE STRUTTURALE PEZZO PER PEZZO: Impedisce la sovrascrittura o il troncamento della cache di Streamlit
+        protocollo = "https://"
+        dominio_api = "api.github.com"
+        percorso_repo = "/repos/wingamingsrl/sistema-ferie"
+        percorso_workflow = "/actions/workflows/cron_robot_snai.yml/dispatches"
+        
+        # Unisce i blocchi creando la stringa estesa senza rischiare tagli
+        url_workflow = f"{protocollo}{dominio_api}{percorso_repo}{percorso_workflow}"
+        st.write(f"🔍 Fase 2: Indirizzo di rete del Workflow configurato -> `{url_workflow}`")
+        
+        headers_dispatch = {
+            "Authorization": f"token {t_git}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "WinGaming-Cloud-App"
+        }
+        
+        payload_dispatch = {
+            "ref": "main"
+        }
+        
+        st.info("🛰️ Fase 3: Spedizione del segnale di innesco a GitHub Actions...")
+        risposta_remota = requests.post(url_workflow, json=payload_dispatch, headers=headers_dispatch, timeout=10)
+        
+        st.warning(f"📊 Fase 4: Riscontro del server di automazione. Codice numerico -> {risposta_remota.status_code}")
+        
+        if risposta_remota.status_code == 204 or risposta_remota.status_code == 202:
+            st.success("🚀 Fase 5: ROBOT AUTOMATICO ATTIVATO!\n\nIl server esterno si è acceso correttamente ed ha avviato Chrome. Tra circa due minuti le ferie inserite saranno visibili sul portale Snaitech.")
+            st.warning("⏱️ Schermo congelato per 10 secondi per consentire la lettura...")
+            time.sleep(10)
+            return True
+        else:
+            st.error(f"❌ Fase 5: Attivazione respinta dal server. Dettaglio: {risposta_remota.text}")
+            st.warning("⏱️ Schermo congelato per 10 secondi...")
+            time.sleep(10)
+            return False
+            
+    except Exception as e_step:
+        st.error(f"💥 FASE FALLITA: Errore interno di sistema -> {str(e_step)}")
+        st.warning("⏱️ Schermo congelato per 10 secondi...")
+        time.sleep(10)
+        return False
 
 
 # =====================================================================================
@@ -221,23 +285,64 @@ if not st.session_state.autenticato:
         st.write("🔒 Autenticazione Richiesta")
         input_email = st.text_input("Nome Utente (E-mail):").strip().lower()
         input_password = st.text_input("Password di Sicurezza:", type="password").strip()
-        if st.button("EFFETTUA IL LOGIN"):
-            utente_valido = df_tecnici[(df_tecnici["EMAIL"].astype(str).str.strip().str.lower() == input_email) & (df_tecnici["PASSWORD"].astype(str).str.strip() == input_password)]
-            if not utente_valido.empty:
+        
+        if st.button("🚀 ACCEDI AL PORTALE"):
+            # Verifica le credenziali inserite dall'ufficio
+            utente_trovato = df_tecnici[(df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == input_email) & (df_tecnici["PASSWORD"].astype(str).str.strip() == input_password)]
+            if not utente_trovato.empty:
+                st.session_state.user_nome = str(utente_trovato.iloc[0]["NOME"]).strip()
+                st.session_state.user_email = str(utente_trovato.iloc[0]["EMAIL"]).strip()
                 st.session_state.autenticato = True
-                st.session_state.user_email = input_email
-                nome_grezzo = str(utente_valido["NOME"].values[0]).strip()
-                st.session_state.user_nome = nome_grezzo.replace("[", "").replace("]", "").replace("'", "").replace('"', "").strip()
-                st.query_params["token_sessione"] = f"{input_email}_{int(time.time())}"
+                # 🛡️ ALLINEAMENTO LIVE DI MANUELA: Scrive il token nell'URL della barra internet per mantenere la sessione 2 ore
+                st.query_params["token_sessione"] = f"{st.session_state.user_email}_attivo"
+
+                # 🧹 INNESTO AUTOMATICO DI MANUELA: Spazzino istantaneo nativo al momento del Login
+                if os.path.exists(FILE_STORICO_PERMANENTE):
+                    df_s_login = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+                    st.session_state.storico_cloud = df_s_login.to_dict('records')
+                    
+                    oggi_ora = datetime.now()
+                    indici_da_eliminare = []
+                    
+                    # Individua gli indici esatti delle scadenze passate (locali che hanno già riaperto)
+                    for idx, row in enumerate(st.session_state.storico_cloud):
+                        testo_fine = str(row.get("FINE_FERIE", "")).strip()
+                        if testo_fine:
+                            try:
+                                data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y %H:%M")
+                                if data_fine_valida < oggi_ora:
+                                    indici_da_eliminare.append(idx)
+                            except Exception:
+                                try:
+                                    data_fine_valida = datetime.strptime(testo_fine, "%d-%m-%Y")
+                                    if data_fine_valida.date() < oggi_ora.date():
+                                        indici_da_eliminare.append(idx)
+                                except Exception: pass
+                    
+                    # Se rileva record scaduti, applica la sequenza nativa esatta del tasto elimina manuale
+                    if indici_da_eliminare:
+                        st.session_state.congelamento_sincro_attivo = True
+                        for idx in sorted(indici_da_eliminare, reverse=True):
+                            st.session_state.storico_cloud.pop(idx)
+                            
+                        df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                        # Scrittura fisica obbligatoria su disco sul server prima della spinta cloud
+                        df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                        push_excel_su_github(df_nuovo_salva)
+                        st.session_state.congelamento_sincro_attivo = False
+                
+                st.success(f"🔓 Benvenuta {st.session_state.user_nome}!")
+                time.sleep(1.0)
                 st.rerun()
             else:
                 st.error("❌ Credenziali errate. Riprova.")
     st.stop()
 
+
 esecutore_nome = st.session_state.user_nome
 esecutore_email = st.session_state.user_email
 
-st.markdown("<h1>🧳 PORTALE FERIE GESTORI</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🧳 PORTALE FERIE ESERCENTI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
 
 
@@ -306,12 +411,31 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     st.markdown("---")
     col1, col2 = st.columns(2)
-    with col1: data_chiusura = st.date_input("Giorno Chiusura:", datetime.now(), format="DD-MM-YYYY")
+    with col1: 
+        # 🛡️ BLINDATURA CALENDARIO DI MANUELA: Ripristino layout classico con sblocco tendina dei mesi rapida sul telefono
+        data_chiusura = st.date_input(
+            "Giorno Chiusura:", 
+            value=datetime.now().date(), 
+            min_value=datetime(2025, 1, 1).date(), 
+            max_value=datetime(2030, 12, 31).date(),
+            format="DD-MM-YYYY",
+            key="cal_chiusura_definitivo_manuela"
+        )
     with col2: ora_chiusura = st.time_input("Ora Chiusura:", dtime(6, 0))
     
     st.markdown("---")
     col3, col4 = st.columns(2)
-    with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
+    #with col3: data_riapertura = st.date_input("Giorno Riapertura:", datetime.now() + timedelta(days=14), format="DD-MM-YYYY")
+    with col3: 
+        # 🛡️ BLINDATURA CALENDARIO DI MANUELA: Ripristino layout classico con sblocco tendina dei mesi rapida sul telefono
+        data_riapertura = st.date_input(
+            "Giorno Riapertura:", 
+            value=datetime.now().date(), 
+            min_value=datetime(2025, 1, 1).date(), 
+            max_value=datetime(2030, 12, 31).date(),
+            format="DD-MM-YYYY",
+            key="cal_riapertura_definitivo_manuela"
+        )
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
@@ -378,6 +502,9 @@ if submit_button:
             # 🛡️ FIX DATA INSERIMENTO ALL'ITALIANA: Formato Giorno-Mese-Anno con secondi reali
             data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
+            # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
+            tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
+
             nuova = {
                 "DATA_INSERIMENTO": str(data_inserimento_it),
                 "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -387,8 +514,12 @@ if submit_button:
                 "INIZIO_FERIE": str(str_c),
                 "FINE_FERIE": str(str_r),
                 "PROMEMORIA_IN_COPIA": str(co_destinatario),
-                "STATO_INVIO": "In attesa"
+                "STATO_INVIO": "In attesa",
+                "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
             }
+
+
+
 
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
@@ -422,19 +553,27 @@ if submit_button:
                     risposta_server = str(e_mail)
             
             if invio_ok:
-                nuova["STATO_INVIO"] = "Inviato OK"
+                nuova["STATO_INVIO"] = "Inviato OK" # Lascia traccia dell'e-mail partita
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
                     st.session_state.storico_cloud.pop(riga_conflitto_idx)
                 
                 st.session_state.storico_cloud.append(nuova)
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
+                
+                # Forza l'inclusione strutturale della nuova colonna nell'Excel aziendale permanente
+                if "ROBOT_ACTION" not in df_salva.columns:
+                    df_salva["ROBOT_ACTION"] = ""
+                    
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
+
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
                 time.sleep(4.0)
                 st.rerun()
+
+
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
@@ -461,9 +600,24 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
     
     if st.session_state.storico_cloud:
-        df_vis = pd.DataFrame(st.session_state.storico_cloud)
-        df_vis = df_vis.reindex(columns=colonne_reali_ufficio).fillna("")
-        st.dataframe(df_vis, hide_index=True)
+        # 🛡️ FILTRO DI MANUELA INTEGRALE: Scansiona la RAM e nasconde i locali da eliminare senza usare Pandas
+        lista_visibile = [
+            riga for riga in st.session_state.storico_cloud 
+            if str(riga.get("ROBOT_ACTION", "")).strip().upper() != "ELIMINA" and 
+               str(riga.get("robot_action", "")).strip().upper() != "ELIMINA"
+        ]
+        
+        # Genera la tabella solo con i locali rimasti attivi
+        df_vis = pd.DataFrame(lista_visibile)
+        
+        if not df_vis.empty:
+            df_vis = df_vis.reindex(columns=colonne_reali_ufficio).fillna("")
+            st.dataframe(df_vis, hide_index=True)
+        else:
+            st.info("📭 Nessuna chiusura attiva presente nel registro storico.")
+
+
+
         
         with io.BytesIO() as buffer:
             df_vis.to_excel(buffer, index=False)
@@ -471,44 +625,88 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     else:
         st.info("📭 Nessuna chiusura presente in memoria. Trascina il file Excel storico in fondo per ripopolare la plancia.")
         
+    # =====================================================================================
+    # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'AZIONE DA FARE
+    # =====================================================================================
+        # =====================================================================================
+    # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'ACTION DA FARE
+    # =====================================================================================
     st.markdown("---")
-    st.markdown("### 🏢 Locali SNAITECH da inserire a sistema")
-    righe_snaitech = [row for row in st.session_state.storico_cloud if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()] if st.session_state.storico_cloud else []
-    if righe_snaitech:
-        df_snai = pd.DataFrame(righe_snaitech).reindex(columns=colonne_reali_ufficio).fillna("")
-        st.dataframe(df_snai[["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "TECNICO_INSERIMENTO"]], hide_index=True)
-    else:
-        st.write("✅ Nessuna chiusura attiva per locali Snaitech.")
+    st.markdown("### 🏢 Locali SNAITECH pronti da inviare a sistema")
+    st.write("Questo comando attiva il robot Playwright che effettua il login automatico con OTP su .snai.it e compila le scadenze.")
+    
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU .SNAI.IT"):
+        with st.spinner("Robot in azione sul portale Snaitech... Non chiudere la pagina..."):
+            esegui_sincronizzazione_robot_snai()
+            
+            # 🛡️ AUTOMAZIONE REFRESH DI MANUELA: Pausa di sicurezza, svuota la RAM vecchia e pulisce lo smartphone al 100%
+            time.sleep(3)
+            if os.path.exists(FILE_STORICO_PERMANENTE):
+                st.session_state.storico_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("").to_dict('records')
+            
+            # Fa sparire i locali inseriti e rimette il tabellone a specchio della bacheca online
+            st.rerun()
 
-# =====================================================================================
-# BLOCCO 6 - PARTE C: TASTO CANCELLAZIONE EXCEL REALE, CARICATORE UFFICIO E LOGOUT
-# =====================================================================================
+    # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella SOLO le righe che hanno un'azione reale da compiere (NUOVA, MODIFICA, ELIMINA)
+    righe_lavorazione_snai = [
+        row for row in st.session_state.storico_cloud 
+        if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
+        and str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+    ] if st.session_state.storico_cloud else []
+    
+    if righe_lavorazione_snai:
+        df_snai = pd.DataFrame(righe_lavorazione_snai)
+        colonne_snai_vis = ["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+        df_snai_vis = df_snai.reindex(columns=colonne_snai_vis).fillna("")
+        st.dataframe(df_snai_vis, hide_index=True)
+    else:
+        st.success("✅ Nessun locale Snaitech in attesa. Tutte le chiusure sono allineate sul portale!")
+
+    # =====================================================================================
+    # PANNELLO CANCELLAZIONE - COMPRESSIONE MENÙ A TENDINA E SPARIZIONE TASTO SMARTPHONE
+    # =====================================================================================
     st.markdown("---")
     st.markdown("### 🗑️ Cancella un Periodo Registrato")
+    
     opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
+    mappa_indici_reali = {}
+    
+    # 🛡️ FILTRO MENÙ DI MANUELA: Scansiona la RAM e inserisce nella tendina SOLO i locali che non sono già in stato ELIMINA
     if st.session_state.storico_cloud:
         for idx, row in enumerate(st.session_state.storico_cloud):
-            opzioni_cancellazione.append(f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})")
+            azione_corrente = str(row.get("ROBOT_ACTION", "")).strip().upper()
+            if azione_corrente != "ELIMINA":
+                testo_opzione = f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})"
+                opzioni_cancellazione.append(testo_opzione)
+                mappa_indici_reali[testo_opzione] = idx
             
-    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=not st.session_state.storico_cloud)
-    if selezione_delete != "- Seleziona la riga da eliminare -" and st.session_state.storico_cloud:
+    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=len(opzioni_cancellazione) <= 1)
+    
+    # 🛡️ BOTTONE FANTASMA DI MANUELA: Il tasto compare SOLO se hai selezionato un locale valido, se rimetti la voce standard sparisce nel nulla!
+    if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete in mappa_indici_reali:
         try:
-            parti_s = selezione_delete.split("ID ")
-            if len(parti_s) > 1:
-                sub_stringa = parti_s[1]
-                idx_iscolato_str = sub_stringa.split(" |")[0]
-                idx_da_eliminare = int(idx_iscolato_str)
+            idx_da_eliminare = mappa_indici_reali[selezione_delete]
                 
-                if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                    st.session_state.congelamento_sincro_attivo = True  # 🛡️ COSTRUTTORE DI PROTEZIONE RAM CANCELLAZIONI
-                    st.session_state.storico_cloud.pop(idx_da_eliminare)
-                    df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                    df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    push_excel_su_github(df_nuovo_salva)
-                    st.success("🗑️ Chiusura rimossa con successo!")
-                    time.sleep(1.0)
-                    st.rerun()
-        except Exception: pass
+            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+                st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
+                
+                # Marchia con la parola chiave per il robot
+                st.session_state.storico_cloud[idx_da_eliminare]["ROBOT_ACTION"] = "ELIMINA"
+                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+                
+                # Forza la scrittura fisica dell'Excel su disco prima di inviarlo
+                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                
+                # Spinge il file modificato su GitHub
+                push_excel_su_github(df_nuovo_salva)
+                
+                st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
+                st.success("🗑️ Richiesta di eliminazione inviata! La riga è stata nascosta. Il robot la rimuoverà da Snaitech.")
+                time.sleep(1.5)
+                st.rerun()
+        except Exception as e_del: 
+            st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+        
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
@@ -517,12 +715,9 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             df_caricato = pd.read_excel(file_caricato).fillna("")
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
-                    
-                    # 🛡️ FIX DATA INSERIMENTO IN UPLOAD: Raddrizza anche la data di registrazione all'italiana
                     for col_data in ["DATA_INSERIMENTO", "INIZIO_FERIE", "FINE_FERIE"]:
                         if col_data in df_caricato.columns:
                             try:
-                                # Se ha l'orario esteso con i secondi, mantiene la struttura pulita italiana
                                 if col_data == "DATA_INSERIMENTO":
                                     df_caricato[col_data] = pd.to_datetime(df_caricato[col_data]).dt.strftime('%d-%m-%Y %H:%M:%S')
                                 else:
@@ -539,6 +734,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
         except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+
 
 
 # PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
