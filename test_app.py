@@ -66,38 +66,34 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO UNIVERSALE
+# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO DEL TELEFONO
 # =====================================================================================
 import datetime as dt_lib
 
-# Lasciamo 1 minuto per il test visivo di Manuela, poi rimetti 120 per l'ufficio
+# Lasciamo 1 minuto per il test visivo di Manuela, poi rimetti 120 per la produzione
 MINUTI_MASSIMI_INATTIVITA = 1
 
 if "ultimo_accesso_attivita" not in st.session_state:
     st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
 
-# 🛡️ AGGANCIO UNIVERSALE: Controlla il tempo per chiunque sia entrato nella plancia privata
-if "autenticato" in st.session_state and st.session_state.autenticato:
-    orario_corrente = dt_lib.datetime.now()
-    differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
-    minuti_passati = brittleness_control if 'brittleness_control' in locals() else differenza_tempo.total_seconds() / 60
+# Calcola il tempo passato dall'ultimo movimento sullo schermo dello smartphone
+orario_corrente = dt_lib.datetime.now()
+differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
+minuti_passati = differenza_tempo.total_seconds() / 60
 
-    # 📊 LA SPIA DI MANUELA: Stampa il timer in cima allo schermo dello smartphone!
-    st.info(f"⏳ Tempo inattività corrente: {minuti_passati:.2f} min / Limite: {MINUTI_MASSIMI_INATTIVITA} min")
+# 📊 LA SPIA DI MANUELA: Mostra il riquadro azzurro sempre visibile in cima allo schermo
+st.info(f"⏳ Tempo inattività corrente: {minuti_passati:.2f} min / Limite: {MINUTI_MASSIMI_INATTIVITA} min")
 
-    if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
-        # 💥 GHIGLIOTTINA SPEGNIMENTO: Distrugge l'autenticazione al primo millisecondo
-        st.session_state.autenticato = False
-        st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
-        
-        # Svuota l'intera memoria dello smartphone
-        for chiave in list(st.session_state.keys()):
-            if chiave != "autenticato":
-                st.session_state.pop(chiave, None)
-                
-        st.rerun()
+if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
+    # 💥 AZZERAMENTO GENERALE: Svuota l'intera memoria dello smartphone se abbandonato
+    st.session_state.clear()
+    st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
+    st.rerun()
+else:
+    # Se la pagina viene rinfrescata o usata prima del minuto, aggiorna l'orario
+    if minuti_passati > 0.05:
+        st.session_state.ultimo_accesso_attivita = orario_corrente
 # =====================================================================================
-
 
 
 def scarica_file_da_github_se_esiste(nome_file):
