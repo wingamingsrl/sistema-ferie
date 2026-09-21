@@ -220,7 +220,7 @@ def esegui_sincronizzazione_robot_snai():
         # 🛡️ COSTRUZIONE STRUTTURALE PEZZO PER PEZZO: Impedisce la sovrascrittura o il troncamento della cache di Streamlit
         protocollo = "https://"
         dominio_api = "api.github.com"
-        percorso_repo = "/repos/wingamingsrl/sistema-ferie"
+        percorso_repo = "/repos/wingamingsrl/sistema-ferie"    
         percorso_workflow = "/actions/workflows/cron_robot_snai.yml/dispatches"
         
         # Unisce i blocchi creando la stringa estesa senza rischiare tagli
@@ -625,42 +625,45 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     else:
         st.info("📭 Nessuna chiusura presente in memoria. Trascina il file Excel storico in fondo per ripopolare la plancia.")
         
+
     # =====================================================================================
-    # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'AZIONE DA FARE
-    # =====================================================================================
-        # =====================================================================================
     # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'ACTION DA FARE
     # =====================================================================================
     st.markdown("---")
-    st.markdown("### 🏢 Locali SNAITECH pronti da inviare a sistema")
-    st.write("Questo comando attiva il robot Playwright che effettua il login automatico con OTP su .snai.it e compila le scadenze.")
+    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
+    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU .SNAI.IT"):
-        with st.spinner("Robot in azione sul portale Snaitech... Non chiudere la pagina..."):
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU PORTALI / EMAIL"):
+        with st.spinner("Robot in azione sui sistemi dei Concessionari... Non chiudere la pagina..."):
             esegui_sincronizzazione_robot_snai()
             
-            # 🛡️ AUTOMAZIONE REFRESH DI MANUELA: Pausa di sicurezza, svuota la RAM vecchia e pulisce lo smartphone al 100%
-            time.sleep(3)
-            if os.path.exists(FILE_STORICO_PERMANENTE):
-                st.session_state.storico_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("").to_dict('records')
+            # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
+            time.sleep(5)
             
-            # Fa sparire i locali inseriti e rimette il tabellone a specchio della bacheca online
+            # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
+            if os.path.exists(FILE_STORICO_PERMANENTE):
+                # Rilegge il file fisico aggiornato dallo spazzino del robot
+                df_aggiornato_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+                st.session_state.storico_cloud = df_aggiornato_cloud.to_dict('records')
+            
+            # Rinfresca l'interfaccia eliminando le righe azzerate
             st.rerun()
 
-    # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella SOLO le righe che hanno un'azione reale da compiere (NUOVA, MODIFICA, ELIMINA)
-    righe_lavorazione_snai = [
+
+    # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella TUTTI i locali pronti (SNAI + NTS) con un'azione reale da compiere
+    righe_lavorazione_generiche = [
         row for row in st.session_state.storico_cloud 
-        if "snai" in (str(row.get("CONCESSIONARIO", "")) + " " + str(row.get("NOME_LOCALE", ""))).lower()
-        and str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
     ] if st.session_state.storico_cloud else []
     
-    if righe_lavorazione_snai:
-        df_snai = pd.DataFrame(righe_lavorazione_snai)
-        colonne_snai_vis = ["CODICE_LOCALE", "NOME_LOCALE", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
-        df_snai_vis = df_snai.reindex(columns=colonne_snai_vis).fillna("")
-        st.dataframe(df_snai_vis, hide_index=True)
+    if righe_lavorazione_generiche:
+        df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
+        # 🛡️ COLONNA INSERITA: Aggiunta la colonna CONCESSIONARIO nel tabellone visivo dello smartphone
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+        df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
+        st.dataframe(df_visibile_pulito, hide_index=True)
     else:
-        st.success("✅ Nessun locale Snaitech in attesa. Tutte le chiusure sono allineate sul portale!")
+        st.success("✅ Nessun locale in attesa. Tutte le chiusure dei Concessionari sono allineate!")
 
     # =====================================================================================
     # PANNELLO CANCELLAZIONE - COMPRESSIONE MENÙ A TENDINA E SPARIZIONE TASTO SMARTPHONE
