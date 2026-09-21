@@ -98,8 +98,6 @@ if "user_nome" in st.session_state and st.session_state.user_nome:
         t_lib.sleep(0.5)
         st.rerun()
 # =====================================================================================
-=
-
 
 
 
