@@ -154,9 +154,15 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
 
-        EMAIL_LOGIN = "wingamingsrl@gmail.com"
-        pass_applicativa_ufficio = "zndjprxjvhiustio"
-        EMAIL_UFFICIALE_MITTENTE = "tecnico@wingaming.it"
+        # =====================================================================================
+        # 🛡️ IL MOTORE DI MANUELA: Invio diretto dal tuo account aziendale reale
+        # =====================================================================================
+        EMAIL_MANUELA = "manuela.arigoni@wingaming.it"
+        
+        # 🔑 NOTA DI MANUELA: Sostituisci questi tre dati con i parametri reali del tuo account dell'ufficio!
+        SERVER_SMTP_AZIENDALE = "://office365.com"
+        PORTA_SMTP_AZIENDALE = 587
+        PASSWORD_MANUELA = "Salmi123!" 
 
         if azione == "ELIMINA":
             oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
@@ -172,12 +178,13 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         if azione == "NUOVA" or azione == "MODIFICA":
             testo_preu = "\nSi richiede il blocco Preu\n"
 
-        # 🛡️ BLINDATURA MULTIPART DI MANUELA: Configura le intestazioni ufficiali per mostrare solo tecnico@
         msg = MIMEMultipart()
-        msg['From'] = f"WinGaming Tecnico <{EMAIL_UFFICIALE_MITTENTE}>"
-        msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con NTS finiti i test
+        msg['From'] = f"Arigoni Manuela <{EMAIL_MANUELA}>"
+        msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con la mail reale di NTS finiti i test
         msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
-        msg['Reply-To'] = EMAIL_UFFICIALE_MITTENTE
+        
+        # Le risposte andranno in automatico nel recipiente comune se NTS fa clic su Rispondi
+        msg['Reply-To'] = "tecnico@wingaming.it"
 
         corpo_nts = f"""Buongiorno,
  
@@ -201,67 +208,18 @@ Tel. 0341.1917908"""
 
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
-        # 🚨 IL METODO INFALLIBILE: Connessione forzata via IP numerico diretto su porta SSL 465
-        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
-        server.login(EMAIL_LOGIN, pass_applicativa_ufficio)
-        
-        # Invia inserendo l'indirizzo mittente ufficiale della busta di rete
-        server.sendmail(EMAIL_UFFICIALE_MITTENTE, ["manuela.arigoni@wingaming.it"], msg.as_string())
+        # Si connette direttamente al server della tua posta aziendale
+        server = smtplib.SMTP_SSL(SERVER_SMTP_AZIENDALE, PORTA_SMTP_AZIENDALE, timeout=12)
+        server.login(EMAIL_MANUELA, PASSWORD_MANUELA)
+        server.sendmail(EMAIL_MANUELA, ["manuela.arigoni@wingaming.it"], msg.as_string())
         server.quit()
         
-        print(f"   ✅ [NTS Engine] E-mail di {azione} inviata e CONSEGNATA REALMENTE via IP da: {EMAIL_UFFICIALE_MITTENTE}")
+        print(f"   ✅ [NTS Engine] E-mail di {azione} inviata direttamente da: {EMAIL_MANUELA}")
         return True
     except Exception as e_nts:
-        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS via IP: {str(e_nts)}")
+        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS dal server aziendale: {str(e_nts)}")
         return False
 
-
-def invia_email_avviso_interno_concessionari(tecnico, locale, codice, data_in, data_fi, concessionario, azione):
-    print(f"📧 [Internal Engine] Invio promemoria interno per {concessionario} (Locale: {locale})...")
-    try:
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-
-        EMAIL_LOGIN = "wingamingsrl@gmail.com"
-        pass_applicativa_ufficio = "zndjprxjvhiustio"
-        EMAIL_UFFICIALE_MITTENTE = "tecnico@wingaming.it"
-
-        msg = MIMEMultipart()
-        msg['From'] = f"WinGaming Robot <tecnico@wingaming.it>"
-        msg['To'] = "manuela.arigoni@wingaming.it"
-        msg['Subject'] = f"⚠️ [AVVISO INTERNO] {azione} Chiusura {concessionario} - Locale: {locale} ({codice})"
-
-        corpo_mail = f"""All'attenzione di Manuela,
-
-Questo è un promemoria interno automatico del robot. È stata registrata una richiesta di [{azione}] per un concessionario a gestione manuale.
-
-Dettagli della pratica da evadere:
---------------------------------------------------
-🏢 CONCESSIONARIO:     {concessionario}
-🔔 STATO OPERAZIONE:    {azione}
-👤 TECNICO ESECUTORE:   {tecnico}
-📍 LOCALE COINVOLTO:    {locale}
-📌 CODICE CENSIMENTO:   {codice}
-📅 INIZIO CHIUSURA:    {data_in}
-🚚 DATA RIAPERTURA:    {data_fi}
---------------------------------------------------
-
-Verificare la pratica e procedere con l'allineamento manuale.
-WinGaming S.r.l."""
-
-        msg.attach(MIMEText(corpo_mail, 'plain', 'utf-8'))
-
-        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
-        server.login(EMAIL_LOGIN, pass_applicativa_ufficio)
-        server.sendmail(EMAIL_UFFICIALE_MITTENTE, ["manuela.arigoni@wingaming.it"], msg.as_string())
-        server.quit()
-        
-        print(f"   ✅ [Internal Engine] Avviso interno per {concessionario} consegnato a Manuela!")
-        return True
-    except Exception as e_int:
-        print(f"   ❌ [Internal Engine] Errore invio avviso {concessionario}: {str(e_int)}")
-        return False
 
 
 
