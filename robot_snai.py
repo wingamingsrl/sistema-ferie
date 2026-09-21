@@ -176,10 +176,9 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
             testo_preu = "\nSi richiede il blocco Preu\n"
 
         msg = MIMEMultipart()
-        # 🛡️ IL TRUCCO VISIVO DI MANUELA: Inserisce tecnico@ direttamente nel nome visivo in grassetto!
-        # A schermo leggeranno: "WinGaming Tecnico (tecnico@wingaming.it)" e l'indirizzo gmail sparirà dietro la maschera
-        msg['From'] = 'WinGaming Tecnico (tecnico@wingaming.it) <manuela.arigoni@wingaming.it>'
-        msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con NTS finiti i test
+        # 🛡️ RIPRISTINO STANDARD DI MANUELA: Testo pulito approvato dai server per sbloccare l'invio immediato
+        msg['From'] = f"WinGaming Ufficio Tecnico <{EMAIL_LOGIN}>"
+        msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con la mail reale di NTS finiti i test
         msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
         msg['Reply-To'] = EMAIL_LISTA_TECNICI
 
