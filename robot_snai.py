@@ -537,14 +537,20 @@ def avvia_sincronizzazione_automatica():
         except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
 
-    # =====================================================================================
-    # 🛡️ AUTOMAZIONE PROMEMORIA DI MANUELA: Gira su TUTTO il database con celle vuote
-    # =====================================================================================
-    print("📧 [Email Engine] Avvio scansione globale dello storico per l'invio dei promemoria automatici...")
+# =====================================================================================
+# 🛡️ INTERRUTTORE DI AVVIO UNIFICATO DI MANUELA: FA GIRARE PRIMA I PORTALI E POI I PROMEMORIA
+# =====================================================================================
+if __name__ == "__main__":
+    # 🌐 1. Fa girare il motore principale per l'allineamento Snaitech ed NTS
+    avvia_sincronizzazione_automatica()
+    
+    # 📧 2. SUBITO DOPO: Fa partire la scansione globale a celle vuote per inviare le e-mail dei 3 giorni prima!
+    print("\n📧 [Email Engine] Avvio scansione globale dello storico per l'invio dei promemoria automatici...")
     try:
         df_completo_promemoria = preleva_storico_diretto_da_cloud()
         
         if not df_completo_promemoria.empty:
+            # Oggi sul server è lunedì 21 Settembre 2026, l'algoritmo farà centro sul 24/09
             oggi_server = datetime.now().date()
             print(f"   📅 [Email Engine] Data odierna del server per il calcolo: {oggi_server}")
             
@@ -589,6 +595,7 @@ def avvia_sincronizzazione_automatica():
         print("✅ [Email Engine] Scansione promemoria storici completata con successo!")
     except Exception as e_cron:
         print(f"   ❌ Errore durante la scansione dei promemoria automatici: {str(e_cron)}")
+
 
 
 if __name__ == "__main__":
