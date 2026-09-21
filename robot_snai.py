@@ -402,13 +402,24 @@ def avvia_sincronizzazione_automatica():
                         icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
 
-                        
+                    # 🛡️ NOTIFICA DI CANCELLAZIONE DI MANUELA: Ti avvisa ORA via e-mail prima che partano i clic di cancellazione!
+                    if mirino_azione == "ELIMINA":
+                        print(f"📧 [Robot] Rilevato comando ELIMINA per Snaitech. Invio notifica di CANCELLAZIONE interna a Manuela...")
+                        try:
+                            data_inizio_stampa = str(row["INIZIO_FERIE"]).replace("-", "/").replace(".", "/").strip()[:10]
+                            tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
+                            collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
+                            
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CANCELLAZIONE FERIE REGISTRATA (SNAITECH)")
+                        except Exception as e_snai_mail:
+                            print(f"   ⚠️ Impossibile spedire notifica interna di cancellazione Snaitech: {str(e_snai_mail)}")
+
                     # 🛡️ INTELLIGENZA DI MANUELA: Se l'azione è ELIMINA ma non esiste la matita a portale, pulisce l'Excel direttamente da qui!
                     if mirino_azione == "ELIMINA" and icona_modifica.count() == 0:
                         print("   ℹ️ [Robot] Comando ELIMINA su locale vergine a portale. Cancello la riga dall'Excel cloud all'istante...")
                         scarica_e_aggiorna_excel_su_github(codice_aams)
                         time.sleep(4)
-                        page.goto("https://snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
+                        page.goto("https://partner.snai.it/secure/Anagrafiche/Esercizi.aspx", wait_until="load")
                         time.sleep(6)
                         continue
 
@@ -427,6 +438,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
 
 # =====================================================================================
 # BLOCCO 5: DATA FINE PURIFICATA, SEQUENZA DIGITAZIONE REALE E SALVATAGGIO REALE
