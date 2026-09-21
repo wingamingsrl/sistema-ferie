@@ -72,7 +72,7 @@ import time as t_lib
 
 # ⏱️ CONFIGURAZIONE UFFICIALE: 7200 secondi corrispondono a 2 ore esatte di autonomia.
 # (Mantieni 60 per il tuo test di 1 minuto, poi rimetterai 7200 per i tecnici dell'ufficio!)
-SECONDI_MASSIMI_SESSIONE = 60
+SECONDI_MASSIMI_SESSIONE = 7200
 
 if "ora_creazione_sessione" not in st.session_state:
     st.session_state.ora_creazione_sessione = t_lib.time()
