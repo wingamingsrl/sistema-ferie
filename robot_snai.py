@@ -159,7 +159,7 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         # =====================================================================================
         EMAIL_LOGIN = "wingamingsrl@gmail.com"
         pass_applicativa_ufficio = "zndjprxjvhiustio"
-        EMAIL_LISTA_TECNICI = "tecnico@wingaming.it"
+        EMAIL_LISTA_TECNICI = "manuela.arigoni@wingaming.it"
 
         if azione == "ELIMINA":
             oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
@@ -177,8 +177,9 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
 
         msg = MIMEMultipart()
         # 🛡️ RIPRISTINO STANDARD DI MANUELA: Testo pulito approvato dai server per sbloccare l'invio immediato
-        msg['From'] = f"WinGaming Ufficio Tecnico <{EMAIL_LOGIN}>"
+        msg['From'] = f"Wingaming Ufficio Tecnico <{EMAIL_LOGIN}>"
         msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con la mail reale di NTS finiti i test
+        msg['Cc'] = "manuela.arigoni@wingaming.it" # Cambiala con la mail reale di NTS finiti i test
         msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
         msg['Reply-To'] = EMAIL_LISTA_TECNICI
 
