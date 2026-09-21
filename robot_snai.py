@@ -330,14 +330,14 @@ def avvia_sincronizzazione_automatica():
                     
                     # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
                     # 🛡️ INTERCETTATORE DI MANUELA: Abilita il robot a elaborare anche i comandi di rimozione
+                    # 🛡️ INTERCETTATORE DI MANUELA: Se la cella non contiene NUOVA o MODIFICA, salta la riga all'istante
                     if mirino_azione not in ["NUOVA", "MODIFICA", "ELIMINA"]:
-
                         print(f"⏩ [Robot] Locale {codice_aams} - {nome_locale_corrente}: Nessuna azione richiesta. Salto riga.")
                         continue
                         
                     print(f"🚀 [Robot] STEP 7: Avvio lavorazione ({mirino_azione}) -> Codice Locale: {codice_aams} - {nome_locale_corrente}")
 
-                    # 🛡️ TUO CODICE NATIVO ORIGINALE DEI RAGAZZI AL 100% — COPIATO LETTERALMENTE
+                    # 🛡️ PUNTAMENTO NATIVO DEI RAGAZZI STRUTTURATO AL MILLIMETRO
                     target_frame = page
                     for f in page.frames:
                         if "Esercizi" in f.url or f.locator("#ctl00_Cp1_txtCodiceCensimentoesercizio").count() > 0:
@@ -350,18 +350,12 @@ def avvia_sincronizzazione_automatica():
                     try:
                         campo_ricerca.wait_for(state="visible", timeout=20000)
                     except Exception as e_time:
-                        # 📸 FOTO SPIA DI MANUELA: Scatta lo screenshot d'emergenza se la barra filtri non appare!
-                        try: page.screenshot(path="SITUAZIONE_BLOCCO_SNAITECH.png", full_page=True)
-                        except Exception: pass
-                        print("   📸 [Robot] Errore riscontrato! Scattata foto spia 'SITUAZIONE_BLOCCO_SNAITECH.png'.")
                         raise e_time # Fa proseguire l'errore per saltare la riga regolarmente
                         
                     campo_ricerca.click()
                     campo_ricerca.fill(codice_aams)
                     time.sleep(2)
 
-
-                    
                     tasto_ricerca = target_frame.locator("#ctl00_Cp1_btRicerca").first
                     tasto_ricerca.click(timeout=10000)
                     
@@ -374,6 +368,7 @@ def avvia_sincronizzazione_automatica():
                     try:
                         icona_nuovo.wait_for(state="attached", timeout=4000)
                     except Exception: pass
+
                         
                     # 🛡️ INTELLIGENZA DI MANUELA: Se l'azione è ELIMINA ma non esiste la matita a portale, pulisce l'Excel direttamente da qui!
                     if mirino_azione == "ELIMINA" and icona_modifica.count() == 0:
