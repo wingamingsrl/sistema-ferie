@@ -571,19 +571,16 @@ def avvia_sincronizzazione_automatica():
         finally: browser.close()
 
 # =====================================================================================
-# 🛡️ INTERRUTTORE DI AVVIO UNIFICATO DI MANUELA: FA GIRARE PRIMA I PORTALI E POI I PROMEMORIA
+# 🛡️ INTERRUTTORE DI AVVIO UNIFICATO DI MANUELA: DA OGGI I PROMEMORIA GIRANO PER PRIMI!
 # =====================================================================================
 if __name__ == "__main__":
-    # 🌐 1. Fa girare il motore principale per l'allineamento Snaitech ed NTS
-    avvia_sincronizzazione_automatica()
-    
-    # 📧 2. SUBITO DOPO: Fa partire la scansione globale a celle vuote per inviare le e-mail dei 3 giorni prima!
-    print("\n📧 [Email Engine] Avvio scansione globale dello storico per l'invio dei promemoria automatici...")
+    # 📧 1. PRIMA DI TUTTO: Fa partire la scansione globale per inviare le e-mail dei 3 giorni prima!
+    # Spostato qui in cima così se Snaitech va in timeout, i promemoria interni sono già stati consegnati!
+    print("📧 [Email Engine] Avvio scansione globale dello storico per l'invio dei promemoria automatici...")
     try:
         df_completo_promemoria = preleva_storico_diretto_da_cloud()
         
         if not df_completo_promemoria.empty:
-            # Oggi sul server è lunedì 21 Settembre 2026, l'algoritmo farà centro sul 24/09
             oggi_server = datetime.now().date()
             print(f"   📅 [Email Engine] Data odierna del server per il calcolo: {oggi_server}")
             
@@ -591,15 +588,11 @@ if __name__ == "__main__":
                 mirino_azione = str(row.get("ROBOT_ACTION", "")).strip()
                 nome_locale_corrente = str(row.get("NOME_LOCALE", "")).strip()
                 
-                # STAMPA SPIA: Fa vedere a schermo quale locale sta analizzando l'algoritmo
-                print(f"   🔍 [Email Engine] Analisi locale: {nome_locale_corrente} | Stato Azione: '{mirino_azione}'")
-                
                 if mirino_azione == "":
                     codice_aams = str(row.get("CODICE_LOCALE", "")).strip()
                     data_in_completa = str(row.get("INIZIO_FERIE", "")).strip()
                     data_fi_completa = str(row.get("FINE_FERIE", "")).strip()
                     
-                    # Forza la pulizia sostituendo i trattini con le barre per la lettura matematica
                     data_inizio_estratta = data_in_completa.replace("-", "/").replace(".", "/").strip()[:10]
                     data_fine_estratta = data_fi_completa.replace("-", "/").replace(".", "/").strip()[:10]
                     
@@ -609,8 +602,6 @@ if __name__ == "__main__":
                         
                         giorni_alla_chiusura = (data_in_doc - oggi_server).days
                         giorni_alla_riapertura = (data_fi_doc - oggi_server).days
-                        
-                        print(f"      📊 Giorni mancanti alla chiusura: {giorni_alla_chiusura} | Alla riapertura: {giorni_alla_riapertura}")
                         
                         tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
                         collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
@@ -623,14 +614,13 @@ if __name__ == "__main__":
                         if giorni_alla_riapertura == 3:
                             spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
                     except Exception as e_data:
-                        print(f"      ❌ Errore conversione data per {nome_locale_corrente}: {str(e_data)}")
+                        pass
                         
         print("✅ [Email Engine] Scansione promemoria storici completata con successo!")
     except Exception as e_cron:
         print(f"   ❌ Errore durante la scansione dei promemoria automatici: {str(e_cron)}")
 
-
-
-if __name__ == "__main__":
+    print("\n----------------------------------------------------------------------")
+    # 🌐 2. SUBITO DOPO: Attiva il motore principale per l'allineamento Snaitech ed NTS sui portali
     avvia_sincronizzazione_automatica()
 
