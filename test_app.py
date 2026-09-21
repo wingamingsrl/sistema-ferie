@@ -66,41 +66,37 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO (CON SPIA VISIVA)
+# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO UNIVERSALE
 # =====================================================================================
 import datetime as dt_lib
 
-# Lasciamo 1 minuto per il test visivo di Manuela
+# Lasciamo 1 minuto per il test visivo di Manuela, poi rimetti 120 per l'ufficio
 MINUTI_MASSIMI_INATTIVITA = 1
 
 if "ultimo_accesso_attivita" not in st.session_state:
     st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
 
-if "user_nome" in st.session_state and st.session_state.user_nome:
+# 🛡️ AGGANCIO UNIVERSALE: Controlla il tempo per chiunque sia entrato nella plancia privata
+if "autenticato" in st.session_state and st.session_state.autenticato:
     orario_corrente = dt_lib.datetime.now()
     differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
-    minuti_passati = differenza_tempo.total_seconds() / 60
+    minuti_passati = brittleness_control if 'brittleness_control' in locals() else differenza_tempo.total_seconds() / 60
 
-    # 📊 LA SPIA DI MANUELA: Stampa in cima allo smartphone i minuti reali passati
-    st.sidebar.metric("⏳ Minuti Inattività", f"{minuti_passati:.2f} / {MINUTI_MASSIMI_INATTIVITA}")
+    # 📊 LA SPIA DI MANUELA: Stampa il timer in cima allo schermo dello smartphone!
+    st.info(f"⏳ Tempo inattività corrente: {minuti_passati:.2f} min / Limite: {MINUTI_MASSIMI_INATTIVITA} min")
 
     if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
-        # 💥 GHIGLIOTTINA: Cancella l'accesso e rimanda al login al primo tocco
+        # 💥 GHIGLIOTTINA SPEGNIMENTO: Distrugge l'autenticazione al primo millisecondo
         st.session_state.autenticato = False
-        st.session_state.user_nome = None
         st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
         
+        # Svuota l'intera memoria dello smartphone
         for chiave in list(st.session_state.keys()):
             if chiave != "autenticato":
                 st.session_state.pop(chiave, None)
                 
         st.rerun()
-    else:
-        # Nota: Non aggiorniamo l'orario qui altrimenti il timer non salirebbe mai!
-        pass
 # =====================================================================================
-
-
 
 
 
