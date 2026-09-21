@@ -149,7 +149,12 @@ def spedisci_email_avviso_ufficio(tecnico_nome, collega_in_copia, locale, codice
 def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, azione):
     print(f"📧 [NTS Engine] Preparazione invio digitale {azione} per NTS Networks (Locale: {locale})...")
     try:
-        import requests
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        EMAIL_LOGIN = "wingamingsrl@gmail.com"
+        pass_applicativa_ufficio = "zndjprxjvhiustio"
 
         if azione == "ELIMINA":
             oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
@@ -185,37 +190,32 @@ C.F. 03371290135
 CODICE UNIVOCO INTERSCAMBIO: SUBM70N
 Tel. 0341.1917908"""
 
-        # 🚨 LA CHIAVE DELLA TRASPARENZA DI MANUELA: Email del concessionario scritta in chiaro direttamente nel codice!
-        # Modifica l'indirizzo qui sotto (es. "manuela.arigoni@wingaming.it" per i tuoi test, oppure "customercare@ntsnetwork.it" per l'invio reale)
-        # EMAIL_DESTINATARIO_NTS = "customercare@ntsnetwork.it"
-        EMAIL_DESTINATARIO_NTS = "manuela.arigoni@wingaming.it"
+        # 🚨 LA CHIAVE DELLA TRASPARENZA DI MANUELA: Destinatario scritto in chiaro nel codice!
+        # Puoi mettere "manuela.arigoni@wingaming.it" per fare i tuoi test, oppure "customercare@ntsnetwork.it" per l'invio reale!
+        EMAIL_DESTINATARIO_NTS = "customercare@ntsnetwork.it"
 
-        # Interruttore API universale che spedisce l'email all'indirizzo sopra senza blocchi antispam
-        url_api_universale = "https://formspree.io"
+        msg = MIMEMultipart()
+        msg['From'] = f"Arigoni Manuela <manuela.arigoni@wingaming.it>"
+        msg['To'] = EMAIL_DESTINATARIO_NTS
+        msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
+        msg['Reply-To'] = "manuela.arigoni@wingaming.it"
+
+        msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
+
+        # Connessione blindata via IP numerico diretto su porta SSL 465 (Infallibile)
+        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+        server.login(EMAIL_LOGIN, pass_applicativa_ufficio)
         
-        payload_web = {
-            "Concessionario": "NTS Networks",
-            "Operazione": oggetto_azione,
-            "Oggetto": f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})",
-            "Mittente": "manuela.arigoni@wingaming.it",
-            "Reply-To": "manuela.arigoni@wingaming.it",
-            # Passa l'email visibile scritta sopra al server di instradamento
-            "_to": EMAIL_DESTINATARIO_NTS, 
-            "Messaggio": corpo_nts
-        }
+        # Spedisce la mail prelevando l'indirizzo in chiaro scritto sopra
+        server.sendmail(EMAIL_LOGIN, [EMAIL_DESTINATARIO_NTS], msg.as_string())
+        server.quit()
         
-        risposta_gateway = requests.post(url_api_universale, json=payload_web, timeout=12)
-        
-        if risposta_gateway.status_code == 200 or risposta_gateway.status_code == 202:
-            print(f"   ✅ [NTS Engine] Richiesta consegnata con successo! Email inviata a: {EMAIL_DESTINATARIO_NTS}")
-            return True
-        else:
-            print(f"   ❌ [NTS Engine] Errore risposta server gateway: {risposta_gateway.status_code}")
-            return False
-            
-    except Exception as e_nts_web:
-        print(f"   ❌ [NTS Engine] Impossibile instradare la chiamata web per NTS: {str(e_nts_web)}")
+        print(f"   ✅ [NTS Engine] Richiesta inviata con successo via IP in chiaro a: {EMAIL_DESTINATARIO_NTS}")
+        return True
+    except Exception as e_nts_smtp:
+        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS via IP: {str(e_nts_smtp)}")
         return False
+
 
 
 
