@@ -66,11 +66,11 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO (CON REFRESH VISIVO)
+# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO (CON SPIA VISIVA)
 # =====================================================================================
 import datetime as dt_lib
 
-# Mantieni 1 per il tuo test di 1 minuto, poi rimetti 120 per le 2 ore dell'ufficio
+# Lasciamo 1 minuto per il test visivo di Manuela
 MINUTI_MASSIMI_INATTIVITA = 1
 
 if "ultimo_accesso_attivita" not in st.session_state:
@@ -81,23 +81,25 @@ if "user_nome" in st.session_state and st.session_state.user_nome:
     differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
     minuti_passati = differenza_tempo.total_seconds() / 60
 
+    # 📊 LA SPIA DI MANUELA: Stampa in cima allo smartphone i minuti reali passati
+    st.sidebar.metric("⏳ Minuti Inattività", f"{minuti_passati:.2f} / {MINUTI_MASSIMI_INATTIVITA}")
+
     if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
-        # 💥 FORZATURA DI MANUELA: Spegne l'autenticazione, pulisce la sessione e forza lo schermo al login
+        # 💥 GHIGLIOTTINA: Cancella l'accesso e rimanda al login al primo tocco
         st.session_state.autenticato = False
         st.session_state.user_nome = None
         st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
         
-        # Svuota il resto della RAM di sicurezza
         for chiave in list(st.session_state.keys()):
             if chiave != "autenticato":
                 st.session_state.pop(chiave, None)
                 
-        # Forza lo smartphone a ridisegnare la pagina, mostrando subito la schermata di login iniziale
         st.rerun()
     else:
-        # Se il tecnico compie un'azione prima della scadenza, sposta il timer in avanti
-        st.session_state.ultimo_accesso_attivita = orario_corrente
+        # Nota: Non aggiorniamo l'orario qui altrimenti il timer non salirebbe mai!
+        pass
 # =====================================================================================
+
 
 
 
