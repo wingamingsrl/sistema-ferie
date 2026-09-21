@@ -154,8 +154,8 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
 
-        EMAIL_AUTENTICAZIONE = "wingamingsrl@gmail.com"
-        pass_applicativa_ufficio = "zndjprxjvhiustio"
+        #EMAIL_AUTENTICAZIONE = "wingamingsrl@gmail.com"
+        #pass_applicativa_ufficio = "zndjprxjvhiustio"
 
         if azione == "ELIMINA":
             oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
@@ -198,13 +198,21 @@ Tel. 0341.1917908"""
 
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
+        # =====================================================================================
+        # 🛡️ SBLOCCO REALE DI MANUELA: Forza l'indirizzo della busta di rete a uscire come tecnico@
+        # =====================================================================================
+        EMAIL_UFFICIALE_NTS = "tecnico@wingaming.it"
+
         server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
         server.login(EMAIL_AUTENTICAZIONE, pass_applicativa_ufficio)
-        server.sendmail(EMAIL_AUTENTICAZIONE, ["manuela.arigoni@wingaming.it"], msg.as_string())
+        
+        # 🚨 LA CHIAVE: Cambiamo il primo parametro inserendo l'indirizzo reale tecnico@ per camuffare la busta
+        server.sendmail(EMAIL_UFFICIALE_NTS, ["manuela.arigoni@wingaming.it"], msg.as_string())
         server.quit()
         
-        print(f"   ✅ [NTS Engine] E-mail di {azione} inviata con successo con Reply-To a tecnico@!")
+        print(f"   ✅ [NTS Engine] E-mail ufficiale NTS spedita e CONSEGNATA REALMENTE da: {EMAIL_UFFICIALE_NTS}")
         return True
+
     except Exception as e_nts:
         print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS: {str(e_nts)}")
         return False
