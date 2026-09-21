@@ -66,13 +66,12 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ PROTEZIONE DI SICUREZZA DI MANUELA: TIMEOUT A 2 ORE CON LOGOUT TEMPORIZZATO 10 SEC
+# 🛡️ PROTEZIONE DI SICUREZZA DI MANUELA: TIMEOUT CON RESET TOTALE ANTI-LOOP LOGOUT
 # =====================================================================================
 import time as t_lib
 
 # ⏱️ CONFIGURAZIONE UFFICIALE: 7200 secondi corrispondono a 2 ore esatte di autonomia.
-# (Se vuoi fare il test rapido, scrivi temporaneamente 60 invece di 7200!)
-#SECONDI_MASSIMI_SESSIONE = 7200
+# (Mantieni 60 per il tuo test di 1 minuto, poi rimetterai 7200 per i tecnici dell'ufficio!)
 SECONDI_MASSIMI_SESSIONE = 60
 
 if "ora_creazione_sessione" not in st.session_state:
@@ -84,19 +83,22 @@ tempo_trascorso = secondi_correnti - st.session_state.ora_creazione_sessione
 
 if "user_nome" in st.session_state and st.session_state.user_nome:
     if tempo_trascorso > SECONDI_MASSIMI_SESSIONE:
-        # 💥 GHIGLIOTTINA IMMEDIATA: Cancella l'accesso in memoria
-        v_tecnico = str(st.session_state.user_nome)
+        # 💥 GHIGLIOTTINA IMMEDIATA: Svuota la RAM dello smartphone
         st.session_state.clear()
         st.session_state.autenticato = False
         
-        # ⏳ AUTOMAZIONE DI MANUELA: Mostra il messaggio di avviso fisso a schermo per 10 secondi
-        st.warning(f"🔒 Sessione scaduta.")
-               
-        st.query_params.clear()
-        st.success("Uscita effettuata con successo!")
-        t_lib.sleep(5)
+        # 🔑 CHIAVE DI VOLTA DI MANUELA: Aggiorna IMMEDIATAMENTE l'ora di creazione al momento del crash,
+        # così al prossimo login il contatore ripartirà da zero senza mostrare doppi messaggi di errore!
+        st.session_state.ora_creazione_sessione = t_lib.time()
+        
+        # Mostra l'avviso di sicurezza ed esegue il reset pulito della pagina
+        st.warning("🔒 Sessione scaduta per inattività. Effettua nuovamente il login per sicurezza.")
+        if "st" in locals() and hasattr(st, "query_params"):
+            st.query_params.clear()
+        t_lib.sleep(0.5)
         st.rerun()
 # =====================================================================================
+=
 
 
 
