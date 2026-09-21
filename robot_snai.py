@@ -622,5 +622,6 @@ if __name__ == "__main__":
 
     print("\n----------------------------------------------------------------------")
     # 🌐 2. SUBITO DOPO: Attiva il motore principale per l'allineamento Snaitech ed NTS sui portali
+if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
 
