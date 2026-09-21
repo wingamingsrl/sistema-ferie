@@ -94,7 +94,7 @@ if "user_nome" in st.session_state and st.session_state.user_nome:
                
         st.query_params.clear()
         st.success("Uscita effettuata con successo!")
-        time.sleep(5)
+        t_lib.sleep(5)
         st.rerun()
 # =====================================================================================
 
