@@ -306,7 +306,7 @@ def avvia_sincronizzazione_automatica():
     locali_pronti = df_ferie[df_ferie["ROBOT_ACTION"].astype(str).str.strip().str.upper().isin(["NUOVA", "MODIFICA", "ELIMINA"])]
     if locali_pronti.empty: return
 
-    # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo per NTS, Global Starnet e Sisal (Evita Chrome)
+    # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo NTS, Global Starnet e Sisal con gestione rigida ELIMINA
     rimangono_locali_snai = False
     for _, row in locali_pronti.iterrows():
         concessionario_riga = str(row["CONCESSIONARIO"]).strip().upper()
@@ -320,11 +320,12 @@ def avvia_sincronizzazione_automatica():
         # 📄 CASO 1: NTS NETWORKS (Invia e-mail ufficiale a NTS)
         if "NTS" in concessionario_riga or "NETWORKS" in concessionario_riga:
             print(f"🏢 [NTS Networks] Rilevato locale: {nome_locale_corrente} in stato [{mirino_azione}]. Attivo l'invio...")
+            # Spara la mail passando il comando esatto ("ELIMINA", "NUOVA" o "MODIFICA")
             successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_nts_in, data_nts_fi, mirino_azione)
             if successo_nts:
                 scarica_e_aggiorna_excel_su_github(codice_aams)
                 
-        # 🚨 CASO 2: GLOBAL STARNET O SISAL (Invia avviso interno a Manuela e pulisce l'Excel)
+        # 🚨 CASO 2: GLOBAL STARNET O SISAL (Invia avviso interno a Manuela)
         elif "GLOBAL" in concessionario_riga or "STARNET" in concessionario_riga or "SISAL" in concessionario_riga:
             concessionario_pulito = "Global Starnet" if "GLOBAL" in concessionario_riga else "Sisal"
             print(f"🎫 [{concessionario_pulito}] Rilevato locale: {nome_locale_corrente} in stato [{mirino_azione}]. Spedisco avviso interno...")
@@ -333,7 +334,6 @@ def avvia_sincronizzazione_automatica():
                 scarica_e_aggiorna_excel_su_github(codice_aams)
                 
         else:
-            # Rimangono i locali Snaitech
             rimangono_locali_snai = True
 
     if not rimangono_locali_snai:
