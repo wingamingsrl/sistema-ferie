@@ -64,6 +64,44 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
 COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
 
+
+# =====================================================================================
+# 🛡️ PROTEZIONE DI SICUREZZA DI MANUELA: TIMEOUT CON RESET TOTALE ANTI-LOOP LOGOUT
+# =====================================================================================
+import time as t_lib
+
+# ⏱️ CONFIGURAZIONE UFFICIALE: 7200 secondi corrispondono a 2 ore esatte di autonomia.
+# (Mantieni 60 per il tuo test di 1 minuto, poi rimetterai 7200 per i tecnici dell'ufficio!)
+SECONDI_MASSIMI_SESSIONE = 7200
+
+if "ora_creazione_sessione" not in st.session_state:
+    st.session_state.ora_creazione_sessione = t_lib.time()
+
+# Calcola i secondi passati dal login iniziale
+secondi_correnti = t_lib.time()
+tempo_trascorso = secondi_correnti - st.session_state.ora_creazione_sessione
+
+if "user_nome" in st.session_state and st.session_state.user_nome:
+    if tempo_trascorso > SECONDI_MASSIMI_SESSIONE:
+        # 💥 GHIGLIOTTINA IMMEDIATA: Svuota la RAM dello smartphone
+        st.session_state.clear()
+        st.session_state.autenticato = False
+        
+        # 🔑 CHIAVE DI VOLTA DI MANUELA: Aggiorna IMMEDIATAMENTE l'ora di creazione al momento del crash,
+        # così al prossimo login il contatore ripartirà da zero senza mostrare doppi messaggi di errore!
+        st.session_state.ora_creazione_sessione = t_lib.time()
+        
+        # Mostra l'avviso di sicurezza ed esegue il reset pulito della pagina
+        st.warning("🔒 Sessione scaduta per inattività. Effettua nuovamente il login per sicurezza.")
+        if "st" in locals() and hasattr(st, "query_params"):
+            st.query_params.clear()
+        t_lib.sleep(0.5)
+        st.rerun()
+# =====================================================================================
+
+
+
+
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
