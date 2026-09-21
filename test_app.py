@@ -92,12 +92,10 @@ if "user_nome" in st.session_state and st.session_state.user_nome:
         # ⏳ AUTOMAZIONE DI MANUELA: Mostra il messaggio di avviso fisso a schermo per 10 secondi
         st.warning(f"🔒 Sessione scaduta.")
                
-        # Ferma il codice e aspetta 10 secondi reali di orologio
-        t_lib.sleep(3)
-        
-        # Scaduto il tempo, cancella l'avviso e rinfresca lo schermo mostrando la pagina di login pulita!
+        st.query_params.clear()
+        st.success("Uscita effettuata con successo!")
+        time.sleep(0.5)
         st.rerun()
-        st.stop()
 # =====================================================================================
 
 
