@@ -64,6 +64,37 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
 COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
 
+# =====================================================================================
+# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO DOPO 2 ORE DI INATTIVITÀ
+# =====================================================================================
+import datetime
+
+# Imposta qui il tempo massimo di inattività (120 minuti corrispondono a 2 ore esatte)
+#MINUTI_MASSIMI_INATTIVITA = 120
+MINUTI_MASSIMI_INATTIVITA = 2
+
+if "ultimo_accesso_attivita" not in st.session_state:
+    st.session_state.ultimo_accesso_attivita = datetime.datetime.now()
+
+if "user_nome" in st.session_state and st.session_state.user_nome:
+    # Calcola quanti minuti sono passati dall'ultimo clic o movimento sulla plancia
+    orario_corrente = datetime.datetime.now()
+    differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
+    minuti_passati = diferencia_tempo if 'diferencia_tempo' in locals() else differenza_tempo.total_seconds() / 60
+
+    if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
+        # 💥 AZZERAMENTO DI SICUREZZA: Svuota la RAM dello smartphone e disconnette il tecnico
+        v_nome = st.session_state.user_nome
+        st.session_state.clear()
+        st.warning(f"🔒 Sessione scaduta per inattività (2 ore) per l'utente {v_nome}. Effettua nuovamente il login.")
+        st.stop()
+    else:
+        # Se il tecnico sta usando la plancia, sposta la scadenza in avanti di altre 2 ore
+        st.session_state.ultimo_accesso_attivita = orario_corrente
+# =====================================================================================
+
+
+
 def scarica_file_da_github_se_esiste(nome_file):
     try:
         t_git = str(st.secrets["github"]["token_accesso"]).strip()
