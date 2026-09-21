@@ -155,14 +155,11 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         from email.mime.text import MIMEText
 
         # =====================================================================================
-        # 🛡️ IL MOTORE DI MANUELA: Invio diretto dal tuo account aziendale reale
+        # 🛡️ AZZERAMENTO DI MANUELA: Ripristino motore Gmail sbloccato con Reply-To alla lista tecnici
         # =====================================================================================
-        EMAIL_MANUELA = "manuela.arigoni@wingaming.it"
-        
-        # 🔑 NOTA DI MANUELA: Sostituisci questi tre dati con i parametri reali del tuo account dell'ufficio!
-        SERVER_SMTP_AZIENDALE = "://office365.com"
-        PORTA_SMTP_AZIENDALE = 587
-        PASSWORD_MANUELA = "Salmi123!" 
+        EMAIL_LOGIN = "wingamingsrl@gmail.com"
+        pass_applicativa_ufficio = "zndjprxjvhiustio"
+        EMAIL_LISTA_TECNICI = "tecnico@wingaming.it"
 
         if azione == "ELIMINA":
             oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
@@ -179,12 +176,13 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
             testo_preu = "\nSi richiede il blocco Preu\n"
 
         msg = MIMEMultipart()
-        msg['From'] = f"Arigoni Manuela <{EMAIL_MANUELA}>"
+        # Maschera visiva istituzionale: mostra il nome del reparto tecnico
+        msg['From'] = f"WinGaming Tecnico <manuela.arigoni@wingaming.it>"
         msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con la mail reale di NTS finiti i test
         msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
         
-        # Le risposte andranno in automatico nel recipiente comune se NTS fa clic su Rispondi
-        msg['Reply-To'] = "tecnico@wingaming.it"
+        # 🚨 LA CHIAVE: Forza i server ad indirizzare le risposte di NTS dentro il recipiente comune dei tecnici!
+        msg['Reply-To'] = EMAIL_LISTA_TECNICI
 
         corpo_nts = f"""Buongiorno,
  
@@ -208,18 +206,17 @@ Tel. 0341.1917908"""
 
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
-        # Si connette direttamente al server della tua posta aziendale
-        server = smtplib.SMTP_SSL(SERVER_SMTP_AZIENDALE, PORTA_SMTP_AZIENDALE, timeout=12)
-        server.login(EMAIL_MANUELA, PASSWORD_MANUELA)
-        server.sendmail(EMAIL_MANUELA, ["manuela.arigoni@wingaming.it"], msg.as_string())
+        # Connessione forzata via IP numerico diretto su porta SSL 465 (Infallibile)
+        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+        server.login(EMAIL_LOGIN, pass_applicativa_ufficio)
+        server.sendmail(EMAIL_LOGIN, ["manuela.arigoni@wingaming.it"], msg.as_string())
         server.quit()
         
-        print(f"   ✅ [NTS Engine] E-mail di {azione} inviata direttamente da: {EMAIL_MANUELA}")
+        print(f"   ✅ [NTS Engine] E-mail di {azione} inviata con successo. Risposte indirizzate a: {EMAIL_LISTA_TECNICI}")
         return True
     except Exception as e_nts:
-        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS dal server aziendale: {str(e_nts)}")
+        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS via IP: {str(e_nts)}")
         return False
-
 
 
 
