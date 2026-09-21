@@ -64,16 +64,14 @@ EMAIL_MANUELA_RICEVENTE = "manuela.arigoni@wingaming.it"
 
 COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO", "ROBOT_ACTION"]
 
-# =====================================================================================
-# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO DOPO 2 ORE DI INATTIVITÀ
-# =====================================================================================
+
 # =====================================================================================
 # 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO DOPO 2 ORE DI INATTIVITÀ
 # =====================================================================================
 import datetime as dt_lib
 
 # Imposta qui il tempo massimo di inattività (120 minuti corrispondono a 2 ore esatte)
-MINUTI_MASSIMI_INATTIVITA = 2
+MINUTI_MASSIMI_INATTIVITA = 1
 #MINUTI_MASSIMI_INATTIVITA = 120
 
 if "ultimo_accesso_attivita" not in st.session_state:
@@ -87,7 +85,7 @@ if "user_nome" in st.session_state and st.session_state.user_nome:
 
     if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
         # 💥 AZZERAMENTO DI SICUREZZA: Svuota la RAM dello smartphone e disconnette il tecnico
-        v_nome = st.session_state.user_nome
+        v_nome = str(st.session_state.user_nome)
         st.session_state.clear()
         st.warning(f"🔒 Sessione scaduta per inattività (2 ore) per l'utente {v_nome}. Effettua nuovamente il login.")
         st.stop()
