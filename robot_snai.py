@@ -199,19 +199,22 @@ Tel. 0341.1917908"""
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
         # =====================================================================================
-        # 🛡️ SBLOCCO REALE DI MANUELA: Forza l'indirizzo della busta di rete a uscire come tecnico@
+        # 🛡️ SBLOCCO REALE DI MANUELA: Definita la variabile di login fissa per azzerare il NameError
         # =====================================================================================
+        EMAIL_LOGIN = "wingamingsrl@gmail.com"
+        pass_applicativa_ufficio = "zndjprxjvhiustio"
         EMAIL_UFFICIALE_NTS = "tecnico@wingaming.it"
 
         server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
-        server.login(EMAIL_AUTENTICAZIONE, pass_applicativa_ufficio)
+        server.login(EMAIL_LOGIN, pass_applicativa_ufficio)
         
-        # 🚨 LA CHIAVE: Cambiamo il primo parametro inserendo l'indirizzo reale tecnico@ per camuffare la busta
+        # Forza la busta di rete a mostrarsi come tecnico@ per nascondere del tutto la Gmail
         server.sendmail(EMAIL_UFFICIALE_NTS, ["manuela.arigoni@wingaming.it"], msg.as_string())
         server.quit()
         
         print(f"   ✅ [NTS Engine] E-mail ufficiale NTS spedita e CONSEGNATA REALMENTE da: {EMAIL_UFFICIALE_NTS}")
         return True
+
 
     except Exception as e_nts:
         print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS: {str(e_nts)}")
