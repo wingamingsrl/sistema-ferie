@@ -67,20 +67,23 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 # =====================================================================================
 # 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO DOPO 2 ORE DI INATTIVITÀ
 # =====================================================================================
-import datetime
+# =====================================================================================
+# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO DOPO 2 ORE DI INATTIVITÀ
+# =====================================================================================
+import datetime as dt_lib
 
 # Imposta qui il tempo massimo di inattività (120 minuti corrispondono a 2 ore esatte)
-#MINUTI_MASSIMI_INATTIVITA = 120
 MINUTI_MASSIMI_INATTIVITA = 2
+#MINUTI_MASSIMI_INATTIVITA = 120
 
 if "ultimo_accesso_attivita" not in st.session_state:
-    st.session_state.ultimo_accesso_attivita = datetime.datetime.now()
+    st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
 
 if "user_nome" in st.session_state and st.session_state.user_nome:
     # Calcola quanti minuti sono passati dall'ultimo clic o movimento sulla plancia
-    orario_corrente = datetime.datetime.now()
+    orario_corrente = dt_lib.datetime.now()
     differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
-    minuti_passati = diferencia_tempo if 'diferencia_tempo' in locals() else differenza_tempo.total_seconds() / 60
+    minuti_passati = differenza_tempo.total_seconds() / 60
 
     if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
         # 💥 AZZERAMENTO DI SICUREZZA: Svuota la RAM dello smartphone e disconnette il tecnico
