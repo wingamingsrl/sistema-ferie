@@ -66,33 +66,39 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO DOPO 2 ORE DI INATTIVITÀ
+# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO (CON REFRESH VISIVO)
 # =====================================================================================
 import datetime as dt_lib
 
-# Imposta qui il tempo massimo di inattività (120 minuti corrispondono a 2 ore esatte)
+# Mantieni 1 per il tuo test di 1 minuto, poi rimetti 120 per le 2 ore dell'ufficio
 MINUTI_MASSIMI_INATTIVITA = 1
-#MINUTI_MASSIMI_INATTIVITA = 120
 
 if "ultimo_accesso_attivita" not in st.session_state:
     st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
 
 if "user_nome" in st.session_state and st.session_state.user_nome:
-    # Calcola quanti minuti sono passati dall'ultimo clic o movimento sulla plancia
     orario_corrente = dt_lib.datetime.now()
     differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
     minuti_passati = differenza_tempo.total_seconds() / 60
 
     if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
-        # 💥 AZZERAMENTO DI SICUREZZA: Svuota la RAM dello smartphone e disconnette il tecnico
-        v_nome = str(st.session_state.user_nome)
-        st.session_state.clear()
-        st.warning(f"🔒 Sessione scaduta per inattività (2 ore) per l'utente {v_nome}. Effettua nuovamente il login.")
-        st.stop()
+        # 💥 FORZATURA DI MANUELA: Spegne l'autenticazione, pulisce la sessione e forza lo schermo al login
+        st.session_state.autenticato = False
+        st.session_state.user_nome = None
+        st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
+        
+        # Svuota il resto della RAM di sicurezza
+        for chiave in list(st.session_state.keys()):
+            if chiave != "autenticato":
+                st.session_state.pop(chiave, None)
+                
+        # Forza lo smartphone a ridisegnare la pagina, mostrando subito la schermata di login iniziale
+        st.rerun()
     else:
-        # Se il tecnico sta usando la plancia, sposta la scadenza in avanti di altre 2 ore
+        # Se il tecnico compie un'azione prima della scadenza, sposta il timer in avanti
         st.session_state.ultimo_accesso_attivita = orario_corrente
 # =====================================================================================
+
 
 
 
