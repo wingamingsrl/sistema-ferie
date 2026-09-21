@@ -66,33 +66,32 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO SENZA INTERFERENZA BOTTONI
+# 🛡️ PROTEZIONE DI SICUREZZA DI MANUELA: TIMEOUT DI SESSIONE ASSOLUTO A 2 ORE
 # =====================================================================================
-import datetime as dt_lib
+import time as t_lib
 
-# Lasciamo 1 per il tuo test, poi rimetterai 120 per le 2 ore stabili dell'ufficio
-MINUTI_MASSIMI_INATTIVITA = 1
+# ⏱️ CONFIGURAZIONE UFFICIALE: 7200 secondi corrispondono a 2 ore esatte di autonomia.
+# (Se vuoi fare il test di 1 minuto per vederlo scattare, scrivi temporaneamente 60 invece di 7200!)
+#SECONDI_MASSIMI_SESSIONE = 7200
+SECONDI_MASSIMI_SESSIONE = 60
 
-if "ultimo_accesso_attivita" not in st.session_state:
-    st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
+if "ora_creazione_sessione" not in st.session_state:
+    st.session_state.ora_creazione_sessione = t_lib.time()
 
-orario_corrente = dt_lib.datetime.now()
-differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
-minuti_passati = differenza_tempo.total_seconds() / 60
+# Calcola i secondi passati dal login iniziale
+secondi_correnti = t_lib.time()
+tempo_trascorso = secondi_correnti - st.session_state.ora_creazione_sessione
 
-# 📊 SPIA FLUIDA: Mostra il tempo. Puoi nascondere questa riga (mettendoci un # davanti) quando avrai finito i test!
-st.info(f"⏳ Tempo inattività corrente: {minuti_passati:.2f} min / Limite: {MINUTI_MASSIMI_INATTIVITA} min")
-
-if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
-    # 💥 SPEGNIMENTO: Se ha superato il tempo, cancella tutto al primo tocco
-    st.session_state.clear()
-    st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
-    st.rerun()
-else:
-    # 🛡️ FILTRO ANTI-DOPPIO CLICK DI MANUELA: Aggiorna la memoria SOLO se sono passati almeno 30 secondi (0.5 min), salvando la fluidità dei bottoni!
-    if minuti_passati > 0.5:
-        st.session_state.ultimo_accesso_attivita = orario_corrente
+if "user_nome" in st.session_state and st.session_state.user_nome:
+    if tempo_trascorso > SECONDI_MASSIMI_SESSIONE:
+        # 💥 GHIGLIOTTINA IMMEDIATA: Scatta al primo F5 o al primo click dopo il tempo massimo
+        v_tecnico = str(st.session_state.user_nome)
+        st.session_state.clear()
+        st.session_state.autenticato = False
+        st.warning(f"🔒 Sessione scaduta per sicurezza (Limite 2 ore superato) per l'utente {v_tecnico}. Effettua il login.")
+        st.stop()
 # =====================================================================================
+
 
 
 
