@@ -245,10 +245,22 @@ def avvia_sincronizzazione_automatica():
         # 📄 CASO 1: NTS NETWORKS (Invia e-mail ufficiale a NTS)
         if "NTS" in concessionario_riga or "NETWORKS" in concessionario_riga:
             print(f"🏢 [NTS Networks] Rilevato locale: {nome_locale_corrente} in stato [{mirino_azione}]. Attivo l'invio...")
-            # Spara la mail passando il comando esatto ("ELIMINA", "NUOVA" o "MODIFICA")
             successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_nts_in, data_nts_fi, mirino_azione)
+            
             if successo_nts:
+                # 🛡️ PROTEZIONE DI MANUELA: Se l'azione è ELIMINA, spedisce l'avviso a Manuela ORA, prima che lo spazzino distrugga la riga!
+                if mirino_azione == "ELIMINA":
+                    print(f"📧 [Robot] Invio notifica di CANCELLAZIONE interna a Manuela per il locale {nome_locale_corrente}...")
+                    try:
+                        # Converte le date in formato italiano con le barre per il testo del tuo promemoria storico
+                        data_inizio_stampa = str(row["INIZIO_FERIE"]).replace("-", "/").replace(".", "/").strip()[:10]
+                        spedisci_email_avviso_ufficio(row["TECNICO_INSERIMENTO"], row.get("PROMEMORIA_IN_COPIA", "Nessuno"), nome_locale_corrente, codice_aams, data_inizio_stampa, "CANCELLAZIONE FERIE REGISTRATA")
+                    except Exception as e_c_mail:
+                        print(f"   ⚠️ Impossibile spedire notifica interna di cancellazione: {str(e_c_mail)}")
+                
+                # Ora lo spazzino può procedere a rimuovere in sicurezza la riga da GitHub
                 scarica_e_aggiorna_excel_su_github(codice_aams)
+
                 
         # 🚨 CASO 2: GLOBAL STARNET O SISAL (Invia avviso interno a Manuela)
         elif "GLOBAL" in concessionario_riga or "STARNET" in concessionario_riga or "SISAL" in concessionario_riga:
