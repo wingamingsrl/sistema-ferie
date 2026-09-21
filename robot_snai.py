@@ -537,6 +537,56 @@ def avvia_sincronizzazione_automatica():
         except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
 
+    # =====================================================================================
+    # 🛡️ AUTOMAZIONE PROMEMORIA DI MANUELA: Gira su TUTTO il database con celle vuote
+    # =====================================================================================
+    print("📧 [Email Engine] Avvio scansione globale dello storico per l'invio dei promemoria automatici...")
+    try:
+        # Rilegge il database definitivo per scansionare anche i locali appena azzerati dal robot
+        df_completo_promemoria = preleva_storico_diretto_da_cloud()
+        
+        if not df_completo_promemoria.empty:
+            oggi_server = datetime.now().date()
+            
+            for _, row in df_completo_promemoria.iterrows():
+                # Il promemoria scatta SOLO se la cella ROBOT_ACTION è vuota (operazione già registrata a portale!)
+                mirino_azione = str(row.get("ROBOT_ACTION", "")).strip()
+                
+                if mirino_azione == "":
+                    codice_aams = str(row["CODICE_LOCALE"]).strip()
+                    nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
+                    data_in_completa = str(row["INIZIO_FERIE"]).strip()
+                    data_fi_completa = str(row["FINE_FERIE"]).strip()
+                    
+                    # Isola i primi 10 caratteri pulendo eventuali orari residui (es. 06:00)
+                    data_inizio_estratta = data_in_completa.replace("-", "/").replace(".", "/").strip()[:10]
+                    data_fine_estratta = data_fi_completa.replace("-", "/").replace(".", "/").strip()[:10]
+                    
+                    try:
+                        data_in_doc = datetime.strptime(data_inizio_estratta, "%d/%m/%Y").date()
+                        data_fi_doc = datetime.strptime(data_fine_estratta, "%d/%m/%Y").date()
+                        
+                        giorni_alla_chiusura = (data_in_doc - oggi_server).days
+                        giorni_alla_riapertura = (data_fi_doc - oggi_server).days
+                        
+                        tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
+                        collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
+                        
+                        data_inizio_stampa = data_in_doc.strftime("%d/%m/%Y")
+                        data_fine_stampa = data_fi_doc.strftime("%d/%m/%Y")
+                        
+                        # Verifica se l'evento (inizio o fine) cade esattamente tra 3 giorni da oggi (Lunedì 21/09 -> Scatta su Giovedì 24/09)
+                        if giorni_alla_chiusura == 3:
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                        if giorni_alla_riapertura == 3:
+                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                    except Exception:
+                        pass
+                        
+        print("✅ [Email Engine] Scansione promemoria storici completata con successo!")
+    except Exception as e_cron:
+        print(f"   ❌ Errore durante la scansione dei promemoria automatici: {str(e_cron)}")
 
 if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
+
