@@ -66,34 +66,34 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO FORZATO DEL TELEFONO
+# 🛡️ CONTROLLO DI SICUREZZA DI MANUELA: LOGOUT AUTOMATICO SENZA INTERFERENZA BOTTONI
 # =====================================================================================
 import datetime as dt_lib
 
-# Lasciamo 1 minuto per il test visivo di Manuela, poi rimetti 120 per la produzione
+# Lasciamo 1 per il tuo test, poi rimetterai 120 per le 2 ore stabili dell'ufficio
 MINUTI_MASSIMI_INATTIVITA = 1
 
 if "ultimo_accesso_attivita" not in st.session_state:
     st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
 
-# Calcola il tempo passato dall'ultimo movimento sullo schermo dello smartphone
 orario_corrente = dt_lib.datetime.now()
 differenza_tempo = orario_corrente - st.session_state.ultimo_accesso_attivita
 minuti_passati = differenza_tempo.total_seconds() / 60
 
-# 📊 LA SPIA DI MANUELA: Mostra il riquadro azzurro sempre visibile in cima allo schermo
+# 📊 SPIA FLUIDA: Mostra il tempo. Puoi nascondere questa riga (mettendoci un # davanti) quando avrai finito i test!
 st.info(f"⏳ Tempo inattività corrente: {minuti_passati:.2f} min / Limite: {MINUTI_MASSIMI_INATTIVITA} min")
 
 if minuti_passati > MINUTI_MASSIMI_INATTIVITA:
-    # 💥 AZZERAMENTO GENERALE: Svuota l'intera memoria dello smartphone se abbandonato
+    # 💥 SPEGNIMENTO: Se ha superato il tempo, cancella tutto al primo tocco
     st.session_state.clear()
     st.session_state.ultimo_accesso_attivita = dt_lib.datetime.now()
     st.rerun()
 else:
-    # Se la pagina viene rinfrescata o usata prima del minuto, aggiorna l'orario
-    if minuti_passati > 0.05:
+    # 🛡️ FILTRO ANTI-DOPPIO CLICK DI MANUELA: Aggiorna la memoria SOLO se sono passati almeno 30 secondi (0.5 min), salvando la fluidità dei bottoni!
+    if minuti_passati > 0.5:
         st.session_state.ultimo_accesso_attivita = orario_corrente
 # =====================================================================================
+
 
 
 def scarica_file_da_github_se_esiste(nome_file):
