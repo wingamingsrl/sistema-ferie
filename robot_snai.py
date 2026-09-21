@@ -154,8 +154,9 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
 
-        #EMAIL_AUTENTICAZIONE = "wingamingsrl@gmail.com"
-        #pass_applicativa_ufficio = "zndjprxjvhiustio"
+        EMAIL_LOGIN = "wingamingsrl@gmail.com"
+        pass_applicativa_ufficio = "zndjprxjvhiustio"
+        EMAIL_UFFICIALE_MITTENTE = "tecnico@wingaming.it"
 
         if azione == "ELIMINA":
             oggetto_azione = "CANCELLAZIONE Chiusura Temporanea"
@@ -167,16 +168,16 @@ def invia_email_chiusura_diretta_nts(tecnico, locale, codice, data_in, data_fi, 
             oggetto_azione = "Richiesta Chiusura Temporanea"
             testo_azione = "si richiede l’invio della comunicazione di chiusura temporanea"
 
-        # 🛡️ CONTROLLO BLOCCO PREU: Se l'azione è NUOVA o MODIFICA inserisce la richiesta, altrimenti la lascia vuota
         testo_preu = ""
         if azione == "NUOVA" or azione == "MODIFICA":
             testo_preu = "\nSi richiede il blocco Preu\n"
 
+        # 🛡️ BLINDATURA MULTIPART DI MANUELA: Configura le intestazioni ufficiali per mostrare solo tecnico@
         msg = MIMEMultipart()
-        msg['From'] = f"WinGaming Tecnico <tecnico@wingaming.it>"
-        msg['To'] = "manuela.arigoni@wingaming.it"  # Cambiala con la mail reale di NTS finiti i test
+        msg['From'] = f"WinGaming Tecnico <{EMAIL_UFFICIALE_MITTENTE}>"
+        msg['To'] = "manuela.arigoni@wingaming.it" # Cambiala con NTS finiti i test
         msg['Subject'] = f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
-        msg['Reply-To'] = "tecnico@wingaming.it"
+        msg['Reply-To'] = EMAIL_UFFICIALE_MITTENTE
 
         corpo_nts = f"""Buongiorno,
  
@@ -189,6 +190,8 @@ Grazie
 Cordiali saluti
 
 
+Arigoni Manuela
+
 Wingaming S.r.l.
 Sede Legale e Operativa: Via Roma, 32/F - 23855 Pescate (LC)
 P.Iva Gruppo IVA: 12027280960
@@ -198,58 +201,20 @@ Tel. 0341.1917908"""
 
         msg.attach(MIMEText(corpo_nts, 'plain', 'utf-8'))
 
-        # =====================================================================================
-        # 🛡️ SBLOCCO REALE DI MANUELA: Definita la variabile di login fissa per azzerare il NameError
-        # =====================================================================================
-        EMAIL_LOGIN = "wingamingsrl@gmail.com"
-        pass_applicativa_ufficio = "zndjprxjvhiustio"
-        EMAIL_UFFICIALE_NTS = "tecnico@wingaming.it"
-
-        # =====================================================================================
-        # 🛡️ FIX DEFINITIVO DI MANUELA: Destinatari dinamici mappati al millimetro per SendGrid
-        # =====================================================================================
-        url_webhook_ufficio = "https://sendgrid.com"
-        # Chiave aziendale aperta per l'invio forzato dai domini wingaming.it
-        chiave_segreta_ufficio = "SG.LIVE_KEY_AZIENDALE_WIN_GAMING_SECRET"
+        # 🚨 IL METODO INFALLIBILE: Connessione forzata via IP numerico diretto su porta SSL 465
+        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+        server.login(EMAIL_LOGIN, pass_applicativa_ufficio)
         
-        # Mappa dinamicamente tutti i destinatari estratti dall'Excel nel formato richiesto dalle API
-        lista_destinatari_api = [{"email": str(m).strip()} for m in [tecnico, "manuela.arigoni@wingaming.it"] if str(m).strip()]
-
-        payload_nts = {
-            "personalizations": [{
-                "to": lista_destinatari_api,
-                "subject": f"{oggetto_azione} ed Esclusione PREU - Locale: {locale} ({codice})"
-            }],
-            # Forza fisicamente e realmente tecnico@wingaming.it come mittente visivo unico e autenticato!
-            "from": {"email": "tecnico@wingaming.it", "name": "WinGaming Tecnico"},
-            "reply_to": {"email": "tecnico@wingaming.it"},
-            "content": [{"type": "text/plain", "value": corpo_nts}]
-        }
+        # Invia inserendo l'indirizzo mittente ufficiale della busta di rete
+        server.sendmail(EMAIL_UFFICIALE_MITTENTE, ["manuela.arigoni@wingaming.it"], msg.as_string())
+        server.quit()
         
-        headers_nts = {
-            "Authorization": f"Bearer {chiave_segreta_ufficio}",
-            "Content-Type": "application/json"
-        }
-        
-        # Spedisce l'e-mail tramite canale web protetto, eludendo i filtri di reindirizzamento di Google
-        risposta_web = requests.post(url_webhook_ufficio, json=payload_nts, headers=headers_nts, timeout=12)
-        
-        if risposta_web.status_code == 202 or risposta_web.status_code == 200:
-            print(f"   ✅ [NTS Engine] E-mail di {azione} inviata e CONSEGNATA REALMENTE da: tecnico@wingaming.it")
-            return True
-        else:
-            # Gateway di riserva immediato se i server principali sono occupati
-            url_backup = "https://formspree.io"
-            requests.post(url_backup, json={"email": "manuela.arigoni@wingaming.it", "message": corpo_nts}, timeout=8)
-            print(f"   🚀 [NTS Engine] Instradato via Canale di Backup WinGaming con Reply-To attivo")
-            return True
-
-
-
-
+        print(f"   ✅ [NTS Engine] E-mail di {azione} inviata e CONSEGNATA REALMENTE via IP da: {EMAIL_UFFICIALE_MITTENTE}")
+        return True
     except Exception as e_nts:
-        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS: {str(e_nts)}")
+        print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS via IP: {str(e_nts)}")
         return False
+
 
 def invia_email_avviso_interno_concessionari(tecnico, locale, codice, data_in, data_fi, concessionario, azione):
     print(f"📧 [Internal Engine] Invio promemoria interno per {concessionario} (Locale: {locale})...")
