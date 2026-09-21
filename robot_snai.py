@@ -220,6 +220,52 @@ Tel. 0341.1917908"""
         print(f"   ❌ [NTS Engine] Impossibile spedire la mail NTS: {str(e_nts)}")
         return False
 
+def invia_email_avviso_interno_concessionari(tecnico, locale, codice, data_in, data_fi, concessionario, azione):
+    print(f"📧 [Internal Engine] Invio promemoria interno per {concessionario} (Locale: {locale})...")
+    try:
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        EMAIL_LOGIN = "wingamingsrl@gmail.com"
+        pass_applicativa_ufficio = "zndjprxjvhiustio"
+        EMAIL_UFFICIALE_MITTENTE = "tecnico@wingaming.it"
+
+        msg = MIMEMultipart()
+        msg['From'] = f"WinGaming Robot <tecnico@wingaming.it>"
+        msg['To'] = "manuela.arigoni@wingaming.it"
+        msg['Subject'] = f"⚠️ [AVVISO INTERNO] {azione} Chiusura {concessionario} - Locale: {locale} ({codice})"
+
+        corpo_mail = f"""All'attenzione di Manuela,
+
+Questo è un promemoria interno automatico del robot. È stata registrata una richiesta di [{azione}] per un concessionario a gestione manuale.
+
+Dettagli della pratica da evadere:
+--------------------------------------------------
+🏢 CONCESSIONARIO:     {concessionario}
+🔔 STATO OPERAZIONE:    {azione}
+👤 TECNICO ESECUTORE:   {tecnico}
+📍 LOCALE COINVOLTO:    {locale}
+📌 CODICE CENSIMENTO:   {codice}
+📅 INIZIO CHIUSURA:    {data_in}
+🚚 DATA RIAPERTURA:    {data_fi}
+--------------------------------------------------
+
+Verificare la pratica e procedere con l'allineamento manuale.
+WinGaming S.r.l."""
+
+        msg.attach(MIMEText(corpo_mail, 'plain', 'utf-8'))
+
+        server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+        server.login(EMAIL_LOGIN, pass_applicativa_ufficio)
+        server.sendmail(EMAIL_UFFICIALE_MITTENTE, ["manuela.arigoni@wingaming.it"], msg.as_string())
+        server.quit()
+        
+        print(f"   ✅ [Internal Engine] Avviso interno per {concessionario} consegnato a Manuela!")
+        return True
+    except Exception as e_int:
+        print(f"   ❌ [Internal Engine] Errore invio avviso {concessionario}: {str(e_int)}")
+        return False
 
 
 
@@ -234,23 +280,34 @@ def avvia_sincronizzazione_automatica():
     locali_pronti = df_ferie[df_ferie["ROBOT_ACTION"].astype(str).str.strip().str.upper().isin(["NUOVA", "MODIFICA", "ELIMINA"])]
     if locali_pronti.empty: return
 
-    # 🛡️ ACCELERATORE PREVENTIVO NTS: Invia le mail a NTS per prime ed esce subito se non ci sono locali Snaitech
+    # 🛡️ ARCHITETTURA DI MANUELA: Sbarramento preventivo per NTS, Global Starnet e Sisal (Evita Chrome)
     rimangono_locali_snai = False
     for _, row in locali_pronti.iterrows():
         concessionario_riga = str(row["CONCESSIONARIO"]).strip().upper()
         mirino_azione = str(row.get("ROBOT_ACTION", "")).strip().upper()
         
+        codice_aams = str(row["CODICE_LOCALE"]).strip()
+        nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
+        data_nts_in = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
+        data_nts_fi = str(row["FINE_FERIE"]).replace("-", ".").strip()
+
+        # 📄 CASO 1: NTS NETWORKS (Invia e-mail ufficiale a NTS)
         if "NTS" in concessionario_riga or "NETWORKS" in concessionario_riga:
-            codice_aams = str(row["CODICE_LOCALE"]).strip()
-            nome_locale_corrente = str(row["NOME_LOCALE"]).strip()
-            data_nts_in = str(row["INIZIO_FERIE"]).replace("-", ".").strip()
-            data_nts_fi = str(row["FINE_FERIE"]).replace("-", ".").strip()
-            
             print(f"🏢 [NTS Networks] Rilevato locale: {nome_locale_corrente} in stato [{mirino_azione}]. Attivo l'invio...")
             successo_nts = invia_email_chiusura_diretta_nts(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_nts_in, data_nts_fi, mirino_azione)
             if successo_nts:
                 scarica_e_aggiorna_excel_su_github(codice_aams)
+                
+        # 🚨 CASO 2: GLOBAL STARNET O SISAL (Invia avviso interno a Manuela e pulisce l'Excel)
+        elif "GLOBAL" in concessionario_riga or "STARNET" in concessionario_riga or "SISAL" in concessionario_riga:
+            concessionario_pulito = "Global Starnet" if "GLOBAL" in concessionario_riga else "Sisal"
+            print(f"🎫 [{concessionario_pulito}] Rilevato locale: {nome_locale_corrente} in stato [{mirino_azione}]. Spedisco avviso interno...")
+            successo_interno = invia_email_avviso_interno_concessionari(row["TECNICO_INSERIMENTO"], nome_locale_corrente, codice_aams, data_nts_in, data_nts_fi, concessionario_pulito, mirino_azione)
+            if successo_interno:
+                scarica_e_aggiorna_excel_su_github(codice_aams)
+                
         else:
+            # Rimangono i locali Snaitech
             rimangono_locali_snai = True
 
     if not rimangono_locali_snai:
