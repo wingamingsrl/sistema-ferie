@@ -66,12 +66,12 @@ COLONNE_REALI_UFFICIO = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCA
 
 
 # =====================================================================================
-# 🛡️ PROTEZIONE DI SICUREZZA DI MANUELA: TIMEOUT DI SESSIONE ASSOLUTO A 2 ORE
+# 🛡️ PROTEZIONE DI SICUREZZA DI MANUELA: TIMEOUT A 2 ORE CON LOGOUT TEMPORIZZATO 10 SEC
 # =====================================================================================
 import time as t_lib
 
 # ⏱️ CONFIGURAZIONE UFFICIALE: 7200 secondi corrispondono a 2 ore esatte di autonomia.
-# (Se vuoi fare il test di 1 minuto per vederlo scattare, scrivi temporaneamente 60 invece di 7200!)
+# (Se vuoi fare il test rapido, scrivi temporaneamente 60 invece di 7200!)
 #SECONDI_MASSIMI_SESSIONE = 7200
 SECONDI_MASSIMI_SESSIONE = 60
 
@@ -84,13 +84,22 @@ tempo_trascorso = secondi_correnti - st.session_state.ora_creazione_sessione
 
 if "user_nome" in st.session_state and st.session_state.user_nome:
     if tempo_trascorso > SECONDI_MASSIMI_SESSIONE:
-        # 💥 GHIGLIOTTINA IMMEDIATA: Scatta al primo F5 o al primo click dopo il tempo massimo
+        # 💥 GHIGLIOTTINA IMMEDIATA: Cancella l'accesso in memoria
         v_tecnico = str(st.session_state.user_nome)
         st.session_state.clear()
         st.session_state.autenticato = False
-        st.warning(f"🔒 Sessione scaduta per sicurezza (Limite 2 ore superato) per l'utente {v_tecnico}. Effettua il login.")
+        
+        # ⏳ AUTOMAZIONE DI MANUELA: Mostra il messaggio di avviso fisso a schermo per 10 secondi
+        st.warning(f"🔒 Sessione scaduta.")
+               
+        # Ferma il codice e aspetta 10 secondi reali di orologio
+        t_lib.sleep(3)
+        
+        # Scaduto il tempo, cancella l'avviso e rinfresca lo schermo mostrando la pagina di login pulita!
+        st.rerun()
         st.stop()
 # =====================================================================================
+
 
 
 
