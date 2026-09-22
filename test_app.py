@@ -832,51 +832,70 @@ else:
 
 
 
-    # =====================================================================================
-    # PANNELLO CANCELLAZIONE - COMPRESSIONE MENÙ A TENDINA E SPARIZIONE TASTO SMARTPHONE
-    # =====================================================================================
-    st.markdown("---")
-    st.markdown("### 🗑️ Cancella un Periodo Registrato")
-    
-    opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-    mappa_indici_reali = {}
-    
-    # 🛡️ FILTRO MENÙ DI MANUELA: Scansiona la RAM e inserisce nella tendina SOLO i locali che non sono già in stato ELIMINA
-    if st.session_state.storico_cloud:
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            azione_corrente = str(row.get("ROBOT_ACTION", "")).strip().upper()
-            if azione_corrente != "ELIMINA":
-                testo_opzione = f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})"
-                opzioni_cancellazione.append(testo_opzione)
-                mappa_indici_reali[testo_opzione] = idx
-            
-    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=len(opzioni_cancellazione) <= 1)
-    
-    # 🛡️ BOTTONE FANTASMA DI MANUELA: Il tasto compare SOLO se hai selezionato un locale valido, se rimetti la voce standard sparisce nel nulla!
-    if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete in mappa_indici_reali:
-        try:
-            idx_da_eliminare = mappa_indici_reali[selezione_delete]
-                
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA", disabled=robot_sta_girando_ora):
+# =====================================================================================
+# PANNELLO CANCELLAZIONE - SELEZIONE E RIMOZIONE RIGHE (RIALLINEATO)
+# =====================================================================================
+st.markdown("---")
+st.markdown("### 🗑️ Cancella un Periodo Registrato")
 
-                st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
-                
-                # Marchia con la parola chiave per il robot
-                st.session_state.storico_cloud[idx_da_eliminare]["ROBOT_ACTION"] = "ELIMINA"
-                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                
-                # Forza la scrittura fisica dell'Excel su disco prima di inviarlo
-                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                
-                # Spinge il file modificato su GitHub
-                push_excel_su_github(df_nuovo_salva)
-                
-                st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
-                st.success("🗑️ Richiesta di eliminazione inviata! La riga è stata nascosta. Il robot la rimuoverà da Snaitech.")
-                time.sleep(1.5)
-                st.rerun()
-        except Exception as e_del: 
-            st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
+mappa_indici_reali = {}
+
+if "storico_cloud" in st.session_state and st.session_state.storico_cloud:
+    for idx, row in enumerate(st.session_state.storico_cloud):
+        azione_corrente = str(row.get("ROBOT_ACTION", "")).strip().upper()
+        if azione_corrente != "ELIMINA":
+            testo_opzione = f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} [{row.get('CONCESSIONARIO','')}] (Dal {row.get('INIZIO_FERIE', '')})"
+            opzioni_cancellazione.append(testo_opzione)
+            mappa_indici_reali[testo_opzione] = idx
+        
+selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=len(opzioni_cancellazione) <= 1)
+
+if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete in mappa_indici_reali:
+    try:
+        idx_selezionato = mappa_indici_reali[selezione_delete]
+        riga_scelta = st.session_state.storico_cloud[idx_selezionato]
+        codice_locale_target = str(riga_scelta.get("CODICE_LOCALE", "")).strip()
+        nome_locale_target = str(riga_scelta.get("NOME_LOCALE", "")).strip()
+            
+        if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+            for riga_cloud in st.session_state.storico_cloud:
+                if str(riga_cloud.get("CODICE_LOCALE", "")).strip() == codice_locale_target:
+                    riga_cloud["ROBOT_ACTION"] = "ELIMINA"
+            
+            df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+            df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+            
+            try: push_excel_su_github(df_nuovo_salva)
+            except Exception: pass
+            
+            st.success(f"🗑️ Richiesta di eliminazione inviata per tutti i provider di: {nome_locale_target}!")
+            time.sleep(1.5)
+            st.rerun()
+    except Exception as e_del: 
+        st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+
+# =====================================================================================
+# INTERFACCIA DI LOGOUT E PULSANTE BLU MANUALE (RIALLINEATO A FILO MARGINE)
+# =====================================================================================
+st.markdown("---")
+col_b1, col_b2 = st.columns(2)
+with col_b1:
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+        st.session_state.sincro_attiva_visiva = True
+        try:
+            esegui_sincronizzazione_robot_snai()
+            time.sleep(2)
+        except Exception: 
+            pass
+        st.rerun()
+
+with col_b2:
+    if st.button("🚪 ESCI / LOGOUT SICURO"):
+        st.session_state.authenticated = False
+        st.session_state.user_nome = ""
+        st.rerun()
+
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
