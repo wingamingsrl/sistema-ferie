@@ -671,10 +671,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 
 
 # =====================================================================================
-# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
-# =====================================================================================
-# =====================================================================================
-# 💛 ALLERTA GIALLA VISIVA DI MANUELA: AVVISI 3 GIORNI A VIDEO (CANCELLATI GLI ERRORI)
+# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E ALLERTA GIALLA VISIVA DI MANUELA
 # =====================================================================================
 st.markdown("### 🔔 Scadenze Logistiche Imminenti (3 Giorni)")
 try:
@@ -715,6 +712,34 @@ try:
 except Exception:
     pass
 
+# =====================================================================================
+# 🛡️ TABELLONE VISIVO DI MANUELA: PRIVILEGI ADMIN (VEDE TUTTO) / TECNICI (VEDONO SOLO LE LORO)
+# =====================================================================================
+st.markdown("---")
+if str(st.session_state.user_nome).strip().upper() in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+    st.markdown("### 📊 [VISTA ADMIN] Tutte le chiusure della flotta in attesa")
+    righe_lavorazione_generiche = [
+        row for row in st.session_state.storico_cloud 
+        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+    ] if st.session_state.storico_cloud else []
+else:
+    st.markdown("### 📊 Le tue chiusure in attesa di allineamento")
+    righe_lavorazione_generiche = [
+        row for row in st.session_state.storico_cloud 
+        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+        and str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == str(st.session_state.user_nome).strip().upper()
+    ] if st.session_state.storico_cloud else []
+
+if righe_lavorazione_generiche:
+    df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
+    if str(st.session_state.user_nome).strip().upper() in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+    else:
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
+    df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
+    st.dataframe(df_visibile_pulito, hide_index=True)
+else:
+    st.success(f"✅ Nessuna pratica in coda per la tua visualizzazione, {st.session_state.user_nome}!")
 
 # =====================================================================================
 # 🛡️ TABELLONE GIRI LOGISTICI DI MANUELA: PRIVILEGI GERARCHICI TOTALI (STORICO INCLUSO)
@@ -724,159 +749,27 @@ utente_loggato_maiuscolo = str(st.session_state.user_nome).strip().upper()
 
 if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
     st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
-    # L'Admin e l'Ufficio vedono TUTTI i locali presenti nel database (sia storici che in coda!)
     righe_giri_logistici = st.session_state.storico_cloud if st.session_state.storico_cloud else []
 else:
     st.markdown("### 📊 I tuoi Promemoria Giri Logistici")
-    # Il tecnico vede SOLO i locali inseriti specificamente da lui
     righe_giri_logistici = [
         row for row in st.session_state.storico_cloud 
         if str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
     ] if st.session_state.storico_cloud else []
 
-# Disegna la tabella a schermo
 if righe_giri_logistici:
     df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
-    
-    # Mantiene le colonne pulite ed eleganti per l'ufficio
     if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
         colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
     else:
         colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
-        
     df_visibile_giri_pulito = df_lavorazione_giri.reindex(columns=colonne_visibili_giri).fillna("")
     st.dataframe(df_visibile_giri_pulito, hide_index=True)
 else:
     st.success(f"✅ Nessun promemoria giro logistico registrato a sistema, {st.session_state.user_nome}.")
-# =====================================================================================
-
 
 # =====================================================================================
-# INTERFACCIA DI LOGOUT E PULSANTE BLU MANUELA (AGGANCCIO UNIVERSALE AMMINISTRATORE)
-# =====================================================================================
-st.markdown("---")
-utente_chiaro_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
-
-# 🛡️ PRIVILEGIO ADMIN DI MANUELA: Se l'utente è l'ufficio, apre il pannello completo!
-if "MANUELA" in utente_chiaro_maiuscolo or "ADMIN" in utente_chiaro_maiuscolo or "UFFICIO" in utente_chiaro_maiuscolo:
-    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
-    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
-
-    if robot_sta_girando_ora:
-        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
-        st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
-        import time as t_sys
-        t_sys.sleep(5)
-        st.rerun()
-    else:
-        # Il tuo pulsante originale intatto riga per riga
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin"):
-            with st.spinner("Blindatura database aziendale e avvio server..."):
-                try:
-                    for riga_ram in st.session_state.storico_cloud:
-                        if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
-                            riga_ram["STATO_INVIO"] = "In elaborazione"
-                    
-                    df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
-                    df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    push_excel_su_github(df_spingi_lock)
-                    
-                    esegui_sincronizzazione_robot_snai()
-                    time.sleep(2)
-                except Exception:
-                    pass
-            st.rerun()
-        # Il tasto disconnetti dell'Admin - Pulizia totale della memoria per sbloccare il click
-        if st.button("🚪 DISCONNETTI", key="palo_logout_admin_unico"):
-            st.session_state.clear() # 🧹 AZZERA LA RAM: Sblocca il click all'istante!
-            st.rerun()
-
-else:
-    # 📱 VISTA TECNICI STANDARD: Qualsiasi altro nome vede solo il tasto per uscire allineato a sinistra
-    if st.button("🚪 DISCONNETTI", key="palo_logout_tecnico_unico"):
-        st.session_state.clear() # 🧹 AZZERA LA RAM: Sblocca il click all'istante!
-        st.rerun()
-    st.stop() # 💥 GHIGLIOTTINA: Impedisce ai tecnici di vedere il pulsante blu o i testi
-
-
-
-    # =====================================================================================
-    # 🛡️ 2. VISTA ADMIN (MANUELA / UFFICIO): Riapre il pannello completo e il Pulsante Blu!
-    # =====================================================================================
-    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
-    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
-
-    if robot_sta_girando_ora:
-        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
-        st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
-        import time as t_sys
-        t_sys.sleep(5)
-        st.rerun()
-    else:
-        # Il tuo pulsante originale intatto riga per riga
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="btn_sincro_admin_puro"):
-            with st.spinner("Blindatura database aziendale e avvio server..."):
-                try:
-                    for riga_ram in st.session_state.storico_cloud:
-                        if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
-                            riga_ram["STATO_INVIO"] = "In elaborazione"
-                    
-                    df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
-                    df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    push_excel_su_github(df_spingi_lock)
-                    
-                    esegui_sincronizzazione_robot_snai()
-                    time.sleep(2)
-                except Exception:
-                    pass
-            st.rerun()
-            
-        # Il tasto disconnetti dell'Admin a sinistra sotto il blu
-        if st.button("🚪 DISCONNETTI", key="btn_logout_admin_puro"):
-            st.session_state.authenticated = False
-            st.session_state.user_nome = ""
-            st.rerun()
-
-
-
-# =====================================================================================
-# 🛡️ TABELLONE VISIVO DI MANUELA: PRIVILEGI ADMIN (VEDE TUTTO) / TECNICI (VEDONO SOLO LE LORO)
-# =====================================================================================
-st.markdown("---")
-if str(st.session_state.user_nome).strip().upper() in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-    st.markdown("### 📊 [VISTA ADMIN] Tutte le chiusure della flotta in attesa")
-    # L'Admin vede TUTTI i locali in coda indipendentemente da chi li ha inseriti
-    righe_lavorazione_generiche = [
-        row for row in st.session_state.storico_cloud 
-        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
-    ] if st.session_state.storico_cloud else []
-else:
-    st.markdown("### 📊 Le tue chiusure in attesa di allineamento")
-    # Il tecnico vede SOLO ed ESCLUSIVAMENTE i locali inseriti col suo nome
-    righe_lavorazione_generiche = [
-        row for row in st.session_state.storico_cloud 
-        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
-        and str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == str(st.session_state.user_nome).strip().upper()
-    ] if st.session_state.storico_cloud else []
-
-if righe_lavorazione_generiche:
-    df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
-    # Per l'Admin aggiungiamo anche la colonna visiva del Tecnico per sapere chi ha fatto l'inserimento
-    if str(st.session_state.user_nome).strip().upper() in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
-    else:
-        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
-        
-    df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
-    st.dataframe(df_visibile_pulito, hide_index=True)
-else:
-    st.success(f"✅ Nessuna pratica in coda per la tua visualizzazione, {st.session_state.user_nome}!")
-# =====================================================================================
-
-
-
-# =====================================================================================
-# PANNELLO CANCELLAZIONE - SELEZIONE E RIMOZIONE RIGHE (RIALLINEATO)
+# PANNELLO CANCELLAZIONE - SELEZIONE E RIMOZIONE RIGHE
 # =====================================================================================
 st.markdown("---")
 st.markdown("### 🗑️ Cancella un Periodo Registrato")
@@ -908,16 +801,18 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
             
             df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
             df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-            
             try: push_excel_su_github(df_nuovo_salva)
             except Exception: pass
-            
             st.success(f"🗑️ Richiesta di eliminazione inviata per tutti i provider di: {nome_locale_target}!")
             time.sleep(1.5)
             st.rerun()
     except Exception as e_del: 
         st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
         
+# =====================================================================================
+# 🎛️ AREA AMMINISTRATORE: UPLOADER EXCEL (VERSIONE INTEGRALE ORIGINALE CONVERTITRICE)
+# =====================================================================================
+if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
@@ -926,6 +821,7 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
             df_caricato = pd.read_excel(file_caricato).fillna("")
             if "CODICE_LOCALE" in df_caricato.columns:
                 if st.button("🔄 CONFERMA E SOVRASCRIVI DATABASE CON QUESTO FILE"):
+                    # 🛡️ PROTEZIONE DATE DI MANUELA: Standardizza i testi per evitare blackout del robot
                     for col_data in ["DATA_INSERIMENTO", "INIZIO_FERIE", "FINE_FERIE"]:
                         if col_data in df_caricato.columns:
                             try:
@@ -944,19 +840,61 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
                     st.rerun()
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
-        except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+        except Exception as e_load: 
+            st.error(f"❌ Errore lettura: {str(e_load)}")
 
 
+# =====================================================================================
+# 🔐 BLOCCO FINALE INTERFACCIA: AVVIO ROBOT (ADMIN) E DISCONNETTI STRUTTURALE (PER TUTTI)
+# =====================================================================================
+st.markdown("---")
+utente_finale_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
 
-# PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
-# st.markdown("<br>", unsafe_allow_html=True)
-# col_out1, col_out2, col_out3 = st.columns([1, 2, 1])
-# with col_out2:
-#     if st.button("🚪 DISCONNETTI ACCOUNT / LOGOUT"):
-#         st.query_params.clear()
-#         st.session_state.autenticato = False
-#         st.success("Uscita effettuata con successo!")
-#         time.sleep(0.5)
-#        st.rerun()
-#         st.rerun()
+# 📱 1. VISTA TECNICI STANDARD: Se l'utente NON è l'ufficio, mostra SOLO il logout a sinistra ed esegue lo STOP!
+if utente_finale_maiuscolo not in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_definitivo"):
+        st.session_state.clear()  # 🧹 AZZERA LA RAM dello smartphone per sbloccare il click!
+        if "st" in locals() and hasattr(st, "query_params"):
+            st.query_params.clear()
+        st.rerun()
+    st.stop()  # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente ai tecnici di vedere il pulsante blu sotto!
+
+# =====================================================================================
+# 🛡️ 2. VISTA ADMIN (ESCLUSIVA UFFICIO): Raggiungibile SOLO da Manuela o dall'account Admin
+# =====================================================================================
+st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
+st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
+
+if robot_sta_girando_ora:
+    st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
+    st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
+    import time as t_sys
+    t_sys.sleep(5)
+    st.rerun()
+else:
+    # Il tuo pulsante originale intatto riga per riga
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_definitivo"):
+        with st.spinner("Blindatura database aziendale e avvio server..."):
+            try:
+                for riga_ram in st.session_state.storico_cloud:
+                    if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
+                        riga_ram["STATO_INVIO"] = "In elaborazione"
+                
+                df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
+                df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                push_excel_su_github(df_spingi_lock)
+                
+                esegui_sincronizzazione_robot_snai()
+                time.sleep(2)
+            except Exception:
+                pass
+        st.rerun()
+        
+    # Il tasto disconnetti dell'Admin posizionato linearmente a sinistra sotto il blu
+    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_definitivo"):
+        st.session_state.clear()  # 🧹 AZZERA LA RAM dell'ufficio per sbloccare il click!
+        if "st" in locals() and hasattr(st, "query_params"):
+            st.query_params.clear()
+        st.rerun()
+
 
