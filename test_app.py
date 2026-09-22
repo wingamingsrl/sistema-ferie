@@ -25,6 +25,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# =====================================================================================
+# 🛡️ BARRIERA ANTISOPRAVVOSCRIZIONE DI MANUELA: BLOCCA LO SCHERMO SE IL ROBOT STA GIRANDO
+# =====================================================================================
+if st.session_state.get("congelamento_sincro_attivo", False):
+    st.error("🚨 ATTENZIONE: Sincronizzazione forzata in corso su GitHub!")
+    st.info("⏳ Per evitare la perdita di dati, la plancia è temporaneamente CONGELATA. Attendi circa 2 minuti che il robot completi gli aggiornamenti e poi rinfresca la pagina.")
+    st.spinner("Allineamento database online in corso...")
+    if st.button("🔄 VERIFICA SE IL ROBOT HA FINITO (RINFRESCA)"):
+        st.session_state.congelamento_sincro_attivo = False
+        st.rerun()
+    st.stop() # 💥 GHIGLIOTTINA: Blocca lo smartphone qui se il processo è attivo!
+# =====================================================================================
+
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
@@ -122,20 +135,6 @@ def scarica_file_da_github_se_esiste(nome_file):
     except Exception:
         pass
     return None
-
-# =====================================================================================
-# 🛡️ BARRIERA ANTISOPRAVVOSCRIZIONE DI MANUELA: BLOCCA LO SCHERMO SE IL ROBOT STA GIRANDO
-# =====================================================================================
-if st.session_state.get("congelamento_sincro_attivo", False):
-    st.error("🚨 ATTENZIONE: Sincronizzazione forzata in corso su GitHub!")
-    st.info("⏳ Per evitare la perdita di dati, la plancia è temporaneamente CONGELATA. Attendi circa 2 minuti che il robot completi gli aggiornamenti e poi rinfresca la pagina.")
-    st.spinner("Allineamento database online in corso...")
-    if st.button("🔄 VERIFICA SE IL ROBOT HA FINITO (RINFRESCA)"):
-        st.session_state.congelamento_sincro_attivo = False
-        st.rerun()
-    st.stop() # 💥 GHIGLIOTTINA: Blocca lo smartphone qui se il processo è attivo!
-# =====================================================================================
-
 
 def carica_database_locale():
     df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "IONARIO"])
