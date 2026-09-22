@@ -25,7 +25,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
@@ -482,12 +481,10 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
     # Se il robot sta girando, il bottone diventa grigio e non cliccabile automaticamente in tutto il mondo
     submit_button = st.form_submit_button("💾 INVIA CHIUSURA TEMPORANEA")
-    
+
     if submit_button:
-        # Da qui riparte il vecchio blocco originale dei ragazzi che fa i controlli e salva le ferie...
         if scelta_pvd == "- Selezionare il Locale -":
             st.error("Errore: Seleziona un locale valido.")
-
 
 
 # =====================================================================================
