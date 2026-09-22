@@ -483,90 +483,101 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 # =====================================================================================
 # BLOCCO 6 - PARTE A: ELABORAZIONE INSERIMENTI E MOTORE EMAIL DINAMICO MODIFICHE
 # =====================================================================================
-if submit_button:
-    if scelta_pvd == "- Selezionare il Locale -":
-        st.error("Errore: Seleziona un locale valido.")
-    elif datetime.combine(data_riapertura, ora_riapertura) <= datetime.combine(data_chiusura, ora_chiusura):
-        st.error("Errore: La data di riapertura deve essere successiva alla chiusura.")
-    else:
-        str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
-        testo_pvd = str(scelta_pvd)
-        
-        sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
-        data_inizio_nuova = datetime.combine(data_chiusura, ora_chiusura)
-        data_fine_nuova = datetime.combine(data_riapertura, ora_riapertura)
-        
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            if str(row.get("NOME_LOCALE", "")).strip() in testo_pvd or testo_pvd.strip() in str(row.get("NOME_LOCALE", "")):
-                try:
-                    old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
-                    old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
-                    if (data_inizio_nuova <= old_f) and (data_fine_nuova >= old_i):
-                        sovrapposizione_rilevata, riga_conflitto_idx = True, idx
-                        dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
-                        break
-                except Exception:
+    if submit_button:
+        if scelta_pvd == "- Selezionare il Locale -":
+            st.error("Errore: Seleziona un locale valido.")
+        elif datetime.combine(data_riapertura, ora_riapertura) <= datetime.combine(data_chiusura, ora_chiusura):
+            st.error("Errore: La data di riapertura deve essere successiva alla chiusura.")
+        else:
+            str_c, str_r = f"{data_chiusura.strftime('%d-%m-%Y')} {ora_chiusura.strftime('%H:%M')}", f"{data_riapertura.strftime('%d-%m-%Y')} {ora_riapertura.strftime('%H:%M')}"
+            testo_pvd = str(scelta_pvd)
+            
+            sovrapposizione_rilevata, riga_conflitto_idx, dettagli_conflitto = False, None, ""
+            data_inizio_nuova = datetime.combine(data_chiusura, ora_chiusura)
+            data_fine_nuova = datetime.combine(data_riapertura, ora_riapertura)
+            
+            for idx, row in enumerate(st.session_state.storico_cloud):
+                if str(row.get("NOME_LOCALE", "")).strip() in testo_pvd or testo_pvd.strip() in str(row.get("NOME_LOCALE", "")):
                     try:
-                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
-                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
-                        if (data_chiusura <= old_f.date()) and (data_riapertura >= old_i.date()):
+                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
+                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
+                        if (data_inizio_nuova <= old_f) and (data_fine_nuova >= old_i):
                             sovrapposizione_rilevata, riga_conflitto_idx = True, idx
                             dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
                             break
-                    except Exception: continue
+                    except Exception:
+                        pass
 
-        if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
-            st.error("Rilevato elemento non conforme nella stringa di testo.")
-        elif sovrapposizione_rilevata and not forza_sovrascrittura:
-            st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
-        else:
-            codice_estratto = ""
-            nome_puro_locale = ""
-            concessionario_estratto = ""
-            
-            if " - " in testo_pvd:
-                parti_t = testo_pvd.split(" - ")
-                codice_estratto = str(parti_t[0]).strip()
-                resto_s = str(parti_t[1]).strip() if len(parti_t) > 1 else testo_pvd
+            if './' in str(testo_pvd) or '/' in str(testo_pvd):
+                st.error("Rilevato elemento non conforme nella stringa di testo.")
+            elif sovrapposizione_rilevata and not forza_sovrascrittura:
+                st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
             else:
-                resto_s = testo_pvd.strip()
+                codice_estratto = ""
+                nome_puro_locale = ""
+                concessionario_estratto = ""
                 
-            if " (" in resto_s:
-                parti_p = resto_s.split(" (")
-                nome_puro_locale = str(parti_p[0]).strip()
-                concessionario_estratto = str(parti_p[1]).replace(")", "").strip() if len(parti_p) > 1 else ""
-            else:
-                nome_puro_locale = resto_s
-                concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
-            # 🛡️ FIX DATA INSERIMENTO ALL'ITALIANA: Formato Giorno-Mese-Anno con secondi reali
-            data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                if " - " in testo_pvd:
+                    parti_t = testo_pvd.split(" - ")
+                    codice_estratto = str(parti_t[0]).strip()
+                    resto_s = str(parti_t[1]).strip() if len(parti_t) > 1 else testo_pvd
+                else:
+                    resto_s = testo_pvd.strip()
+                    
+                if " (" in resto_s:
+                    parti_p = resto_s.split(" (")
+                    nome_puro_locale = str(parti_p[0]).strip()
+                    concessionario_estratto = str(parti_p[1]).replace(")", "").strip() if len(parti_p) > 1 else ""
+                else:
+                    nome_puro_locale = resto_s
+                    concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
+                
+                data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
-            # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
-            tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
+                # 🛡️ ARCHITETTURA DI MANUELA: Scansiona l'anagrafica (df_locali) per trovare TUTTI i provider di questo codice locale
+                codice_cercato_target = str(codice_estratto).strip()
+                try:
+                    df_filtro_anagrafica = df_locali[df_locali["CODICE_LOCALE"].astype(str).str.strip() == codice_cercato_target]
+                    lista_concessionari_rilevati = df_filtro_anagrafica["CONCESSIONARIO"].astype(str).str.strip().unique().tolist()
+                    lista_concessionari_rilevati = [c for c in lista_concessionari_rilevati if c and c != "nan"]
+                except Exception:
+                    lista_concessionari_rilevati = []
 
-            nuova = {
-                "DATA_INSERIMENTO": str(data_inserimento_it),
-                "TECNICO_INSERIMENTO": str(esecutore_nome),
-                "CODICE_LOCALE": str(codice_estratto),
-                "NOME_LOCALE": str(nome_puro_locale),
-                "CONCESSIONARIO": str(concessionario_estratto),
-                "INIZIO_FERIE": str(str_c),
-                "FINE_FERIE": str(str_r),
-                "PROMEMORIA_IN_COPIA": str(co_destinatario),
-                "STATO_INVIO": "In attesa",
-                "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
-            }
+                if not lista_concessionari_rilevati:
+                    lista_concessionari_rilevati = [str(concessionario_estratto).strip()] if concessionario_estratto else ["Snaitech Spa WG"]
 
+                # Mappa e standardizza i nomi dei provider per lo storico
+                lista_provider_puliti = []
+                for pvd in lista_concessionari_rilevati:
+                    pvd_up = pvd.upper()
+                    if "SNAI" in pvd_up: lista_provider_puliti.append("Snaitech Spa WG")
+                    elif "NTS" in pvd_up: lista_provider_puliti.append("NTS Networks")
+                    elif "SISAL" in pvd_up: lista_provider_puliti.append("Sisal")
+                    elif "GLOBAL" in pvd_up: lista_provider_puliti.append("Global Starnet")
+                    else: lista_provider_puliti.append(pvd)
 
-
-
-            
+                # 🛡️ IL MOLTIPLICATORE: Genera una riga nelle ferie per OGNI provider registrato nell'anagrafica per quel locale
+                righe_sdoppiate_da_salvare = []
+                for provider_singolo in lista_provider_puliti:
+                    riga_singola = {
+                        "DATA_INSERIMENTO": str(data_inserimento_it),
+                        "TECNICO_INSERIMENTO": str(esecutore_nome),
+                        "CODICE_LOCALE": str(codice_estratto),
+                        "NOME_LOCALE": str(nome_puro_locale),
+                        "CONCESSIONARIO": str(provider_singolo),
+                        "INIZIO_FERIE": str(str_c),
+                        "FINE_FERIE": str(str_r),
+                        "PROMEMORIA_IN_COPIA": str(co_destinatario),
+                        "STATO_INVIO": "In attesa",
+                        "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
+                    }
+                    righe_sdoppiate_da_salvare.append(riga_singola)
+           
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
                 except Exception: pass
             
-                      # --- SEZIONE SALVATAGGIO E INVIO EMAIL ALLINEATA AL MILLIMETRO ---
             titolo_azione = "Modifica Chiusura" if (sovrapposizione_rilevata and forza_sovrascrittura) else "Registrazione Chiusura"
             invio_ok = False
             risposta_server = "OK"
@@ -579,8 +590,9 @@ if submit_button:
                     msg['To'] = ", ".join(lista_m)
                     msg['Subject'] = f"🛡️ {titolo_azione} Ferie - {nome_puro_locale}"
                     
-                    linee_concessionari = f" {concessionario_estratto}"
-                    corpo = f"Rilevato aggiornamento chiusura ferie nel sistema WinGaming.\n\nDettagli della pratica:\n--------------------------------------------------\n🔔 Stato Operazione:  {titolo_azione.upper()}\n👤 Tecnico Esecutore: {esecutore_nome}\n📍 Locale Coinvolto:  {nome_puro_locale}\n🏢 Concessionario/i:{linee_concessionari}\n📅 Inizio Chiusura:   {str_c}\n🚚 Data Riapertura:   {str_r}\n--------------------------------------------------\n\nWINGAMING SRL"
+                    # 🚨 CUMULATIVA: Mostra tutti i concessionari separati da virgola nell'unica mail riassuntiva
+                    testo_concessionari_mail = ", ".join(lista_provider_puliti)
+                    corpo = f"Rilevato aggiornamento chiusura ferie nel sistema WinGaming.\n\nDettagli della prima nota:\n--------------------------------------------------\n🔔 Stato Operazione:  {titolo_azione.upper()}\n👤 Tecnico Esecutore: {esecutore_nome}\n📍 Locale Coinvolto:  {nome_puro_locale}\n🏢 Concessionario/i:  {testo_concessionari_mail}\n📅 Inizio Chiusura:   {str_c}\n🚚 Data Riapertura:   {str_r}\n--------------------------------------------------\n\nWINGAMING SRL"
                     msg.attach(MIMEText(corpo, 'plain'))
                     
                     server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
@@ -592,17 +604,19 @@ if submit_button:
                     risposta_server = str(e_mail)
             
             if invio_ok:
-                nuova["STATO_INVIO"] = "Inviato OK" # Lascia traccia dell'e-mail partita
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    try: st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    except Exception: pass
                 
-                st.session_state.storico_cloud.append(nuova)
+                # Inietta tutte le righe separate in tempo reale nella memoria dello smartphone
+                for record_sdoppiato in righe_sdoppiate_da_salvare:
+                    record_sdoppiato["STATO_INVIO"] = "Inviato OK"
+                    st.session_state.storico_cloud.append(record_sdoppiato)
+                    
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                
-                # Forza l'inclusione strutturale della nuova colonna nell'Excel aziendale permanente
                 if "ROBOT_ACTION" not in df_salva.columns:
                     df_salva["ROBOT_ACTION"] = ""
-                    
+        
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
 
@@ -611,8 +625,6 @@ if submit_button:
                 st.session_state.form_id += 1
                 time.sleep(4.0)
                 st.rerun()
-
-
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
