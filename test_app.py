@@ -700,28 +700,28 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-        # =====================================================================================
-        # 🤖 PULSANTE BLU DI SINCRONIZZAZIONE CON TIMER DI CORTESIA (ZERO FLASH)
-        # =====================================================================================
-        import time as t_sys
+    # =====================================================================================
+    # 🤖 PULSANTE BLU DI SINCRONIZZAZIONE CON TIMER DI CORTESIA (ZERO FLASH)
+    # =====================================================================================
+    import time as t_sys
 
-        # Verifica se questa specifica sessione ha appena premuto il pulsante blu
-        if st.session_state.get("sincro_attiva_visiva", False):
-            # Mostra il pulsante in stato di caricamento leggero e piatto nello stile minimal
-            st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI 2 MINUTI", disabled=True)
-            st.warning("⏳ Il robot è partito con successo su GitHub Actions. Per evitare sovrascritture, non effettuare nuovi inserimenti per 2 minuti. La plancia si sbloccherà da sola.")
-            
-            # Pausa di cortesia fissa anti-flash: tiene lo schermo fermo e riposante per 120 secondi
-            t_sys.sleep(120)
-            
-            # Scaduto il tempo, rispagne la spia, scarica l'Excel pulito e rinfresca la plancia
-            st.session_state.sincro_attiva_visiva = False
-            if "carica_database_locale" in locals() or "carica_database_locale" in globals():
-                st.session_state.storico_cloud = carica_database_locale()
-            st.success("✅ Operazione conclusa! Plancia aggiornata.")
-            t_sys.sleep(1.5)
-            st.rerun()
-        else:
+    # Verifica se questa specifica sessione ha appena premuto il pulsante blu
+    if st.session_state.get("sincro_attiva_visiva", False):
+        # Mostra il pulsante in stato di caricamento leggero e piatto nello stile minimal
+        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI 2 MINUTI", disabled=True)
+        st.warning("⏳ Il robot è partito con successo su GitHub Actions. Per evitare sovrascritture, non effettuare nuovi inserimenti per 2 minuti. La plancia si sbloccherà da sola.")
+        
+        # Pausa di cortesia fissa anti-flash: tiene lo schermo fermo e riposante per 120 secondi
+        t_sys.sleep(120)
+        
+        # Scaduto il tempo, rispagne la spia, scarica l'Excel pulito e rinfresca la plancia
+        st.session_state.sincro_attiva_visiva = False
+        if "carica_database_locale" in locals() or "carica_database_locale" in globals():
+            st.session_state.storico_cloud = carica_database_locale()
+        st.success("✅ Operazione conclusa! Plancia aggiornata.")
+        t_sys.sleep(1.5)
+        st.rerun()
+    else:
         # Pulsante originale pulito, leggero e sempre pronto all'uso
         if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
             st.session_state.sincro_attiva_visiva = True
@@ -732,6 +732,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 except Exception:
                     pass
             st.rerun()
+
     
         # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
         if os.path.exists(FILE_STORICO_PERMANENTE):
