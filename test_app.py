@@ -721,21 +721,21 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-            with st.spinner("Attivazione lucchetto aziendale e avvio server..."):
-                try:
-                    # Crea il file lucchetto locale e lo spinge su GitHub per congelare gli schermi
-                    with open("lucchetto.txt", "w") as f_lock:
-                        f_lock.write("BLOCCATO")
-                    
-                    df_salva_lock = pd.DataFrame(st.session_state.storico_cloud)
-                    push_excel_su_github(df_salva_lock) # Spinge il file per aggiornare la rete
-                    
-                    # Lancia il robot ufficiale
-                    esegui_sincronizzazione_robot_snai()
-                    time.sleep(3)
-                except Exception:
-                    pass
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+        with st.spinner("Attivazione lucchetto aziendale e avvio server..."):
+            try:
+                # Crea il file lucchetto locale e lo spinge su GitHub per congelare gli schermi
+                with open("lucchetto.txt", "w") as f_lock:
+                    f_lock.write("BLOCCATO")
+                
+                df_salva_lock = pd.DataFrame(st.session_state.storico_cloud)
+                push_excel_su_github(df_salva_lock) # Spinge il file per aggiornare la rete
+                
+                # Lancia il robot ufficiale
+                esegui_sincronizzazione_robot_snai()
+                time.sleep(3)
+            except Exception:
+                pass
             st.rerun()
 
             
