@@ -543,16 +543,32 @@ if submit_button:
             # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
             tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
 
-                       # 🛡️ FIX DEFINITIVO DI MANUELA: Scinde i provider in modo universale pulendo gli spazi
-            pvd_testo = str(concessionario_estratto).replace("+", ",").replace(" e ", ",").replace("/", ",").strip()
-            if "," in pvd_testo:
-                lista_concessionari_scissi = [c.strip() for c in pvd_testo.split(",") if c.strip()]
-            else:
-                lista_concessionari_scissi = [pvd_testo] if pvd_testo else ["Snaitech Spa WG"]
+            # 🛡️ ARCHITETTURA DI MANUELA: Scansiona l'anagrafica dei locali (df_locali) per trovare tutti i provider di questo codice locale
+            codice_cercato_target = str(codice_estratto).strip()
+            
+            try:
+                df_filtro_anagrafica = df_locali[df_locali["CODICE_LOCALE"].astype(str).str.strip() == codice_cercato_target]
+                lista_concessionari_rilevati = df_filtro_anagrafica["CONCESSIONARIO"].astype(str).str.strip().unique().tolist()
+                lista_concessionari_rilevati = [c for c in lista_concessionari_rilevati if c and c != "nan"]
+            except Exception:
+                lista_concessionari_rilevati = []
 
-            # Genera la flotta di righe separate per ogni provider trovato
+            if not lista_concessionari_rilevati:
+                lista_concessionari_rilevati = [str(concessionario_estratto).strip()] if concessionario_estratto else ["Snaitech Spa WG"]
+
+            # Mappa e standardizza i nomi dei provider per l'ufficio
+            lista_provider_puliti = []
+            for pvd in lista_concessionari_rilevati:
+                pvd_up = pvd.upper()
+                if "SNAI" in pvd_up: lista_provider_puliti.append("Snaitech Spa WG")
+                elif "NTS" in pvd_up: lista_provider_puliti.append("NTS Networks")
+                elif "SISAL" in pvd_up: lista_provider_puliti.append("Sisal")
+                elif "GLOBAL" in pvd_up: lista_provider_puliti.append("Global Starnet")
+                else: lista_provider_puliti.append(pvd)
+
+            # 🛡️ IL MOLTIPLICATORE PER RIGHE MULTIPLE: Genera un record nelle ferie per OGNI riga provider trovata in anagrafica!
             righe_sdoppiate_da_salvare = []
-            for provider_singolo in lista_concessionari_scissi:
+            for provider_singolo in lista_provider_puliti:
                 riga_singola = {
                     "DATA_INSERIMENTO": str(data_inserimento_it),
                     "TECNICO_INSERIMENTO": str(esecutore_nome),
@@ -566,7 +582,8 @@ if submit_button:
                     "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
                 }
                 righe_sdoppiate_da_salvare.append(riga_singola)
-            
+
+           
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
