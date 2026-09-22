@@ -732,13 +732,21 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     # 🛡️ BOTTONE FANTASMA DI MANUELA: Il tasto compare SOLO se hai selezionato un locale valido, se rimetti la voce standard sparisce nel nulla!
     if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete in mappa_indici_reali:
         try:
-            idx_da_eliminare = mappa_indici_reali[selezione_delete]
+            idx_selezionato = mappa_indici_reali[selezione_delete]
+            
+            # Estrae il codice del locale selezionato nel menù a tendina
+            riga_scelta = st.session_state.storico_cloud[idx_selezionato]
+            codice_locale_target = str(riga_scelta.get("CODICE_LOCALE", "")).strip()
+            nome_locale_target = str(riga_scelta.get("NOME_LOCALE", "")).strip()
                 
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA (PER TUTTI I PROVIDER)"):
                 st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
                 
-                # Marchia con la parola chiave per il robot
-                st.session_state.storico_cloud[idx_da_eliminare]["ROBOT_ACTION"] = "ELIMINA"
+                # 🛡️ SCANSIONE GLOBALE DI MANUELA: Cerca e marchia come ELIMINA tutti i provider dello stesso locale
+                for riga_cloud in st.session_state.storico_cloud:
+                    if str(riga_cloud.get("CODICE_LOCALE", "")).strip() == codice_locale_target:
+                        riga_cloud["ROBOT_ACTION"] = "ELIMINA"
+                
                 df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
                 # Forza la scrittura fisica dell'Excel su disco prima di inviarlo
@@ -748,11 +756,12 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                 push_excel_su_github(df_nuovo_salva)
                 
                 st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
-                st.success("🗑️ Richiesta di eliminazione inviata! La riga è stata nascosta. Il robot la rimuoverà da Snaitech.")
+                st.success(f"🗑️ Richiesta di eliminazione inviata per tutti i provider del locale: {nome_locale_target}! Le righe sono state nascoste.")
                 time.sleep(1.5)
                 st.rerun()
         except Exception as e_del: 
             st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
