@@ -26,35 +26,38 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO MEMORIA DI RAM (ZERO FLASH)
+# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO GLOBALE AUTOMATICO (ZERO FLASH)
 # =====================================================================================
-if st.session_state.get("sincronizzazione_in_corso_globale", False):
-    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
-    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Se il robot ha finito su GitHub Actions, premi il pulsante grigio qui sotto per sbloccare la plancia aziendale.")
-    st.spinner("Allineamento database online in corso...")
-    
-    # Un solo pulsante leggero, piatto e pulito per sbloccare lo schermo senza sfarfallii
-    if st.button("🔄 VERIFICA SE IL ROBOT HA FINITO E SBLOCCA SCHERMO"):
-        try:
-            # Forza lo scaricamento del file fresco da GitHub distruggendo la cache
-            if "carica_database_locale" in locals() or "carica_database_locale" in globals():
-                st.session_state.storico_cloud = carica_database_locale()
-            else:
-                df_fresco_check = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-                st.session_state.storico_cloud = df_fresco_check.to_dict('records')
-            
-            # Se lo spazzino del robot ha ripulito la colonna, spegne la barriera!
-            if not any(str(r.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for r in st.session_state.storico_cloud):
-                st.session_state.sincronizzazione_in_corso_globale = False
+import time as t_sys
+
+# Questo modulo gira ogni 4 secondi in background senza mai far sfarfallare la grafica dello schermo
+@st.fragment(run_every=4)
+def controllo_lucchetto_aziendale_background():
+    try:
+        # Legge il file Excel online per verificare se ci sono lavorazioni del robot in corso
+        df_lock_global = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+        
+        # 🚨 LA CHIAVE DI MANUELA: Se ci sono righe in stato NUOVA, MODIFICA o ELIMINA e la spia è accesa, attiva il blocco!
+        if not df_lock_global.empty and any(str(act).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for act in df_lock_global["ROBOT_ACTION"]):
+            if st.session_state.get("avvio_sincro_cliccato", False):
+                st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
+                st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO in automatico al termine del giro. Non toccare nulla.")
+                st.spinner("Allineamento database online in corso...")
+                st.stop() # 💥 CONGELAMENTO IMMOBILE: Blocca l'intera pagina finché il robot non pulisce l'Excel
+        else:
+            # Se l'Excel è pulito, spegne la spia e sblocca lo schermo per tutti i telefoni del mondo!
+            if st.session_state.get("avvio_sincro_cliccato", False):
+                st.session_state.avvio_sincro_cliccato = False
                 st.success("✅ Sincronizzazione completata! Plancia sbloccata.")
-                time.sleep(1)
-            else:
-                st.warning("⏳ Il robot sta ancora lavorando sui portali... Attendi ancora un attimo prima di riprovare.")
-        except Exception:
-            pass
-        st.rerun()
-    st.stop() # 💥 BLOCCO FISSO IMMOBILE: Impedisce qualsiasi modifica
+                t_sys.sleep(1)
+                st.rerun()
+    except Exception:
+        pass
+
+# Attiva l'indagine in background
+controllo_lucchetto_aziendale_background()
 # =====================================================================================
+
 
 
 st.markdown("""
@@ -729,17 +732,17 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
     if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-        # 🛡️ INIEZIONE DI MANUELA: Accende la barriera prima di lanciare la chiamata
-        st.session_state.sincronizzazione_in_corso_globale = True
+        # Accende la spia di controllo per attivare la barriera automatica in background
+        st.session_state.avvio_sincro_cliccato = True
         
         with st.spinner("Inizializzazione server GitHub in corso..."):
             try:
-                # Lancia la funzione dei ragazzi che avvia il workflow
                 esegui_sincronizzazione_robot_snai()
-                time.sleep(2)
+                time.sleep(3)
             except Exception:
                 pass
         st.rerun()
+
 
             
         # 🔥 ORA CHE IL ROBOT È PARTITO DAVVERO: Accende la barriera e congela lo schermo di sicurezza!
