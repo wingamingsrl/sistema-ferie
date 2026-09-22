@@ -673,40 +673,40 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 # =====================================================================================
 # BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
 # =====================================================================================
-st.markdown("---")
-utente_loggato_maiuscolo = str(st.session_state.user_nome).strip().upper()
-
-if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-    st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
-    # L'Admin e l'Ufficio vedono TUTTI i giri logistici di tutti i locali in lavorazione
-    righe_giri_logistici = [
-        row for row in st.session_state.storico_cloud 
-        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
-    ] if st.session_state.storico_cloud else []
-else:
-    st.markdown("### 📊 I tuoi Promemoria Giri Logistici")
-    # Il tecnico vede SOLO i giri logistici delle chiusure inserite specificamente da lui!
-    righe_giri_logistici = [
-        row for row in st.session_state.storico_cloud 
-        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
-        and str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
-    ] if st.session_state.storico_cloud else []
-
-# Disegna la tabella a schermo in base ai privilegi estratti sopra
-if righe_giri_logistici:
-    df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
-    
-    # Se sei Admin aggiungiamo anche la colonna visiva del Tecnico per controllo ufficio
-    if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-        colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
-    else:
-        colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
-        
-    df_visibile_giri_pulito = df_lavorazione_giri.reindex(columns=colonne_visibili_giri).fillna("")
-    st.dataframe(df_visibile_giri_pulito, hide_index=True)
-else:
-    st.success(f"✅ Nessun promemoria giro logistico in coda per la tua utenza, {st.session_state.user_nome}!")
     # =====================================================================================
+    # 🛡️ TABELLONE GIRI LOGISTICI DI MANUELA: PRIVILEGI GERARCHICI TOTALI (STORICO INCLUSO)
+    # =====================================================================================
+    st.markdown("---")
+    utente_loggato_maiuscolo = str(st.session_state.user_nome).strip().upper()
+
+    if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+        st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
+        # L'Admin e l'Ufficio vedono TUTTI i locali presenti nel database (sia storici che in coda!)
+        righe_giri_logistici = st.session_state.storico_cloud if st.session_state.storico_cloud else []
+    else:
+        st.markdown("### 📊 I tuoi Promemoria Giri Logistici")
+        # Il tecnico vede SOLO i locali inseriti specificamente da lui
+        righe_giri_logistici = [
+            row for row in st.session_state.storico_cloud 
+            if str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
+        ] if st.session_state.storico_cloud else []
+
+    # Disegna la tabella a schermo
+    if righe_giri_logistici:
+        df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
+        
+        # Mantiene le colonne pulite ed eleganti per l'ufficio
+        if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+            colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+        else:
+            colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
+            
+        df_visibile_giri_pulito = df_lavorazione_giri.reindex(columns=colonne_visibili_giri).fillna("")
+        st.dataframe(df_visibile_giri_pulito, hide_index=True)
+    else:
+        st.success(f"✅ Nessun promemoria giro logistico registrato a sistema, {st.session_state.user_nome}.")
+    # =====================================================================================
+
         
 
     # =====================================================================================
