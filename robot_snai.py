@@ -641,7 +641,7 @@ def avvia_sincronizzazione_automatica():
         finally: browser.close()
 
 # =====================================================================================
-# 🛡️ INTERRUTTORE DI AVVIO UNIFICATO DI MANUELA: DA OGGI I PROMEMORIA GIRANO PER PRIMI!
+# 🛡️ INTERRUTTORE DI AVVIO UNIFICATO DI MANUELA: SCANSIONE PROMEMORIA GLOBALE 3 GIORNI
 # =====================================================================================
 if __name__ == "__main__":
     # 📧 1. PRIMA DI TUTTO: Fa partire la scansione globale per inviare le e-mail dei 3 giorni prima!
@@ -654,36 +654,33 @@ if __name__ == "__main__":
             print(f"   📅 [Email Engine] Data odierna del server per il calcolo: {oggi_server}")
             
             for _, row in df_completo_promemoria.iterrows():
-                mirino_azione = str(row.get("ROBOT_ACTION", "")).strip()
                 nome_locale_corrente = str(row.get("NOME_LOCALE", "")).strip()
+                codice_aams = str(row.get("CODICE_LOCALE", "")).strip()
+                data_in_completa = str(row.get("INIZIO_FERIE", "")).strip()
+                data_fi_completa = str(row.get("FINE_FERIE", "")).strip()
                 
-                if mirino_azione == "":
-                    codice_aams = str(row.get("CODICE_LOCALE", "")).strip()
-                    data_in_completa = str(row.get("INIZIO_FERIE", "")).strip()
-                    data_fi_completa = str(row.get("FINE_FERIE", "")).strip()
+                data_inizio_estratta = data_in_completa.replace("-", "/").replace(".", "/").strip()[:10]
+                data_fine_estratta = data_fi_completa.replace("-", "/").replace(".", "/").strip()[:10]
+                
+                try:
+                    data_in_doc = datetime.strptime(data_inizio_estratta, "%d/%m/%Y").date()
+                    data_fi_doc = datetime.strptime(data_fine_estratta, "%d/%m/%Y").date()
                     
-                    data_inizio_estratta = data_in_completa.replace("-", "/").replace(".", "/").strip()[:10]
-                    data_fine_estratta = data_fi_completa.replace("-", "/").replace(".", "/").strip()[:10]
+                    giorni_alla_chiusura = (data_in_doc - oggi_server).days
+                    giorni_alla_riapertura = (data_fi_doc - oggi_server).days
                     
-                    try:
-                        data_in_doc = datetime.strptime(data_inizio_estratta, "%d/%m/%Y").date()
-                        data_fi_doc = datetime.strptime(data_fine_estratta, "%d/%m/%Y").date()
-                        
-                        giorni_alla_chiusura = (data_in_doc - oggi_server).days
-                        giorni_alla_riapertura = (data_fi_doc - oggi_server).days
-                        
-                        tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
-                        collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
-                        
-                        data_inizio_stampa = data_in_doc.strftime("%d/%m/%Y")
-                        data_fine_stampa = data_fi_doc.strftime("%d/%m/%Y")
-                        
-                        if giorni_alla_chiusura == 3:
-                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CHIUSURA LOCALE (TRA 3 GIORNI)")
-                        if giorni_alla_riapertura == 3:
-                            spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
-                    except Exception as e_data:
-                        pass
+                    tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
+                    collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
+                    
+                    data_inizio_stampa = data_in_doc.strftime("%d/%m/%Y")
+                    data_fine_stampa = data_fi_doc.strftime("%d/%m/%Y")
+                    
+                    if giorni_alla_chiusura == 3:
+                        spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                    if giorni_alla_riapertura == 3:
+                        spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                except Exception as e_data:
+                    pass
                         
         print("✅ [Email Engine] Scansione promemoria storici completata con successo!")
     except Exception as e_cron:
@@ -692,4 +689,5 @@ if __name__ == "__main__":
     print("\n----------------------------------------------------------------------")
     # 🌐 2. SUBITO DOPO: Attiva il motore principale per l'allineamento Snaitech ed NTS sui portali
     avvia_sincronizzazione_automatica()
+
 
