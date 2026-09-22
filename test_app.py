@@ -638,10 +638,34 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
                 push_excel_su_github(df_salva)
 
                 
-                st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
-                st.session_state.form_id += 1
-                time.sleep(4.0)
-                st.rerun()
+                if invio_ok:
+                    if sovrapposizione_rilevata and riga_conflitto_idx is not None:
+                        try: st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                        except Exception: pass
+                    
+                    # Inietta tutte le righe separate in tempo reale nella memoria dello smartphone
+                    for record_sdoppiato in righe_sdoppiate_da_salvare:
+                        record_sdoppiato["STATO_INVIO"] = "Inviato OK"
+                        st.session_state.storico_cloud.append(record_sdoppiato)
+                        
+                    df_salva = pd.DataFrame(st.session_state.storico_cloud)
+                    if "ROBOT_ACTION" not in df_salva.columns:
+                        df_salva["ROBOT_ACTION"] = ""
+                
+                    df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_salva)
+
+                    # 🛡️ MESSAGGI A VIDEO DI MANUELA: L'Admin vede sempre tutto, i tecnici vedono solo le loro notifiche!
+                    utente_corrente_maiuscolo = str(st.session_state.user_nome).strip().upper()
+                    tecnico_inseritore_maiuscolo = str(esecutore_nome).strip().upper()
+                    
+                    if utente_corrente_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"] or utente_corrente_maiuscolo == tecnico_inseritore_maiuscolo:
+                        st.success(f"✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema per tutti i provider di: {nome_puro_locale}.")
+                    
+                    st.session_state.form_id += 1
+                    time.sleep(4.0)
+                    st.rerun()
+
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
