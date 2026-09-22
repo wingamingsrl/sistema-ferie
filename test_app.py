@@ -25,6 +25,28 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# =====================================================================================
+# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO GLOBALE LATO ADMIN ED UFFICIO
+# =====================================================================================
+try:
+    # Va a leggere il file Excel reale sul server cloud in tempo reale
+    df_lock_admin = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+    
+    # Se trova anche una sola riga in stato NUOVA, MODIFICA o ELIMINA, congela lo schermo Admin!
+    if not df_lock_admin.empty and any(str(act).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for act in df_lock_admin["ROBOT_ACTION"]):
+        st.error("🚨 BLOCCO DI SICUREZZA AZIENDALE: Il robot sta allineando i database online!")
+        st.info("⏳ Per evitare la perdita o la sovrascrittura dei dati storici dell'ufficio, la plancia ADMIN è temporaneamente CONGELATA. Lo schermo tornerà disponibile da solo in automatico non appena il robot avrà finito di compilare Snaitech ed inviare le mail a NTS (circa 2 minuti). Non toccare nulla.")
+        st.spinner("Allineamento database e rilascio lucchetti in corso...")
+        
+        # Genera il tastone fisso, leggero e riposante anti-flash per l'ufficio
+        if st.button("🔄 VERIFICA STATO AGGIORNAMENTI E SBLOCCA PLANCIA"):
+            st.rerun()
+        st.stop() # 💥 BLOCCO FISSO IMMOBILE LATO ADMIN
+except Exception:
+    pass
+# =====================================================================================
+
+
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
