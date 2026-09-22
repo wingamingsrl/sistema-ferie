@@ -742,21 +742,22 @@ else:
     st.success(f"✅ Nessuna pratica in coda per la tua visualizzazione, {st.session_state.user_nome}!")
 
 # =====================================================================================
-# 🛡️ TABELLONE GIRI LOGISTICI DI MANUELA: PRIVILEGI GERARCHICI TOTALI (STORICO INCLUSO)
-# =====================================================================================
-st.markdown("---")
-utente_loggato_maiuscolo = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
+    # 🛡️ TABELLONE GIRI LOGISTICI AZIENDALE: PRIVILEGI ELASTICI LEGATI ALL'EMAIL
+    # =====================================================================================
+    st.markdown("---")
+    email_loggata_pulita = str(st.session_state.get("user_email", "")).strip().lower()
+    utente_loggato_maiuscolo = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
 
-
-if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-    st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
-    righe_giri_logistici = st.session_state.storico_cloud if st.session_state.storico_cloud else []
-else:
-    st.markdown("### 📊 I tuoi Promemoria Giri Logistici")
-    righe_giri_logistici = [
-        row for row in st.session_state.storico_cloud 
-        if str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
-    ] if st.session_state.storico_cloud else []
+    # Riconosce come ADMIN chiunque usi la mail personale dell'ufficio o l'account admin aziendale
+    if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
+        st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
+        righe_giri_logistici = st.session_state.storico_cloud if st.session_state.storico_cloud else []
+    else:
+        st.markdown("### 📊 I tuoi Promemoria Giri Logistici")
+        righe_giri_logistici = [
+            row for row in st.session_state.storico_cloud 
+            if str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
+        ] if st.session_state.storico_cloud else []
 
 if righe_giri_logistici:
     df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
@@ -811,10 +812,12 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
         st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
         
 # =====================================================================================
-# 🎛️ AREA AMMINISTRATORE: UPLOADER EXCEL (VERSIONE INTEGRALE ORIGINALE CONVERTITRICE)
+# 🎛️ AREA AMMINISTRATORE: UPLOADER EXCEL (ACCESSO AUTOMATICO DA EMAIL UFFICIO)
 # =====================================================================================
-if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
     st.markdown("---")
+    # [Resto del tuo codice originale dell'uploader invariato...]
+
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
     if file_caricato is not None:
@@ -846,22 +849,22 @@ if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
 
 
 # =====================================================================================
-# 🔐 BLOCCO FINALE INTERFACCIA: AVVIO ROBOT (ADMIN) E DISCONNETTI STRUTTURALE (PER TUTTI)
+# 🔐 BLOCCO FINALE INTERFACCIA: PRIVILEGI STRUTTURALI AUTOMATICI DA EMAIL (ZERO BUG)
 # =====================================================================================
 st.markdown("---")
-utente_finale_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
+email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
 
-# 📱 1. VISTA TECNICI STANDARD: Se l'utente NON è l'ufficio, mostra SOLO il logout a sinistra ed esegue lo STOP!
-if utente_finale_maiuscolo not in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_definitivo"):
-        st.session_state.clear()  # 🧹 AZZERA LA RAM dello smartphone per sbloccare il click!
+# 📱 1. VISTA TECNICI STANDARD: Se l'email è quella comune dei ragazzi, mostra SOLO il logout ed esegue lo STOP!
+if "manuela" not in email_finale_pulita and "admin" not in email_finale_pulita and "ufficio" not in email_finale_pulita:
+    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_elastico_assoluto"):
+        st.session_state.clear()
         if "st" in locals() and hasattr(st, "query_params"):
             st.query_params.clear()
         st.rerun()
-    st.stop()  # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente ai tecnici di vedere il pulsante blu sotto!
+    st.stop() # 💥 GHIGLIOTTINA TECNICI: Protegge l'ufficio oscurando il pulsante blu sotto!
 
 # =====================================================================================
-# 🛡️ 2. VISTA ADMIN (ESCLUSIVA UFFICIO): Raggiungibile SOLO da Manuela o dall'account Admin
+# 🛡️ 2. VISTA ADMIN (ESCLUSIVA UFFICIO): Attiva per qualsiasi indirizzo e-mail autorizzato
 # =====================================================================================
 st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
 st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
@@ -874,7 +877,7 @@ if robot_sta_girando_ora:
     st.rerun()
 else:
     # Il tuo pulsante originale intatto riga per riga
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_definitivo"):
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_elastico_assoluto"):
         with st.spinner("Blindatura database aziendale e avvio server..."):
             try:
                 for riga_ram in st.session_state.storico_cloud:
@@ -891,11 +894,13 @@ else:
                 pass
         st.rerun()
         
-    # Il tasto disconnetti dell'Admin posizionato linearmente a sinistra sotto il blu
-    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_definitivo"):
-        st.session_state.clear()  # 🧹 AZZERA LA RAM dell'ufficio per sbloccare il click!
+    # Il tasto disconnetti dell'Admin posizionato a sinistra sotto il blu
+    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_elastico_assoluto"):
+        st.session_state.clear()
         if "st" in locals() and hasattr(st, "query_params"):
             st.query_params.clear()
         st.rerun()
+# =====================================================================================
+
 
 
