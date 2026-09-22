@@ -545,7 +545,15 @@ def avvia_sincronizzazione_automatica():
                     campo_al = frame_date.locator("#ctl00_Cp1_txtfinechiusura, input[id*='txtfinechiusura']").first
 
                     print("   📝 [Robot] STEP 9: Digitazione reale data inizio...")
-                    campo_dal.wait_for(state="visible", timeout=10000)
+                    try:
+                        # 🛡️ PROTEZIONE DI MANUELA: Allungato a 25 secondi per dare tempo ai calendari Snaitech di aprirsi!
+                        campo_dal.wait_for(state="visible", timeout=25000)
+                    except Exception:
+                        print("   ⚠️ [Robot] Campi date non ancora visibili. Tento un secondo clic forzato sulla riga...")
+                        cella_td.click(force=True)
+                        time.sleep(5)
+                        campo_dal.wait_for(state="visible", timeout=15000)
+
                     campo_dal.click()
                     campo_dal.press("Control+A")
                     campo_dal.press("Backspace")
@@ -553,6 +561,7 @@ def avvia_sincronizzazione_automatica():
                     campo_dal.press_sequentially(data_inizio_pura, delay=100)
                     campo_dal.press("Tab")
                     time.sleep(1)
+
 
                     print("   📝 [Robot] STEP 9a: Digitazione reale data fine...")
                     campo_al.wait_for(state="visible", timeout=10000)
