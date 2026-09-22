@@ -26,32 +26,28 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA AZIENDALE DI MANUELA: TIMEOUT DI PROTEZIONE INTEGRATO ANTI-FLASH (2 MIN)
+# 🛡️ BARRIERA AZIENDALE DI MANUELA: LUCCHETTO CLOUD ANTI-SOVRAZZONA (ZERO FLASH)
 # =====================================================================================
-import time as t_sys
+import requests
 
-if "ora_blocco_sincro" in st.session_state and st.session_state.ora_blocco_sincro:
-    tempo_rimanente = st.session_state.ora_blocco_sincro - t_sys.time()
-    
-    if tempo_rimanente > 0:
+# Verifica direttamente su GitHub se il robot sta girando
+url_controllo_lucchetto = "https://githubusercontent.com"
+try:
+    risposta_lock = requests.get(url_controllo_lucchetto, timeout=5)
+    # Se il file esiste e risponde con codice 200, significa che il robot è in marcia!
+    if risposta_lock.status_code == 200:
         st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
-        st.info(f"⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO in automatico tra {int(tempo_rimanente)} secondi. Non toccare nulla.")
+        st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo tornerà disponibile in automatico non appena il robot avrà completato gli aggiornamenti. Non toccare nulla.")
         st.spinner("Allineamento database online in corso...")
         
-        # Forza un rinfresco automatico e silenzioso ogni 5 secondi per far calare il timer
-        t_sys.sleep(5)
+        # Un solo tasto leggero e pulito per rinfrescare lo schermo senza sfarfallii
+        time.sleep(5)
         st.rerun()
-        st.stop() # 💥 BLOCCO FISSO DURANTE I 2 MINUTI
-    else:
-        # Scaduti i 2 minuti, distrugge il lucchetto e sblocca la pagina per tutti
-        st.session_state.ora_blocco_sincro = None
-        # Forza il rinfresco finale per scaricare l'Excel pulito dal server online
-        if "carica_database_locale" in locals() or "carica_database_locale" in globals():
-            st.session_state.storico_cloud = carica_database_locale()
-        st.success("✅ Sincronizzazione completata! Plancia sbloccata.")
-        t_sys.sleep(1)
-        st.rerun()
+        st.stop() # 💥 BLOCCO IMMOBILE INTERA AZIENDA
+except Exception:
+    pass
 # =====================================================================================
+
 
 
 st.markdown("""
@@ -725,15 +721,23 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-        # 🛡️ ARCHITETTURA DI MANUELA: Lancia PRIMA il comando a GitHub Actions per farlo apparire nella lista!
-        with st.spinner("Inizializzazione server GitHub in corso..."):
-            try:
-                esegui_sincronizzazione_robot_snai()
-                # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
-                time.sleep(5)
-            except Exception:
-                pass
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+            with st.spinner("Attivazione lucchetto aziendale e avvio server..."):
+                try:
+                    # Crea il file lucchetto locale e lo spinge su GitHub per congelare gli schermi
+                    with open("lucchetto.txt", "w") as f_lock:
+                        f_lock.write("BLOCCATO")
+                    
+                    df_salva_lock = pd.DataFrame(st.session_state.storico_cloud)
+                    push_excel_su_github(df_salva_lock) # Spinge il file per aggiornare la rete
+                    
+                    # Lancia il robot ufficiale
+                    esegui_sincronizzazione_robot_snai()
+                    time.sleep(3)
+                except Exception:
+                    pass
+            st.rerun()
+
             
             # 🔥 ORA CHE IL ROBOT È PARTITO DAVVERO: Accende la barriera e congela lo schermo di sicurezza!
             st.session_state.sincronizzazione_in_corso_globale = True
