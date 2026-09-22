@@ -25,14 +25,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# =====================================================================================
-# 🛡️ INTERRUTTORE INVISIBILE DI MANUELA: VERIFICA SE IL ROBOT STA ELABORANDO SU GITHUB
-# =====================================================================================
-robot_in_marcia = False
-if "storico_cloud" in st.session_state and st.session_state.storico_cloud:
-    robot_in_marcia = any(str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for row in st.session_state.storico_cloud)
-# =====================================================================================
-
 
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
@@ -708,24 +700,39 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-        with st.spinner("Allineamento database su GitHub Actions in corso..."):
-            try:
-                esegui_sincronizzazione_robot_snai()
-                time.sleep(2)
-            except Exception:
-                pass
-        st.rerun()
+        # =====================================================================================
+        # 🤖 PULSANTE BLU DI SINCRONIZZAZIONE CON TIMER DI CORTESIA (ZERO FLASH)
+        # =====================================================================================
+        import time as t_sys
 
-
-
-
+        # Verifica se questa specifica sessione ha appena premuto il pulsante blu
+        if st.session_state.get("sincro_attiva_visiva", False):
+            # Mostra il pulsante in stato di caricamento leggero e piatto nello stile minimal
+            st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI 2 MINUTI", disabled=True)
+            st.warning("⏳ Il robot è partito con successo su GitHub Actions. Per evitare sovrascritture, non effettuare nuovi inserimenti per 2 minuti. La plancia si sbloccherà da sola.")
             
-        # 🔥 ORA CHE IL ROBOT È PARTITO DAVVERO: Accende la barriera e congela lo schermo di sicurezza!
-        st.session_state.sincronizzazione_in_corso_globale = True
-        st.rerun()
-
-       
+            # Pausa di cortesia fissa anti-flash: tiene lo schermo fermo e riposante per 120 secondi
+            t_sys.sleep(120)
+            
+            # Scaduto il tempo, rispagne la spia, scarica l'Excel pulito e rinfresca la plancia
+            st.session_state.sincro_attiva_visiva = False
+            if "carica_database_locale" in locals() or "carica_database_locale" in globals():
+                st.session_state.storico_cloud = carica_database_locale()
+            st.success("✅ Operazione conclusa! Plancia aggiornata.")
+            t_sys.sleep(1.5)
+            st.rerun()
+        else:
+            # Pulsante originale pulito, leggero e sempre pronto all'uso
+            if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+                st.session_state.sincro_attiva_visiva = True
+                with st.spinner("Inizializzazione server GitHub..."):
+                    try:
+                        esegui_sincronizzazione_robot_snai()
+                        t_sys.sleep(2)
+                    except Exception:
+                        pass
+                st.rerun()
+        
         # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
         if os.path.exists(FILE_STORICO_PERMANENTE):
             # Rilegge il file fisico aggiornato dallo spazzino del robot
