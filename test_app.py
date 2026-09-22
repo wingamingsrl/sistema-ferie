@@ -708,7 +708,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", disabled=robot_in_marcia):
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
         with st.spinner("Allineamento database su GitHub Actions in corso..."):
             try:
                 esegui_sincronizzazione_robot_snai()
@@ -716,6 +716,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             except Exception:
                 pass
         st.rerun()
+
 
 
 
