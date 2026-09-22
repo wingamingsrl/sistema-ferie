@@ -879,22 +879,14 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
 # INTERFACCIA DI LOGOUT E PULSANTE BLU MANUALE (RIALLINEATO A FILO MARGINE)
 # =====================================================================================
 st.markdown("---")
-col_b1, col_b2 = st.columns(2)
-with col_b1:
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-        st.session_state.sincro_attiva_visiva = True
-        try:
-            esegui_sincronizzazione_robot_snai()
-            time.sleep(2)
-        except Exception: 
-            pass
-        st.rerun()
-
-with col_b2:
-    if st.button("🚪 ESCI / LOGOUT SICURO"):
-        st.session_state.authenticated = False
-        st.session_state.user_nome = ""
-        st.rerun()
+if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+    st.session_state.sincro_attiva_visiva = True
+    try:
+        esegui_sincronizzazione_robot_snai()
+        time.sleep(2)
+    except Exception: 
+        pass
+    st.rerun()
 
         
     st.markdown("---")
