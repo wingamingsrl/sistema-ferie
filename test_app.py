@@ -124,7 +124,7 @@ def scarica_file_da_github_se_esiste(nome_file):
     return None
 
 def carica_database_locale():
-    df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO"])
+    df_l = pd.read_excel(FILE_LOCALI).fillna("") if os.path.exists(FILE_LOCALI) else pd.DataFrame(columns=["CODICE_LOCALE", "NOME_LOCALE", "IONARIO"])
     df_t = pd.read_excel(FILE_TECNICI).fillna("") if os.path.exists(FILE_TECNICI) else pd.DataFrame(columns=["NOME", "EMAIL", "PASSWORD"])
     
     if st.session_state.get("congelamento_sincro_attivo", False):
@@ -389,7 +389,7 @@ st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})<
 # BLOCCO 4: MOTORE NOTIFICA EMAIL SMTP GOOGLE CON CONVERSIONE ROTTA IP RIGIDA
 # AGGIRA MANUALMENTE I BLACKOUT DELLE RETI PROTETTE DEI SERVER CLOUD DI STREAMLIT
 # =====================================================================================
-def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, riapertura, esecutore):
+def invia_mail_diretta_smtp(lista_m, locale, ionario_testo, chiusura, riapertura, esecutore):
     try:
         pass_gmail = str(st.secrets["gmail"]["password_applicativa"]).strip()
         msg = MIMEMultipart()
@@ -397,8 +397,8 @@ def invia_mail_diretta_smtp(lista_m, locale, concessionario_testo, chiusura, ria
         msg['To'] = ", ".join(lista_m)
         msg['Subject'] = f"🛡️ Registrazione Chiusura Ferie - {locale}"
         
-        linee_concessionari = ""
-        elenco_conc = [c.strip() for c in concessionario_testo.split(",") if c.strip()]
+        linee_ionari = ""
+        elenco_conc = [c.strip() for c in ionario_testo.split(",") if c.strip()]
         if len(elenco_conc) > 1:
             linee_concessionari = "\n" + "\n".join([f"                     • {c}" for c in elenco_conc])
         else:
@@ -543,29 +543,36 @@ if submit_button:
             # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
             tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
 
-            nuova = {
-                "DATA_INSERIMENTO": str(data_inserimento_it),
-                "TECNICO_INSERIMENTO": str(esecutore_nome),
-                "CODICE_LOCALE": str(codice_estratto),
-                "NOME_LOCALE": str(nome_puro_locale),
-                "CONCESSIONARIO": str(concessionario_estratto),
-                "INIZIO_FERIE": str(str_c),
-                "FINE_FERIE": str(str_r),
-                "PROMEMORIA_IN_COPIA": str(co_destinatario),
-                "STATO_INVIO": "In attesa",
-                "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
-            }
+            # 🛡️ ARCHITETTURA DI MANUELA: Rileva se il locale ha più provider (es. separati da "+", "," o "e")
+            testo_pvd_pulito = concessionario_estratto.replace("+", ",").replace(" e ", ",").replace("/", ",")
+            if "," in testo_pvd_pulito:
+                lista_concessionari_locali = [c.strip() for c in testo_pvd_pulito.split(",") if c.strip()]
+            else:
+                lista_concessionari_locali = [concessionario_estratto.strip()]
 
-
-
-
+            # Mantiene la lista temporanea per salvare tutti i provider scissi
+            record_da_salvare = []
+            for conc_singolo in lista_concessionari_locali:
+                record_singolo = {
+                    "DATA_INSERIMENTO": str(data_inserimento_it),
+                    "TECNICO_INSERIMENTO": str(esecutore_nome),
+                    "CODICE_LOCALE": str(codice_estratto),
+                    "NOME_LOCALE": str(nome_puro_locale),
+                    "CONCESSIONARIO": str(conc_singolo), # Forza il provider specifico del ciclo!
+                    "INIZIO_FERIE": str(str_c),
+                    "FINE_FERIE": str(str_r),
+                    "PROMEMORIA_IN_COPIA": str(co_destinatario),
+                    "STATO_INVIO": "In attesa",
+                    "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
+                }
+                record_da_salvare.append(record_singolo)
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
                 except Exception: pass
             
-                      # --- SEZIONE SALVATAGGIO E INVIO EMAIL ALLINEATA AL MILLIMETRO ---
+            # --- SEZIONE SALVATAGGIO E INVIO EMAIL ALLINEATA AL MILLIMETRO ---
             titolo_azione = "Modifica Chiusura" if (sovrapposizione_rilevata and forza_sovrascrittura) else "Registrazione Chiusura"
             invio_ok = False
             risposta_server = "OK"
@@ -591,27 +598,26 @@ if submit_button:
                     risposta_server = str(e_mail)
             
             if invio_ok:
-                nuova["STATO_INVIO"] = "Inviato OK" # Lascia traccia dell'e-mail partita
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
                     st.session_state.storico_cloud.pop(riga_conflitto_idx)
                 
-                st.session_state.storico_cloud.append(nuova)
+                # 🛡️ INSERIMENTO MULTIPLO DI MANUELA: Aggancia tutte le righe sdoppiate
+                for rec in record_da_salvare:
+                    rec["STATO_INVIO"] = "Inviato OK"
+                    st.session_state.storico_cloud.append(rec)
+                    
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
-                # Forza l'inclusione strutturale della nuova colonna nell'Excel aziendale permanente
                 if "ROBOT_ACTION" not in df_salva.columns:
                     df_salva["ROBOT_ACTION"] = ""
                     
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
-
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
                 time.sleep(4.0)
                 st.rerun()
-
-
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
