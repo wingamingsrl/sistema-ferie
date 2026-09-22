@@ -469,8 +469,10 @@ def avvia_sincronizzazione_automatica():
                         time.sleep(6)
                         continue
 
-                    if (icona_modifica.count() > 0 and icona_modifica.is_visible()) or mirino_azione == "ELIMINA":
+                    # 🛡️ CORREZIONE DI MANUELA: Se l'azione è MODIFICA o ELIMINA e la matita esiste nel codice, ci clicca sopra a prescindere dai filtri di visibilità!
+                    if (mirino_azione in ["MODIFICA", "ELIMINA"]) and icona_modifica.count() > 0:
                         print(f"   📝 [Robot] STEP 8: [{mirino_azione}] Clicco sulla matita di modifica per entrare nella scheda...")
+                        icona_modifica.scroll_into_view_if_needed(timeout=5000)
                         icona_modifica.click(force=True, timeout=8000)
                     elif icona_nuovo.count() > 0:
                         print("   🟢 [Robot] STEP 8a: [NUOVA CHIUSURA] Clic sul pallino verde...")
@@ -484,6 +486,7 @@ def avvia_sincronizzazione_automatica():
                     
                     print("   ⏳ [Robot] STEP 8c: Attesa apertura campi date (7 secondi)...")
                     time.sleep(7)
+
 
 
 # =====================================================================================
