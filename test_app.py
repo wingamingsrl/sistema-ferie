@@ -25,6 +25,23 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# =====================================================================================
+# 🛡️ BLOCCO DI RETE DI MANUELA: DISATTIVA I BOTTONI DI TUTTI I TECNICI SE IL ROBOT GIRA
+# =====================================================================================
+robot_sta_girando_ora = False
+try:
+    # Rilegge il file fisico presente sul server di GitHub per verificare i processi
+    df_lock_rete = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+    
+    # Condizione di sicurezza: Se nel cloud ci sono righe con lo STATO_INVIO impostato dal robot 
+    # o se la sincronizzazione forzata visiva è attiva sulla rete, blocca tutti i telefoni!
+    if not df_lock_rete.empty and any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_lock_rete.iterrows()):
+        robot_sta_girando_ora = True
+except Exception:
+    pass
+# =====================================================================================
+
+
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
@@ -478,7 +495,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
-    submit_button = st.form_submit_button("💾 INVIA CHIUSURA TEMPORANEA", disabled=st.session_state.get("sincro_attiva_visiva", False))
+    submit_button = st.form_submit_button("💾 INVIA CHIUSURA TEMPORANEA", disabled=robot_sta_girando_ora)
 
 # =====================================================================================
 # BLOCCO 6 - PARTE A: ELABORAZIONE INSERIMENTI E MOTORE EMAIL DINAMICO MODIFICHE
@@ -689,30 +706,33 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     # =====================================================================================
     import time as t_sys
 
-    # Se la sincronizzazione è attiva, trasforma il pulsante blu e avvisa l'utente
-    if st.session_state.get("sincro_attiva_visiva", False):
-        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI 2 MINUTI", disabled=True)
-        st.warning("⏳ Il robot è partito con successo su GitHub Actions. Per evitare sovrascritture, i tasti sono temporaneamente protetti. La plancia si sbloccherà DA SOLA in automatico.")
+    # =====================================================================================
+    # 🤖 PULSANTE BLU DI ALLINEAMENTO CON INIBIZIONE DI RETE TOTALE (ZERO FLASH)
+    # =====================================================================================
+    if robot_sta_girando_ora:
+        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
+        st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
         
-        # Pausa fissa di cortesia anti-flash: tiene lo schermo fermo e immobile per 120 secondi
-        t_sys.sleep(120)
-        
-        # Finiti i 2 minuti, spegne la spia, scarica l'Excel pulito online e riaccende i tasti!
-        st.session_state.sincro_attiva_visiva = False
-        if "carica_database_locale" in locals() or "carica_database_locale" in globals():
-            st.session_state.storico_cloud = carica_database_locale()
-        st.success("✅ Sincronizzazione conclusa! Plancia sbloccata ed aggiornata.")
-        t_sys.sleep(1.5)
+        # Rinfresca silenziosamente lo schermo ogni 5 secondi (senza flash) per vedere quando il robot ha finito
+        import time as t_sys
+        t_sys.sleep(5)
         st.rerun()
     else:
-        # Pulsante originale leggero, chiaro e sempre pronto all'uso
         if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-            # ATTIVA L'INIBIZIONE DEI TASTI ADESSO, SOLO DOPO IL CLIC!
-            st.session_state.sincro_attiva_visiva = True
-            with st.spinner("Inizializzazione server GitHub..."):
+            with st.spinner("Blindatura database aziendale e avvio server..."):
                 try:
+                    # Marchia le righe in coda come "In elaborazione" per accendere la spia sui telefoni dei tecnici
+                    for riga_ram in st.session_state.storico_cloud:
+                        if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
+                            riga_ram["STATO_INVIO"] = "In elaborazione"
+                    
+                    df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
+                    df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_spingi_lock) # Spinge il lucchetto online
+                    
+                    # Lancia il robot dei ragazzi
                     esegui_sincronizzazione_robot_snai()
-                    t_sys.sleep(2)
+                    time.sleep(2)
                 except Exception:
                     pass
             st.rerun()
@@ -758,7 +778,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         try:
             idx_da_eliminare = mappa_indici_reali[selezione_delete]
                 
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA", disabled=st.session_state.get("sincro_attiva_visiva", False)):
+            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA", disabled=robot_sta_girando_ora):
+
                 st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
                 
                 # Marchia con la parola chiave per il robot
