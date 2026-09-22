@@ -820,46 +820,50 @@ if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "uffi
         except Exception as e_load: 
             st.error(f"❌ Errore lettura: {str(e_load)}")
 # =====================================================================================
-# BLOCCO 11: PRIVILEGI STRUTTURALI AUTOMATICI DA EMAIL (ZERO BUG)
+# BLOCCO 11: PRIVILEGI STRUTTURALI AUTOMATICI DA EMAIL (ESCLUSIVA ADMIN BLINDATA)
 # =====================================================================================
 st.markdown("---")
 email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
 
-if "manuela" not in email_finale_pulita and "admin" not in email_finale_pulita and "ufficio" not in email_finale_pulita:
+# 🛡️ PRIVILEGIO ADMIN DI MANUELA: Se l'email contiene le chiavi dell'ufficio, apre il pannello completo
+if "manuela" in email_finale_pulita or "admin" in email_finale_pulita or "ufficio" in email_finale_pulita:
+    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
+    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
+
+    if robot_sta_girando_ora:
+        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
+        st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
+        import time as t_sys
+        t_sys.sleep(5)
+        st.rerun()
+    else:
+        # Pulsante originale intatto dell'Admin
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_elastico_assoluto"):
+            with st.spinner("Blindatura database aziendale e avvio server..."):
+                try:
+                    for riga_ram in st.session_state.storico_cloud:
+                        if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
+                            riga_ram["STATO_INVIO"] = "In elaborazione"
+                    df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
+                    df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_spingi_lock)
+                    esegui_sincronizzazione_robot_snai()
+                    time.sleep(2)
+                except Exception: pass
+            st.rerun()
+            
+        # Il tasto disconnetti dell'Admin posizionato sotto il blu a sinistra
+        if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_elastico_assoluto"):
+            st.session_state.clear()
+            if "st" in locals() and hasattr(st, "query_params"):
+                st.query_params.clear()
+            st.rerun()
+
+else:
+    # 📱 VISTA TECNICI STANDARD: Qualsiasi altro indirizzo email vede SOLO ed ESCLUSIVAMENTE il logout a sinistra!
     if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_elastico_assoluto"):
         st.session_state.clear()
         if "st" in locals() and hasattr(st, "query_params"):
             st.query_params.clear()
         st.rerun()
-    st.stop()
-
-# VISTA ADMIN ESCLUSIVA UFFICIO
-st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
-st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
-
-if robot_sta_girando_ora:
-    st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
-    st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
-    import time as t_sys
-    t_sys.sleep(5)
-    st.rerun()
-else:
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_elastico_assoluto"):
-        with st.spinner("Blindatura database aziendale e avvio server..."):
-            try:
-                for riga_ram in st.session_state.storico_cloud:
-                    if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
-                        riga_ram["STATO_INVIO"] = "In elaborazione"
-                df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
-                df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                push_excel_su_github(df_spingi_lock)
-                esegui_sincronizzazione_robot_snai()
-                time.sleep(2)
-            except Exception: pass
-        st.rerun()
-        
-    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_elastico_assoluto"):
-        st.session_state.clear()
-        if "st" in locals() and hasattr(st, "query_params"):
-            st.query_params.clear()
-        st.rerun()
+    st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente al telefono del tecnico di leggere qualsiasi altra riga!
