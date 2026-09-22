@@ -26,28 +26,35 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA AZIENDALE DI MANUELA: LUCCHETTO CLOUD ANTI-SOVRAZZONA (ZERO FLASH)
+# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO MEMORIA DI RAM (ZERO FLASH)
 # =====================================================================================
-import requests
-
-# Verifica direttamente su GitHub se il robot sta girando
-url_controllo_lucchetto = "https://githubusercontent.com"
-try:
-    risposta_lock = requests.get(url_controllo_lucchetto, timeout=5)
-    # Se il file esiste e risponde con codice 200, significa che il robot è in marcia!
-    if risposta_lock.status_code == 200:
-        st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
-        st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo tornerà disponibile in automatico non appena il robot avrà completato gli aggiornamenti. Non toccare nulla.")
-        st.spinner("Allineamento database online in corso...")
-        
-        # Un solo tasto leggero e pulito per rinfrescare lo schermo senza sfarfallii
-        time.sleep(5)
+if st.session_state.get("sincronizzazione_in_corso_globale", False):
+    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
+    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Se il robot ha finito su GitHub Actions, premi il pulsante grigio qui sotto per sbloccare la plancia aziendale.")
+    st.spinner("Allineamento database online in corso...")
+    
+    # Un solo pulsante leggero, piatto e pulito per sbloccare lo schermo senza sfarfallii
+    if st.button("🔄 VERIFICA SE IL ROBOT HA FINITO E SBLOCCA SCHERMO"):
+        try:
+            # Forza lo scaricamento del file fresco da GitHub distruggendo la cache
+            if "carica_database_locale" in locals() or "carica_database_locale" in globals():
+                st.session_state.storico_cloud = carica_database_locale()
+            else:
+                df_fresco_check = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+                st.session_state.storico_cloud = df_fresco_check.to_dict('records')
+            
+            # Se lo spazzino del robot ha ripulito la colonna, spegne la barriera!
+            if not any(str(r.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for r in st.session_state.storico_cloud):
+                st.session_state.sincronizzazione_in_corso_globale = False
+                st.success("✅ Sincronizzazione completata! Plancia sbloccata.")
+                time.sleep(1)
+            else:
+                st.warning("⏳ Il robot sta ancora lavorando sui portali... Attendi ancora un attimo prima di riprovare.")
+        except Exception:
+            pass
         st.rerun()
-        st.stop() # 💥 BLOCCO IMMOBILE INTERA AZIENDA
-except Exception:
-    pass
+    st.stop() # 💥 BLOCCO FISSO IMMOBILE: Impedisce qualsiasi modifica
 # =====================================================================================
-
 
 
 st.markdown("""
@@ -721,21 +728,17 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-        with st.spinner("Attivazione lucchetto aziendale e avvio server..."):
-            try:
-                # Crea il file lucchetto locale e lo spinge su GitHub per congelare gli schermi
-                with open("lucchetto.txt", "w") as f_lock:
-                    f_lock.write("BLOCCATO")
-                
-                df_salva_lock = pd.DataFrame(st.session_state.storico_cloud)
-                push_excel_su_github(df_salva_lock) # Spinge il file per aggiornare la rete
-                
-                # Lancia il robot ufficiale
-                esegui_sincronizzazione_robot_snai()
-                time.sleep(3)
-            except Exception:
-                pass
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+            # 🛡️ INIEZIONE DI MANUELA: Accende la barriera prima di lanciare la chiamata
+            st.session_state.sincronizzazione_in_corso_globale = True
+            
+            with st.spinner("Inizializzazione server GitHub in corso..."):
+                try:
+                    # Lancia la funzione dei ragazzi che avvia il workflow
+                    esegui_sincronizzazione_robot_snai()
+                    time.sleep(2)
+                except Exception:
+                    pass
             st.rerun()
 
             
