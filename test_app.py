@@ -742,19 +742,19 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
         st.rerun()
 
             
-            # 🔥 ORA CHE IL ROBOT È PARTITO DAVVERO: Accende la barriera e congela lo schermo di sicurezza!
-            st.session_state.sincronizzazione_in_corso_globale = True
-            st.rerun()
+        # 🔥 ORA CHE IL ROBOT È PARTITO DAVVERO: Accende la barriera e congela lo schermo di sicurezza!
+        st.session_state.sincronizzazione_in_corso_globale = True
+        st.rerun()
 
-           
-            # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
-            if os.path.exists(FILE_STORICO_PERMANENTE):
-                # Rilegge il file fisico aggiornato dallo spazzino del robot
-                df_aggiornato_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-                st.session_state.storico_cloud = df_aggiornato_cloud.to_dict('records')
-            
-            # Rinfresca l'interfaccia eliminando le righe azzerate
-            st.rerun()
+       
+        # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
+        if os.path.exists(FILE_STORICO_PERMANENTE):
+            # Rilegge il file fisico aggiornato dallo spazzino del robot
+            df_aggiornato_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+            st.session_state.storico_cloud = df_aggiornato_cloud.to_dict('records')
+        
+        # Rinfresca l'interfaccia eliminando le righe azzerate
+        st.rerun()
 
 
     # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella TUTTI i locali pronti (SNAI + NTS) con un'azione reale da compiere
