@@ -332,6 +332,7 @@ if "token_sessione" in st.query_params:
             ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == email_t]
             if not ut.empty:
                 st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
+                st.session_state.user_ruolo = str(ut["RUOLO"].values[0]).strip().upper())
         except Exception:
             pass
 
@@ -348,7 +349,12 @@ if not st.session_state.autenticato:
             if not utente_trovato.empty:
                 st.session_state.user_nome = str(utente_trovato.iloc[0]["NOME"]).strip()
                 st.session_state.user_email = str(utente_trovato.iloc[0]["EMAIL"]).strip()
+                
+                # 🛡️ LA CHIAVE DI MANUELA: Salva il ruolo reale della colonna dell'Excel dei tecnici!
+                st.session_state.user_ruolo = str(utente_trovato.iloc[0]["RUOLO"]).strip().upper()
+                
                 st.session_state.autenticato = True
+
                 # 🛡️ ALLINEAMENTO LIVE DI MANUELA: Scrive il token nell'URL della barra internet per mantenere la sessione 2 ore
                 st.query_params["token_sessione"] = f"{st.session_state.user_email}_attivo"
 
@@ -820,13 +826,13 @@ if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "uffi
         except Exception as e_load: 
             st.error(f"❌ Errore lettura: {str(e_load)}")
 # =====================================================================================
-# BLOCCO 11: PRIVILEGI STRUTTURALI AUTOMATICI DA EMAIL (ESCLUSIVA ADMIN BLINDATA)
+# BLOCCO 11: PRIVILEGI STRUTTURALI AUTOMATICI DA RUOLO EXCEL (INMANNABILE)
 # =====================================================================================
 st.markdown("---")
-email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
+ruolo_utente_verificato = str(st.session_state.get("user_ruolo", "TECNICO")).strip().upper()
 
-# 🛡️ PRIVILEGIO ADMIN DI MANUELA: Se l'email contiene le chiavi dell'ufficio, apre il pannello completo
-if "manuela" in email_finale_pulita or "admin" in email_finale_pulita or "ufficio" in email_finale_pulita:
+# 🛡️ PRIVILEGIO ADMIN: Si attiva SOLO se il ruolo nell'Excel è ADMIN, SUPERVISORE o UFFICIO
+if ruolo_utente_verificato in ["ADMIN", "SUPERVISORE", "UFFICIO"]:
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
 
@@ -837,8 +843,8 @@ if "manuela" in email_finale_pulita or "admin" in email_finale_pulita or "uffici
         t_sys.sleep(5)
         st.rerun()
     else:
-        # Pulsante originale intatto dell'Admin
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_elastico_assoluto"):
+        # Il tuo pulsante originale intatto riga per riga
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_ruolo_assoluto"):
             with st.spinner("Blindatura database aziendale e avvio server..."):
                 try:
                     for riga_ram in st.session_state.storico_cloud:
@@ -852,18 +858,18 @@ if "manuela" in email_finale_pulita or "admin" in email_finale_pulita or "uffici
                 except Exception: pass
             st.rerun()
             
-        # Il tasto disconnetti dell'Admin posizionato sotto il blu a sinistra
-        if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_elastico_assoluto"):
+        # Il tasto disconnetti dell'Admin posizionato a sinistra sotto il blu
+        if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_ruolo_assoluto"):
             st.session_state.clear()
             if "st" in locals() and hasattr(st, "query_params"):
                 st.query_params.clear()
             st.rerun()
 
 else:
-    # 📱 VISTA TECNICI STANDARD: Qualsiasi altro indirizzo email vede SOLO ed ESCLUSIVAMENTE il logout a sinistra!
-    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_elastico_assoluto"):
+    # 📱 VISTA TECNICI STANDARD: Se il ruolo è 'TECNICO' o qualsiasi altra cosa, si blocca qui!
+    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_ruolo_assoluto"):
         st.session_state.clear()
         if "st" in locals() and hasattr(st, "query_params"):
             st.query_params.clear()
         st.rerun()
-    st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente al telefono del tecnico di leggere qualsiasi altra riga!
+    st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente al telefono del tecnico di leggere oltre!
