@@ -770,7 +770,7 @@ if "MANUELA" in utente_chiaro_maiuscolo or "ADMIN" in utente_chiaro_maiuscolo or
         st.rerun()
     else:
         # Il tuo pulsante originale intatto riga per riga
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="btn_sincro_admin_definitivo"):
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin"):
             with st.spinner("Blindatura database aziendale e avvio server..."):
                 try:
                     for riga_ram in st.session_state.storico_cloud:
@@ -787,19 +787,20 @@ if "MANUELA" in utente_chiaro_maiuscolo or "ADMIN" in utente_chiaro_maiuscolo or
                     pass
             st.rerun()
             
-        # Il tasto disconnetti dell'Admin a sinistra sotto il blu
-        if st.button("🚪 DISCONNETTI", key="btn_logout_admin_definitivo"):
+        # Il tasto disconnetti dell'Admin - Sganciato da colonne e isolato con chiave unica
+        if st.button("🚪 DISCONNETTI", key="palo_logout_admin_unico"):
             st.session_state.authenticated = False
             st.session_state.user_nome = ""
             st.rerun()
 
 else:
     # 📱 VISTA TECNICI STANDARD: Qualsiasi altro nome vede solo il tasto per uscire allineato a sinistra
-    if st.button("🚪 DISCONNETTI", key="btn_logout_tecnico_definitivo"):
+    if st.button("🚪 DISCONNETTI", key="palo_logout_tecnico_unico"):
         st.session_state.authenticated = False
         st.session_state.user_nome = ""
         st.rerun()
     st.stop() # 💥 GHIGLIOTTINA: Impedisce ai tecnici di vedere il pulsante blu o i testi
+
 
 
     # =====================================================================================
