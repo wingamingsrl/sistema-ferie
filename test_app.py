@@ -751,40 +751,36 @@ else:
 # =====================================================================================
 
 
-# =====================================================================================
-# INTERFACCIA DI LOGOUT E PULSANTE BLU MANUALE (BLINDATURA ERMETICA ED ESCLUSIVA ADMIN)
-# =====================================================================================
-st.markdown("---")
-utente_finale_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
+    # =====================================================================================
+    # INTERFACCIA DI LOGOUT E PULSANTE BLU MANUALE (BLINDATURA ERMETICA ED ESCLUSIVA ADMIN)
+    # =====================================================================================
+    st.markdown("---")
+    utente_finale_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
 
-# 📱 1. VISTA TECNICI (SBARRAMENTO DI SICUREZZA INIZIALE): Se l'utente NON è l'ufficio, si ferma QUI!
-if utente_finale_maiuscolo not in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-    col_tech_blocco = st.columns([1, 4]) # Inserisce il Logout a sinistra
-    with col_tech_blocco[0]:
-        if st.button("🚪 ESCI / LOGOUT SICURO"):
-            st.query_params.clear()
-            st.session_state.autenticato = False
-            st.success("Uscita effettuata con successo!")
-            time.sleep(0.5)
+    # 📱 1. VISTA TECNICI (SBARRAMENTO DI SICUREZZA INIZIALE): Se l'utente NON è l'ufficio, disegna SOLO il logout a sinistra!
+    if utente_finale_maiuscolo not in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+        # Disegna il tastone grigio a tutta pagina allineato naturalmente a sinistra senza colonne bloccate
+        if st.button("🚪 ESCI / LOGOUT SICURO", key="btn_logout_tecnico"):
+            st.session_state.authenticated = False
+            st.session_state.user_nome = ""
             st.rerun()
-    st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Blocca il codice qui per tutti i tecnici, nascondendo tutto il resto!
+        st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente al telefono del tecnico di leggere il codice sotto!
 
-# =====================================================================================
-# 🛡️ 2. VISTA ADMIN (ESCLUSIVA UFFICIO): Raggiungibile SOLO da Manuela o dall'account Admin
-# =====================================================================================
-st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
-st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
+    # =====================================================================================
+    # 🛡️ 2. VISTA ADMIN (ESCLUSIVA UFFICIO): Raggiungibile SOLO da Manuela o dall'account Admin
+    # =====================================================================================
+    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
+    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
 
-if robot_sta_girando_ora:
-    st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
-    st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
-    import time as t_sys
-    t_sys.sleep(5)
-    st.rerun()
-else:
-    col_b1, col_b2 = st.columns([1, 4]) # Affianca i pulsanti a sinistra con i tuoi pesi corretti [1, 4]
-    with col_b1:
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+    if robot_sta_girando_ora:
+        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
+        st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
+        import time as t_sys
+        t_sys.sleep(5)
+        st.rerun()
+    else:
+        # Per l'Admin disegna i due tasti staccati e lineari a sinistra uno sotto l'altro per evitare coperture grafiche
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="btn_sincro_admin"):
             with st.spinner("Blindatura database aziendale e avvio server..."):
                 try:
                     for riga_ram in st.session_state.storico_cloud:
@@ -801,11 +797,12 @@ else:
                     pass
             st.rerun()
             
-    with col_b2:
-        if st.button("🚪 ESCI / LOGOUT SICURO"):
+        # Il logout dell'Admin si posiziona subito sotto in totale pulizia ed efficacia
+        if st.button("🚪 ESCI / LOGOUT SICURO", key="btn_logout_admin"):
             st.session_state.authenticated = False
             st.session_state.user_nome = ""
             st.rerun()
+
 
 # =====================================================================================
 # 🛡️ TABELLONE VISIVO DI MANUELA: PRIVILEGI ADMIN (VEDE TUTTO) / TECNICI (VEDONO SOLO LE LORO)
