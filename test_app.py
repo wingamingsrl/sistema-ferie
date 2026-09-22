@@ -543,7 +543,7 @@ if submit_button:
             # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
             tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
 
-            # 🛡️ ARCHITETTURA DI MANUELA: Scansiona l'anagrafica dei locali (df_locali) per trovare tutti i provider di questo codice locale
+            # 🛡️ ARCHITETTURA DI MANUELA: Scansiona l'anagrafica (df_locali) per trovare tutti i provider di questo codice locale
             codice_cercato_target = str(codice_estratto).strip()
             
             try:
@@ -582,8 +582,7 @@ if submit_button:
                     "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
                 }
                 righe_sdoppiate_da_salvare.append(riga_singola)
-
-           
+            
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
@@ -601,8 +600,9 @@ if submit_button:
                     msg['To'] = ", ".join(lista_m)
                     msg['Subject'] = f"🛡️ {titolo_azione} Ferie - {nome_puro_locale}"
                     
-                    linee_concessionari = f" {concessionario_estratto}"
-                    corpo = f"Rilevato aggiornamento chiusura ferie nel sistema WinGaming.\n\nDettagli della pratica:\n--------------------------------------------------\n🔔 Stato Operazione:  {titolo_azione.upper()}\n👤 Tecnico Esecutore: {esecutore_nome}\n📍 Locale Coinvolto:  {nome_puro_locale}\n🏢 Concessionario/i:{linee_concessionari}\n📅 Inizio Chiusura:   {str_c}\n🚚 Data Riapertura:   {str_r}\n--------------------------------------------------\n\nWINGAMING SRL"
+                    # 🚨 UNIFICAZIONE E-MAIL: Mostra tutti i concessionari separati da virgola nell'unica mail riassuntiva
+                    testo_concessionari_mail = ", ".join(lista_provider_puliti)
+                    corpo = f"Rilevato aggiornamento chiusura ferie nel sistema WinGaming.\n\nDettagli della pratica:\n--------------------------------------------------\n🔔 Stato Operazione:  {titolo_azione.upper()}\n👤 Tecnico Esecutore: {esecutore_nome}\n📍 Locale Coinvolto:  {nome_puro_locale}\n🏢 Concessionario/i:  {testo_concessionari_mail}\n📅 Inizio Chiusura:   {str_c}\n🚚 Data Riapertura:   {str_r}\n--------------------------------------------------\n\nWINGAMING SRL"
                     msg.attach(MIMEText(corpo, 'plain'))
                     
                     server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
@@ -618,7 +618,7 @@ if submit_button:
                     try: st.session_state.storico_cloud.pop(riga_conflitto_idx)
                     except Exception: pass
                 
-                # 🛡️ INIEZIONE IN RAM: Carica tutte le righe sdoppiate nella memoria dello smartphone
+                # Inietta tutte le righe sdoppiate in tempo reale nella memoria dello smartphone
                 for record_sdoppiato in righe_sdoppiate_da_salvare:
                     record_sdoppiato["STATO_INVIO"] = "Inviato OK"
                     st.session_state.storico_cloud.append(record_sdoppiato)
@@ -628,8 +628,8 @@ if submit_button:
                 if "ROBOT_ACTION" not in df_salva.columns:
                     df_salva["ROBOT_ACTION"] = ""
                     
-                # Forza il salvataggio sul disco permanente dell'app
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+
                 
                 # Sblocca ed aggiorna istantaneamente GitHub spingendo i dati online
                 push_excel_su_github(df_salva)
