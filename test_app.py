@@ -26,20 +26,34 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA ANTISOPRAVVOSCRIZIONE DI MANUELA: SCANSIONE LOCK FILE CENTRALIZZATA
+# 🛡️ BARRIERA DI SICUREZZA DI MANUELA: CONGELAMENTO GENERALE AUTOMATICO ANTI-SOVRAZZONA
 # =====================================================================================
-try:
-    df_controllo_lock = pd.read_excel("storico_ferie.xlsx").fillna("")
-    # Se il file cloud ha anche una sola riga in stato "In attesa" o "ELIMINA" significa che il robot sta macinando i dati online!
-    if not df_controllo_lock.empty and any(str(act).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for act in df_controllo_lock["ROBOT_ACTION"]):
-        st.error("🚨 ATTENZIONE: Sincronizzazione forzata o elaborazione in corso su GitHub!")
-        st.info("⏳ Per evitare la perdita di dati, la plancia aziendale è temporaneamente CONGELATA. Il robot sta aggiornando i portali. Attendi circa 2 minuti e poi rinfresca la pagina.")
-        st.spinner("Allineamento database online in corso...")
-        if st.button("🔄 VERIFICA SE IL ROBOT HA FINITO (RINFRESCA)"):
+import time as t_sys
+
+# Controlla se la RAM indica che questa specifica sessione ha avviato il robot
+if st.session_state.get("sincronizzazione_in_corso_globale", False):
+    # Genera un rinfresco automatico invisibile ogni 5 secondi per controllare lo stato del server
+    if "timer_auto" not in st.session_state:
+        st.session_state.timer_auto = 0
+    
+    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
+    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO in automatico tra pochi secondi al termine dell'operazione. Non toccare nulla.")
+    
+    # Controlla se il database permanente ha finito di ripulirsi per decretare la fine del giro
+    try:
+        df_verifica = pd.read_excel("storico_ferie.xlsx").fillna("")
+        # Se non ci sono più locali in attesa di essere elaborati dal robot, significa che ha finito!
+        if df_verifica.empty or not any(str(a).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for a in df_verifica["ROBOT_ACTION"]):
+            st.session_state.sincronizzazione_in_corso_globale = False
+            st.success("✅ Sincronizzazione completata con successo! Sblocco in corso...")
+            t_sys.sleep(1)
             st.rerun()
-        st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente a QUALSIASI smartphone di procedere!
-except Exception:
-    pass
+    except Exception:
+        pass
+
+    # Forza la pagina a ricaricarsi da sola ogni 4 secondi per controllare se il robot ha finito
+    t_sys.sleep(4)
+    st.rerun()
 # =====================================================================================
 
 st.markdown("""
