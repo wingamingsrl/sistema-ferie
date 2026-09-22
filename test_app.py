@@ -738,20 +738,28 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             st.rerun()
 
 
-    # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella TUTTI i locali pronti (SNAI + NTS) con un'azione reale da compiere
+    # =====================================================================================
+    # 🛡️ TABELLONE VISIVO DI MANUELA: MOSTRA SOLO LE PRATICHE DELL'UTENTE CONNESSO
+    # =====================================================================================
+    st.markdown("---")
+    st.markdown("### 📊 Le tue chiusure in attesa di allineamento")
+    
+    # Filtra la RAM mostrando solo le scadenze del tecnico che ha effettuato l'accesso
     righe_lavorazione_generiche = [
         row for row in st.session_state.storico_cloud 
         if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+        and str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == str(st.session_state.user_nome).strip().upper()
     ] if st.session_state.storico_cloud else []
     
     if righe_lavorazione_generiche:
         df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
-        # 🛡️ COLONNA INSERITA: Aggiunta la colonna CONCESSIONARIO nel tabellone visivo dello smartphone
-        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
         df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
         st.dataframe(df_visibile_pulito, hide_index=True)
     else:
-        st.success("✅ Nessun locale in attesa. Tutte le chiusure dei Concessionari sono allineate!")
+        st.success(f"✅ Nessuna tua pratica in coda, {st.session_state.user_nome}. Tutto allineato!")
+    # =====================================================================================
+
 
     # =====================================================================================
     # PANNELLO CANCELLAZIONE - COMPRESSIONE MENÙ A TENDINA E SPARIZIONE TASTO SMARTPHONE
