@@ -25,29 +25,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# =====================================================================================
-# 🛡️ BARRIERA POST-LANCIO DI MANUELA: CONGELA DOPO CHE IL ROBOT È PARTITO REALMENTE
-# =====================================================================================
+# Attiva il controllo silenziato in background
+controllo_sicurezza_background_manuela()
+
+# Se la spia è accesa, mostra il cartello di blocco fisso e solido come una roccia
 if st.session_state.get("sincronizzazione_in_corso_globale", False):
-    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot è partito con successo ed è visibile su GitHub Actions!")
-    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Attendi circa 2 minuti che il robot completi gli aggiornamenti. La pagina si sbloccherà da sola.")
-    
-    import time as t_sys
-    try:
-        df_verifica = pd.read_excel("storico_ferie.xlsx").fillna("")
-        if df_verifica.empty or not any(str(a).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for a in df_verifica["ROBOT_ACTION"]):
-            st.session_state.sincronizzazione_in_corso_globale = False
-            st.success("✅ Sincronizzazione completata! Sblocco in corso...")
-            t_sys.sleep(1)
-            st.rerun()
-    except Exception:
-        pass
-        
-    t_sys.sleep(5)
-    st.rerun()
+    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
+    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO al termine del giro. Non toccare nulla.")
+    st.spinner("Allineamento database online in corso...")
+    st.stop() # 💥 BLOCCO FISSO: Nasconde i moduli impedendo qualsiasi modifica
 # =====================================================================================
-
-
 
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
