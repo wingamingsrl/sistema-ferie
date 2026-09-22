@@ -394,9 +394,9 @@ if not st.session_state.autenticato:
                 st.error("❌ Credenziali errate. Riprova.")
     st.stop()
 
+esecutore_nome = st.session_state.get("user_nome", "UFFICIO")
+esecutore_email = st.session_state.get("user_email", "manuela.arigoni@wingaming.it")
 
-esecutore_nome = st.session_state.user_nome
-esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🧳 PORTALE FERIE ESERCENTI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
@@ -745,7 +745,8 @@ else:
 # 🛡️ TABELLONE GIRI LOGISTICI DI MANUELA: PRIVILEGI GERARCHICI TOTALI (STORICO INCLUSO)
 # =====================================================================================
 st.markdown("---")
-utente_loggato_maiuscolo = str(st.session_state.user_nome).strip().upper()
+utente_loggato_maiuscolo = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
+
 
 if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
     st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
