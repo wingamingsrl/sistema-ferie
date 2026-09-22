@@ -717,6 +717,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
         pass
 
 
+
 # =====================================================================================
 # 🛡️ TABELLONE VISIVO DI MANUELA: PRIVILEGI ADMIN (VEDE TUTTO) / TECNICI (VEDONO SOLO LE LORO)
 # =====================================================================================
