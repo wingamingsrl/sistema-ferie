@@ -674,48 +674,39 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 # BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
 # =====================================================================================
 st.markdown("---")
-st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
-oggi = datetime.now().date()
-alert_c, alert_r = [], []
-for row in st.session_state.storico_cloud:
-    try:
-        d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
-    except Exception: continue
-for a in alert_c: st.error(a)
-for r in alert_r: st.warning(r)
+utente_loggato_maiuscolo = str(st.session_state.user_nome).strip().upper()
 
-if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
-    st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
-    colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
+if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+    st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
+    # L'Admin e l'Ufficio vedono TUTTI i giri logistici di tutti i locali in lavorazione
+    righe_giri_logistici = [
+        row for row in st.session_state.storico_cloud 
+        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+    ] if st.session_state.storico_cloud else []
+else:
+    st.markdown("### 📊 I tuoi Promemoria Giri Logistici")
+    # Il tecnico vede SOLO i giri logistici delle chiusure inserite specificamente da lui!
+    righe_giri_logistici = [
+        row for row in st.session_state.storico_cloud 
+        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+        and str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
+    ] if st.session_state.storico_cloud else []
+
+# Disegna la tabella a schermo in base ai privilegi estratti sopra
+if righe_giri_logistici:
+    df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
     
-    if st.session_state.storico_cloud:
-        # 🛡️ FILTRO DI MANUELA INTEGRALE: Scansiona la RAM e nasconde i locali da eliminare senza usare Pandas
-        lista_visibile = [
-            riga for riga in st.session_state.storico_cloud 
-            if str(riga.get("ROBOT_ACTION", "")).strip().upper() != "ELIMINA" and 
-               str(riga.get("robot_action", "")).strip().upper() != "ELIMINA"
-        ]
-        
-        # Genera la tabella solo con i locali rimasti attivi
-        df_vis = pd.DataFrame(lista_visibile)
-        
-        if not df_vis.empty:
-            df_vis = df_vis.reindex(columns=colonne_reali_ufficio).fillna("")
-            st.dataframe(df_vis, hide_index=True)
-        else:
-            st.info("📭 Nessuna chiusura attiva presente nel registro storico.")
-
-
-
-        
-        with io.BytesIO() as buffer:
-            df_vis.to_excel(buffer, index=False)
-            st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
+    # Se sei Admin aggiungiamo anche la colonna visiva del Tecnico per controllo ufficio
+    if utente_loggato_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+        colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
     else:
-        st.info("📭 Nessuna chiusura presente in memoria. Trascina il file Excel storico in fondo per ripopolare la plancia.")
+        colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
+        
+    df_visibile_giri_pulito = df_lavorazione_giri.reindex(columns=colonne_visibili_giri).fillna("")
+    st.dataframe(df_visibile_giri_pulito, hide_index=True)
+else:
+    st.success(f"✅ Nessun promemoria giro logistico in coda per la tua utenza, {st.session_state.user_nome}!")
+    # =====================================================================================
         
 
     # =====================================================================================
