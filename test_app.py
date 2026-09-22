@@ -543,36 +543,35 @@ if submit_button:
             # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
             tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
 
-            # 🛡️ ARCHITETTURA DI MANUELA: Rileva se il locale ha più provider (es. separati da "+", "," o "e")
-            testo_pvd_pulito = concessionario_estratto.replace("+", ",").replace(" e ", ",").replace("/", ",")
-            if "," in testo_pvd_pulito:
-                lista_concessionari_locali = [c.strip() for c in testo_pvd_pulito.split(",") if c.strip()]
+                       # 🛡️ FIX DEFINITIVO DI MANUELA: Scinde i provider in modo universale pulendo gli spazi
+            pvd_testo = str(concessionario_estratto).replace("+", ",").replace(" e ", ",").replace("/", ",").strip()
+            if "," in pvd_testo:
+                lista_concessionari_scissi = [c.strip() for c in pvd_testo.split(",") if c.strip()]
             else:
-                lista_concessionari_locali = [concessionario_estratto.strip()]
+                lista_concessionari_scissi = [pvd_testo] if pvd_testo else ["Snaitech Spa WG"]
 
-            # Mantiene la lista temporanea per salvare tutti i provider scissi
-            record_da_salvare = []
-            for conc_singolo in lista_concessionari_locali:
-                record_singolo = {
+            # Genera la flotta di righe separate per ogni provider trovato
+            righe_sdoppiate_da_salvare = []
+            for provider_singolo in lista_concessionari_scissi:
+                riga_singola = {
                     "DATA_INSERIMENTO": str(data_inserimento_it),
                     "TECNICO_INSERIMENTO": str(esecutore_nome),
                     "CODICE_LOCALE": str(codice_estratto),
                     "NOME_LOCALE": str(nome_puro_locale),
-                    "CONCESSIONARIO": str(conc_singolo), # Forza il provider specifico del ciclo!
+                    "CONCESSIONARIO": str(provider_singolo),
                     "INIZIO_FERIE": str(str_c),
                     "FINE_FERIE": str(str_r),
                     "PROMEMORIA_IN_COPIA": str(co_destinatario),
                     "STATO_INVIO": "In attesa",
                     "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
                 }
-                record_da_salvare.append(record_singolo)
+                righe_sdoppiate_da_salvare.append(riga_singola)
             
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
                 except Exception: pass
             
-            # --- SEZIONE SALVATAGGIO E INVIO EMAIL ALLINEATA AL MILLIMETRO ---
             titolo_azione = "Modifica Chiusura" if (sovrapposizione_rilevata and forza_sovrascrittura) else "Registrazione Chiusura"
             invio_ok = False
             risposta_server = "OK"
@@ -599,27 +598,29 @@ if submit_button:
             
             if invio_ok:
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    try: st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    except Exception: pass
                 
-                # 🛡️ INSERIMENTO MULTIPLO DI MANUELA: Aggancia tutte le righe sdoppiate
-                for rec in record_da_salvare:
-                    rec["STATO_INVIO"] = "Inviato OK"
-                    st.session_state.storico_cloud.append(rec)
+                # 🛡️ INIEZIONE IN RAM: Carica tutte le righe sdoppiate nella memoria dello smartphone
+                for record_sdoppiato in righe_sdoppiate_da_salvare:
+                    record_sdoppiato["STATO_INVIO"] = "Inviato OK"
+                    st.session_state.storico_cloud.append(record_sdoppiato)
                     
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
                 
                 if "ROBOT_ACTION" not in df_salva.columns:
                     df_salva["ROBOT_ACTION"] = ""
                     
+                # Forza il salvataggio sul disco permanente dell'app
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                
+                # Sblocca ed aggiorna istantaneamente GitHub spingendo i dati online
                 push_excel_su_github(df_salva)
                 
                 st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
-                time.sleep(4.0)
+                time.sleep(2.0)
                 st.rerun()
-            else:
-                st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
 
 
 # =====================================================================================
