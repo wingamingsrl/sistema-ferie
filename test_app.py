@@ -25,17 +25,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Attiva il controllo silenziato in background
-controllo_sicurezza_background_manuela()
-
-# Se la spia è accesa, mostra il cartello di blocco fisso e solido come una roccia
-if st.session_state.get("sincronizzazione_in_corso_globale", False):
-    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
-    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO al termine del giro. Non toccare nulla.")
-    st.spinner("Allineamento database online in corso...")
-    st.stop() # 💥 BLOCCO FISSO: Nasconde i moduli impedendo qualsiasi modifica
-# =====================================================================================
-
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
