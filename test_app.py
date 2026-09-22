@@ -786,10 +786,10 @@ if "MANUELA" in utente_chiaro_maiuscolo or "ADMIN" in utente_chiaro_maiuscolo or
                 except Exception:
                     pass
             st.rerun()
-            # Il tasto disconnetti dell'Admin - Pulizia totale della memoria per sbloccare il click
-            if st.button("🚪 DISCONNETTI", key="palo_logout_admin_unico"):
-                st.session_state.clear() # 🧹 AZZERA LA RAM: Sblocca il click all'istante!
-                st.rerun()
+        # Il tasto disconnetti dell'Admin - Pulizia totale della memoria per sbloccare il click
+        if st.button("🚪 DISCONNETTI", key="palo_logout_admin_unico"):
+            st.session_state.clear() # 🧹 AZZERA LA RAM: Sblocca il click all'istante!
+            st.rerun()
 
 else:
     # 📱 VISTA TECNICI STANDARD: Qualsiasi altro nome vede solo il tasto per uscire allineato a sinistra
