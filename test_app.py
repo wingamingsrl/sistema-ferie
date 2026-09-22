@@ -28,23 +28,19 @@ st.set_page_config(
 # =====================================================================================
 # 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO GLOBALE LATO ADMIN ED UFFICIO
 # =====================================================================================
-try:
-    # Va a leggere il file Excel reale sul server cloud in tempo reale
-    df_lock_admin = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-    
-    # Se trova anche una sola riga in stato NUOVA, MODIFICA o ELIMINA, congela lo schermo Admin!
-    if not df_lock_admin.empty and any(str(act).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for act in df_lock_admin["ROBOT_ACTION"]):
-        st.error("🚨 BLOCCO DI SICUREZZA AZIENDALE: Il robot sta allineando i database online!")
-        st.info("⏳ Per evitare la perdita o la sovrascrittura dei dati storici dell'ufficio, la plancia ADMIN è temporaneamente CONGELATA. Lo schermo tornerà disponibile da solo in automatico non appena il robot avrà finito di compilare Snaitech ed inviare le mail a NTS (circa 2 minuti). Non toccare nulla.")
+if "storico_cloud" in st.session_state and st.session_state.storico_cloud:
+    # Scansiona direttamente le righe caricate in memoria a schermo nello smartphone
+    if any(str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for row in st.session_state.storico_cloud):
+        st.error("🚨 BLOCCO DI SICUREZZA AZIENDALE: Ci sono processi pendenti in coda!")
+        st.info("⏳ Per evitare la perdita o la sovrascrittura dei dati storici dell’ufficio, la plancia ADMIN è temporaneamente CONGELATA. Il robot deve allineare i portali. Premi il pulsante blu dallo smartphone dei tecnici per avviare il giro ed eliminare le pratiche in attesa. Lo schermo tornerà disponibile da solo.")
         st.spinner("Allineamento database e rilascio lucchetti in corso...")
         
         # Genera il tastone fisso, leggero e riposante anti-flash per l'ufficio
         if st.button("🔄 VERIFICA STATO AGGIORNAMENTI E SBLOCCA PLANCIA"):
             st.rerun()
         st.stop() # 💥 BLOCCO FISSO IMMOBILE LATO ADMIN
-except Exception:
-    pass
 # =====================================================================================
+
 
 
 st.markdown("""
