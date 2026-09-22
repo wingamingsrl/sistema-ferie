@@ -762,8 +762,10 @@ if utente_finale_maiuscolo not in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
     col_tech_blocco = st.columns([1, 4]) # Inserisce il Logout a sinistra
     with col_tech_blocco[0]:
         if st.button("🚪 ESCI / LOGOUT SICURO"):
-            st.session_state.authenticated = False
-            st.session_state.user_nome = ""
+            st.query_params.clear()
+            st.session_state.autenticato = False
+            st.success("Uscita effettuata con successo!")
+            time.sleep(0.5)
             st.rerun()
     st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Blocca il codice qui per tutti i tecnici, nascondendo tutto il resto!
 
