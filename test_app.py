@@ -21,7 +21,7 @@ icona_app = "logo.png" if os.path.exists("logo.png") else "📅"
 st.set_page_config(
     page_title="Ferie Gestori - Sandbox Test", 
     page_icon=icona_app, 
-    layout="centered",with st.form("modulo_ferie"):
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
