@@ -781,7 +781,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             codice_locale_target = str(riga_scelta.get("CODICE_LOCALE", "")).strip()
             nome_locale_target = str(riga_scelta.get("NOME_LOCALE", "")).strip()
                 
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA", disabled=robot_in_marcia):
+            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
                 st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
                 
                 # 🛡️ SCANSIONE GLOBALE DI MANUELA: Cerca e marchia come ELIMINA tutti i provider dello stesso locale
