@@ -332,9 +332,11 @@ if "token_sessione" in st.query_params:
             ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == email_t]
             if not ut.empty:
                 st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
-                st.session_state.user_ruolo = str(ut["RUOLO"].values[0]).strip().upper())
+                # 🛡️ LA SERRATURA DI MANUELA: Estrae il ruolo corretto rimuovendo la parentesi di troppo!
+                st.session_state.user_ruolo = str(ut["RUOLO"].values[0]).strip().upper()
         except Exception:
             pass
+
 
 if not st.session_state.autenticato:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
