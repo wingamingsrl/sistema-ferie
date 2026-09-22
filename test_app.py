@@ -26,38 +26,12 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO GLOBALE AUTOMATICO (ZERO FLASH)
+# 🛡️ INTERRUTTORE INVISIBILE DI MANUELA: VERIFICA SE IL ROBOT STA ELABORANDO SU GITHUB
 # =====================================================================================
-import time as t_sys
-
-# Questo modulo gira ogni 4 secondi in background senza mai far sfarfallare la grafica dello schermo
-@st.fragment(run_every=4)
-def controllo_lucchetto_aziendale_background():
-    try:
-        # Legge il file Excel online per verificare se ci sono lavorazioni del robot in corso
-        df_lock_global = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-        
-        # 🚨 LA CHIAVE DI MANUELA: Se ci sono righe in stato NUOVA, MODIFICA o ELIMINA e la spia è accesa, attiva il blocco!
-        if not df_lock_global.empty and any(str(act).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for act in df_lock_global["ROBOT_ACTION"]):
-            if st.session_state.get("avvio_sincro_cliccato", False):
-                st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
-                st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO in automatico al termine del giro. Non toccare nulla.")
-                st.spinner("Allineamento database online in corso...")
-                st.stop() # 💥 CONGELAMENTO IMMOBILE: Blocca l'intera pagina finché il robot non pulisce l'Excel
-        else:
-            # Se l'Excel è pulito, spegne la spia e sblocca lo schermo per tutti i telefoni del mondo!
-            if st.session_state.get("avvio_sincro_cliccato", False):
-                st.session_state.avvio_sincro_cliccato = False
-                st.success("✅ Sincronizzazione completata! Plancia sbloccata.")
-                t_sys.sleep(1)
-                st.rerun()
-    except Exception:
-        pass
-
-# Attiva l'indagine in background
-controllo_lucchetto_aziendale_background()
+robot_in_marcia = False
+if "storico_cloud" in st.session_state and st.session_state.storico_cloud:
+    robot_in_marcia = any(str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for row in st.session_state.storico_cloud)
 # =====================================================================================
-
 
 
 st.markdown("""
@@ -223,6 +197,7 @@ df_locali, df_tecnici, df_storico_file = carica_database_locale()
 # 🛡️ AUTOMAZIONE DI MANUELA: Forza l'app a leggere l'Excel reale aggiornato dal robot, distruggendo la cache vecchia
 df_aggiornato_reale = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("") if os.path.exists(FILE_STORICO_PERMANENTE) else df_storico_file
 st.session_state.storico_cloud = df_aggiornato_reale.to_dict('records')
+# 🛡️ INTELLIGENZA DI MANUELA: Verifica se ci sono lavorazioni attive per disattivare i bottoni
 
 
 def push_excel_su_github(df_da_salvare):
@@ -513,7 +488,9 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
-    submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
+    # Se il robot sta girando, il bottone diventa grigio e non cliccabile automaticamente in tutto il mondo
+    submit_button = st.form_submit_button("💾 INVIA CHIUSURA TEMPORANEA", disabled=robot_in_marcia)
+
 
 # =====================================================================================
 # BLOCCO 6 - PARTE A: ELABORAZIONE INSERIMENTI E MOTORE EMAIL DINAMICO MODIFICHE
@@ -731,17 +708,15 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-        # Accende la spia di controllo per attivare la barriera automatica in background
-        st.session_state.avvio_sincro_cliccato = True
-        
-        with st.spinner("Inizializzazione server GitHub in corso..."):
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", disabled=robot_in_marcia):
+        with st.spinner("Allineamento database su GitHub Actions in corso..."):
             try:
                 esegui_sincronizzazione_robot_snai()
-                time.sleep(3)
+                time.sleep(2)
             except Exception:
                 pass
         st.rerun()
+
 
 
             
@@ -805,7 +780,7 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             codice_locale_target = str(riga_scelta.get("CODICE_LOCALE", "")).strip()
             nome_locale_target = str(riga_scelta.get("NOME_LOCALE", "")).strip()
                 
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA (PER TUTTI I PROVIDER)"):
+            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA", disabled=robot_in_marcia):
                 st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
                 
                 # 🛡️ SCANSIONE GLOBALE DI MANUELA: Cerca e marchia come ELIMINA tutti i provider dello stesso locale
