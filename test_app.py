@@ -674,6 +674,53 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
 # BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
 # =====================================================================================
 # =====================================================================================
+# 💛 ALLERTA GIALLA VISIVA DI MANUELA: AVVISI 3 GIORNI A VIDEO (ADMIN VEDE TUTTO / TECNICI SOLO I LORO)
+# =====================================================================================
+st.markdown("### 🔔 Scadenze Logistiche Imminenti (3 Giorni)")
+try:
+    oggi_plancia = datetime.now().date()
+    ha_avvisi = False
+    
+    if st.session_state.storico_cloud:
+        for row in st.session_state.storico_cloud:
+            tecnico_riga = str(row.get("TECNICO_INSERIMENTO", "")).strip().upper()
+            utente_corrente = str(st.session_state.user_nome).strip().upper()
+            
+            # REGOLA DI PRIVACY: L'Admin vede gli avvisi di tutti, il tecnico vede solo i suoi
+            if utente_corrente in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"] or utente_corrente == tecnico_riga:
+                data_in_raw = str(row.get("INIZIO_FERIE", "")).strip()
+                data_fi_raw = str(row.get("FINE_FERIE", "")).strip()
+                nome_loc_avviso = str(row.get("NOME_LOCALE", "")).strip()
+                
+                # Estrae la data pura (primi 10 caratteri) standardizzando i separatori
+                str_in_pax = data_in_raw.replace("-", "/").replace(".", "/").strip()[:10]
+                str_fi_pax = data_fi_raw.replace("-", "/").replace(".", "/").strip()[:10]
+                
+                try:
+                    dt_in_check = datetime.strptime(str_in_pax, "%d/%m/%Y").date()
+                    dt_fi_check = datetime.strptime(str_fi_pax, "%d/%m/%Y").date()
+                    
+                    giorni_chiusura = (dt_in_check - oggi_plancia).days
+                    giorni_riapertura = (dt_fi_check - oggi_plancia).days
+                    
+                    # Se mancano esattamente 3 giorni, accende il rettangolo giallo a video!
+                    if giorni_chiusura == 3:
+                        st.warning(f"⚠️ **PROMEMORIA CHIUSURA (TRA 3 GG):** Il locale **{nome_loc_avviso}** chiude il {dt_in_check.strftime('%d/%m/%Y')} (Inserito da: {row.get('TECNICO_INSERIMENTO','')})")
+                        ha_avvisi = True
+                    if giorni_riapertura == 3:
+                        st.warning(f"🚚 **PROMEMORIA RIAPERTURA (TRA 3 GG):** Il locale **{nome_loc_avviso}** riapre il {dt_fi_check.strftime('%d/%m/%Y')} (Inserito da: {row.get('TECNICO_INSERIMENTO','')})")
+                        ha_avvisi = True
+                except Exception:
+                    pass
+                    
+    if not ha_avvisi:
+        st.info("💡 Nessun locale in scadenza a 3 giorni per la tua utenza.")
+except Exception:
+    pass
+# =====================================================================================
+
+
+# =====================================================================================
 # 🛡️ TABELLONE GIRI LOGISTICI DI MANUELA: PRIVILEGI GERARCHICI TOTALI (STORICO INCLUSO)
 # =====================================================================================
 st.markdown("---")
