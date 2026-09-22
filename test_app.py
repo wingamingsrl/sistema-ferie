@@ -720,15 +720,15 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-            # 🛡️ ARCHITETTURA DI MANUELA: Lancia PRIMA il comando a GitHub Actions per farlo apparire nella lista!
-            with st.spinner("Inizializzazione server GitHub in corso..."):
-                try:
-                    esegui_sincronizzazione_robot_snai()
-                    # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
-                    time.sleep(5)
-                except Exception:
-                    pass
+    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+        # 🛡️ ARCHITETTURA DI MANUELA: Lancia PRIMA il comando a GitHub Actions per farlo apparire nella lista!
+        with st.spinner("Inizializzazione server GitHub in corso..."):
+            try:
+                esegui_sincronizzazione_robot_snai()
+                # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
+                time.sleep(5)
+            except Exception:
+                pass
             
             # 🔥 ORA CHE IL ROBOT È PARTITO DAVVERO: Accende la barriera e congela lo schermo di sicurezza!
             st.session_state.sincronizzazione_in_corso_globale = True
