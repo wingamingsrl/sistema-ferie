@@ -752,22 +752,21 @@ else:
 
 
     # =====================================================================================
-    # INTERFACCIA DI LOGOUT E PULSANTE BLU MANUALE (BLINDATURA ERMETICA ED ESCLUSIVA ADMIN)
+    # INTERFACCIA DI LOGOUT E PULSANTE BLU MANUELA (AGGANCCIO UNIVERSALE ADMIN)
     # =====================================================================================
     st.markdown("---")
-    utente_finale_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
+    utente_chiaro_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
 
-    # 📱 1. VISTA TECNICI (SBARRAMENTO DI SICUREZZA INIZIALE): Se l'utente NON è l'ufficio, disegna SOLO il logout a sinistra!
-    if utente_finale_maiuscolo not in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
-        # Disegna il tastone grigio a tutta pagina allineato naturalmente a sinistra senza colonne bloccate
-        if st.button("🚪 ESCI / LOGOUT SICURO", key="btn_logout_tecnico"):
+    # 📱 1. VISTA TECNICI STANDARD: Se l'utente è uno dei ragazzi, si ferma qui mostrando solo il Logout a sinistra!
+    if utente_chiaro_maiuscolo in ["DANIELE ACERBI", "LUCA ARABENI", "MAURIZIO ADONI", "RICCARDO ROSSO", "TECNICO"]:
+        if st.button("🚪 DISCONNETTI", key="btn_logout_tecnico_puro"):
             st.session_state.authenticated = False
             st.session_state.user_nome = ""
             st.rerun()
-        st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente al telefono del tecnico di leggere il codice sotto!
+        st.stop() # 💥 GHIGLIOTTINA: Impedisce ai tecnici di vedere il pulsante blu sotto!
 
     # =====================================================================================
-    # 🛡️ 2. VISTA ADMIN (ESCLUSIVA UFFICIO): Raggiungibile SOLO da Manuela o dall'account Admin
+    # 🛡️ 2. VISTA ADMIN (MANUELA / UFFICIO): Riapre il pannello completo e il Pulsante Blu!
     # =====================================================================================
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
@@ -779,8 +778,8 @@ else:
         t_sys.sleep(5)
         st.rerun()
     else:
-        # Per l'Admin disegna i due tasti staccati e lineari a sinistra uno sotto l'altro per evitare coperture grafiche
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="btn_sincro_admin"):
+        # Il tuo pulsante originale intatto riga per riga
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="btn_sincro_admin_puro"):
             with st.spinner("Blindatura database aziendale e avvio server..."):
                 try:
                     for riga_ram in st.session_state.storico_cloud:
@@ -797,11 +796,12 @@ else:
                     pass
             st.rerun()
             
-        # Il logout dell'Admin si posiziona subito sotto in totale pulizia ed efficacia
-        if st.button("🚪 ESCI / LOGOUT SICURO", key="btn_logout_admin"):
+        # Il tasto disconnetti dell'Admin a sinistra sotto il blu
+        if st.button("🚪 DISCONNETTI", key="btn_logout_admin_puro"):
             st.session_state.authenticated = False
             st.session_state.user_nome = ""
             st.rerun()
+
 
 
 # =====================================================================================
@@ -914,14 +914,14 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
 
 
 # PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
-st.markdown("<br>", unsafe_allow_html=True)
-col_out1, col_out2, col_out3 = st.columns([1, 2, 1])
-with col_out2:
-    if st.button("🚪 DISCONNETTI ACCOUNT / LOGOUT"):
-        st.query_params.clear()
-        st.session_state.autenticato = False
-        st.success("Uscita effettuata con successo!")
-        time.sleep(0.5)
-        st.rerun()
-        st.rerun()
+# st.markdown("<br>", unsafe_allow_html=True)
+# col_out1, col_out2, col_out3 = st.columns([1, 2, 1])
+# with col_out2:
+#     if st.button("🚪 DISCONNETTI ACCOUNT / LOGOUT"):
+#         st.query_params.clear()
+#         st.session_state.autenticato = False
+#         st.success("Uscita effettuata con successo!")
+#         time.sleep(0.5)
+#        st.rerun()
+#         st.rerun()
 
