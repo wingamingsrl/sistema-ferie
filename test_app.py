@@ -26,33 +26,31 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO CON SCARICAMENTO FORZATO DELLA CACHE
+# 🛡️ BARRIERA AZIENDALE DI MANUELA: TIMEOUT DI PROTEZIONE INTEGRATO ANTI-FLASH (2 MIN)
 # =====================================================================================
-if "storico_cloud" in st.session_state and st.session_state.storico_cloud:
-    if any(str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for row in st.session_state.storico_cloud):
-        st.error("🚨 BLOCCO DI SICUREZZA AZIENDALE: Ci sono processi pendenti in coda!")
-        st.info("⏳ La plancia è temporaneamente congelata per evitare sovrascritture. Se il robot ha terminato la corsa su GitHub Actions, premi il pulsante qui sotto per forzare l'aggiornamento dello schermo.")
-        st.spinner("Allineamento database e rilascio lucchetti in corso...")
+import time as t_sys
+
+if "ora_blocco_sincro" in st.session_state and st.session_state.ora_blocco_sincro:
+    tempo_rimanente = st.session_state.ora_blocco_sincro - t_sys.time()
+    
+    if tempo_rimanente > 0:
+        st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
+        st.info(f"⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO in automatico tra {int(tempo_rimanente)} secondi. Non toccare nulla.")
+        st.spinner("Allineamento database online in corso...")
         
-        # Il tastone leggero e riposante anti-flash per sbloccare lo schermo
-        if st.button("🔄 VERIFICA STATO AGGIORNAMENTI E SBLOCCA PLANCIA"):
-            try:
-                # 🔑 LA CHIAVE DI MANUELA: Forza l'app a scaricare l'Excel fresco da internet distruggendo la vecchia cache!
-                if "carica_database_locale" in locals() or "carica_database_locale" in globals():
-                    st.session_state.storico_cloud = carica_database_locale()
-                else:
-                    df_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-                    st.session_state.storico_cloud = df_fresco.to_dict('records')
-                
-                # Se il file scaricato è finalmente pulito, azzera la spia e sblocca lo schermo!
-                if not any(str(r.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for r in st.session_state.storico_cloud):
-                    st.session_state.sincronizzazione_in_corso_globale = False
-                    st.success("✅ Database aggiornato! Plancia sbloccata con successo.")
-                    time.sleep(1)
-            except Exception:
-                pass
-            st.rerun()
-        st.stop() # 💥 BLOCCO FISSO IMMOBILE
+        # Forza un rinfresco automatico e silenzioso ogni 5 secondi per far calare il timer
+        t_sys.sleep(5)
+        st.rerun()
+        st.stop() # 💥 BLOCCO FISSO DURANTE I 2 MINUTI
+    else:
+        # Scaduti i 2 minuti, distrugge il lucchetto e sblocca la pagina per tutti
+        st.session_state.ora_blocco_sincro = None
+        # Forza il rinfresco finale per scaricare l'Excel pulito dal server online
+        if "carica_database_locale" in locals() or "carica_database_locale" in globals():
+            st.session_state.storico_cloud = carica_database_locale()
+        st.success("✅ Sincronizzazione completata! Plancia sbloccata.")
+        t_sys.sleep(1)
+        st.rerun()
 # =====================================================================================
 
 
