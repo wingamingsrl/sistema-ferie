@@ -26,21 +26,34 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO GLOBALE LATO ADMIN ED UFFICIO
+# 🛡️ BARRIERA AZIENDALE DI MANUELA: CONGELAMENTO CON SCARICAMENTO FORZATO DELLA CACHE
 # =====================================================================================
 if "storico_cloud" in st.session_state and st.session_state.storico_cloud:
-    # Scansiona direttamente le righe caricate in memoria a schermo nello smartphone
     if any(str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for row in st.session_state.storico_cloud):
         st.error("🚨 BLOCCO DI SICUREZZA AZIENDALE: Ci sono processi pendenti in coda!")
-        st.info("⏳ Per evitare la perdita o la sovrascrittura dei dati storici dell’ufficio, la plancia ADMIN è temporaneamente CONGELATA. Il robot deve allineare i portali. Premi il pulsante blu dallo smartphone dei tecnici per avviare il giro ed eliminare le pratiche in attesa. Lo schermo tornerà disponibile da solo.")
+        st.info("⏳ La plancia è temporaneamente congelata per evitare sovrascritture. Se il robot ha terminato la corsa su GitHub Actions, premi il pulsante qui sotto per forzare l'aggiornamento dello schermo.")
         st.spinner("Allineamento database e rilascio lucchetti in corso...")
         
-        # Genera il tastone fisso, leggero e riposante anti-flash per l'ufficio
+        # Il tastone leggero e riposante anti-flash per sbloccare lo schermo
         if st.button("🔄 VERIFICA STATO AGGIORNAMENTI E SBLOCCA PLANCIA"):
+            try:
+                # 🔑 LA CHIAVE DI MANUELA: Forza l'app a scaricare l'Excel fresco da internet distruggendo la vecchia cache!
+                if "carica_database_locale" in locals() or "carica_database_locale" in globals():
+                    st.session_state.storico_cloud = carica_database_locale()
+                else:
+                    df_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+                    st.session_state.storico_cloud = df_fresco.to_dict('records')
+                
+                # Se il file scaricato è finalmente pulito, azzera la spia e sblocca lo schermo!
+                if not any(str(r.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for r in st.session_state.storico_cloud):
+                    st.session_state.sincronizzazione_in_corso_globale = False
+                    st.success("✅ Database aggiornato! Plancia sbloccata con successo.")
+                    time.sleep(1)
+            except Exception:
+                pass
             st.rerun()
-        st.stop() # 💥 BLOCCO FISSO IMMOBILE LATO ADMIN
+        st.stop() # 💥 BLOCCO FISSO IMMOBILE
 # =====================================================================================
-
 
 
 st.markdown("""
