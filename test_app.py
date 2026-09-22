@@ -26,35 +26,36 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA DI SICUREZZA DI MANUELA: CONGELAMENTO GENERALE AUTOMATICO ANTI-SOVRAZZONA
+# 🛡️ BARRIERA DI SICUREZZA DI MANUELA: CONGELAMENTO GENERALE ASSOLUTO (SENZA FLASH)
 # =====================================================================================
 import time as t_sys
 
-# Controlla se la RAM indica che questa specifica sessione ha avviato il robot
-if st.session_state.get("sincronizzazione_in_corso_globale", False):
-    # Genera un rinfresco automatico invisibile ogni 5 secondi per controllare lo stato del server
-    if "timer_auto" not in st.session_state:
-        st.session_state.timer_auto = 0
-    
-    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
-    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO in automatico tra pochi secondi al termine dell'operazione. Non toccare nulla.")
-    
-    # Controlla se il database permanente ha finito di ripulirsi per decretare la fine del giro
-    try:
-        df_verifica = pd.read_excel("storico_ferie.xlsx").fillna("")
-        # Se non ci sono più locali in attesa di essere elaborati dal robot, significa che ha finito!
-        if df_verifica.empty or not any(str(a).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for a in df_verifica["ROBOT_ACTION"]):
-            st.session_state.sincronizzazione_in_corso_globale = False
-            st.success("✅ Sincronizzazione completata con successo! Sblocco in corso...")
-            t_sys.sleep(1)
-            st.rerun()
-    except Exception:
-        pass
+# Crea un frammento isolato che controlla il server in background senza far sfarfallare la grafica
+@st.fragment(run_every=4)
+def controllo_sicurezza_background_manuela():
+    if st.session_state.get("sincronizzazione_in_corso_globale", False):
+        try:
+            df_verifica = pd.read_excel("storico_ferie.xlsx").fillna("")
+            # Se non ci sono più locali con processi pendenti, spegne la barriera!
+            if df_verifica.empty or not any(str(a).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for a in df_verifica["ROBOT_ACTION"]):
+                st.session_state.sincronizzazione_in_corso_globale = False
+                st.success("✅ Sincronizzazione completata con successo! Sblocco in corso...")
+                t_sys.sleep(1)
+                st.rerun()
+        except Exception:
+            pass
 
-    # Forza la pagina a ricaricarsi da sola ogni 4 secondi per controllare se il robot ha finito
-    t_sys.sleep(4)
-    st.rerun()
+# Attiva il controllo silenziato in background
+controllo_sicurezza_background_manuela()
+
+# Se la spia è accesa, mostra il cartello di blocco fisso e solido come una roccia
+if st.session_state.get("sincronizzazione_in_corso_globale", False):
+    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
+    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO al termine del giro. Non toccare nulla.")
+    st.spinner("Allineamento database online in corso...")
+    st.stop() # 💥 BLOCCO FISSO: Nasconde i moduli impedendo qualsiasi modifica
 # =====================================================================================
+
 
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
