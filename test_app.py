@@ -751,55 +751,55 @@ else:
 # =====================================================================================
 
 
-    # =====================================================================================
-    # INTERFACCIA DI LOGOUT E PULSANTE BLU MANUELA (AGGANCCIO UNIVERSALE AMMINISTRATORE)
-    # =====================================================================================
-    st.markdown("---")
-    utente_chiaro_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
-    
-    # 🛡️ PRIVILEGIO ADMIN DI MANUELA: Se l'utente è l'ufficio, apre il pannello completo!
-    if "MANUELA" in utente_chiaro_maiuscolo or "ADMIN" in utente_chiaro_maiuscolo or "UFFICIO" in utente_chiaro_maiuscolo:
-        st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
-        st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
-    
-        if robot_sta_girando_ora:
-            st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
-            st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
-            import time as t_sys
-            t_sys.sleep(5)
-            st.rerun()
-        else:
-            # Il tuo pulsante originale intatto riga per riga
-            if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="btn_sincro_admin_definitivo"):
-                with st.spinner("Blindatura database aziendale e avvio server..."):
-                    try:
-                        for riga_ram in st.session_state.storico_cloud:
-                            if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
-                                riga_ram["STATO_INVIO"] = "In elaborazione"
-                        
-                        df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
-                        df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                        push_excel_su_github(df_spingi_lock)
-                        
-                        esegui_sincronizzazione_robot_snai()
-                        time.sleep(2)
-                    except Exception:
-                        pass
-                st.rerun()
-                
-            # Il tasto disconnetti dell'Admin a sinistra sotto il blu
-            if st.button("🚪 DISCONNETTI", key="btn_logout_admin_definitivo"):
-                st.session_state.authenticated = False
-                st.session_state.user_nome = ""
-                st.rerun()
-    
+# =====================================================================================
+# INTERFACCIA DI LOGOUT E PULSANTE BLU MANUELA (AGGANCCIO UNIVERSALE AMMINISTRATORE)
+# =====================================================================================
+st.markdown("---")
+utente_chiaro_maiuscolo = str(st.session_state.get("user_nome", "")).strip().upper()
+
+# 🛡️ PRIVILEGIO ADMIN DI MANUELA: Se l'utente è l'ufficio, apre il pannello completo!
+if "MANUELA" in utente_chiaro_maiuscolo or "ADMIN" in utente_chiaro_maiuscolo or "UFFICIO" in utente_chiaro_maiuscolo:
+    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
+    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
+
+    if robot_sta_girando_ora:
+        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
+        st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
+        import time as t_sys
+        t_sys.sleep(5)
+        st.rerun()
     else:
-        # 📱 VISTA TECNICI STANDARD: Qualsiasi altro nome vede solo il tasto per uscire allineato a sinistra
-        if st.button("🚪 DISCONNETTI", key="btn_logout_tecnico_definitivo"):
+        # Il tuo pulsante originale intatto riga per riga
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="btn_sincro_admin_definitivo"):
+            with st.spinner("Blindatura database aziendale e avvio server..."):
+                try:
+                    for riga_ram in st.session_state.storico_cloud:
+                        if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
+                            riga_ram["STATO_INVIO"] = "In elaborazione"
+                    
+                    df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
+                    df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_spingi_lock)
+                    
+                    esegui_sincronizzazione_robot_snai()
+                    time.sleep(2)
+                except Exception:
+                    pass
+            st.rerun()
+            
+        # Il tasto disconnetti dell'Admin a sinistra sotto il blu
+        if st.button("🚪 DISCONNETTI", key="btn_logout_admin_definitivo"):
             st.session_state.authenticated = False
             st.session_state.user_nome = ""
             st.rerun()
-        st.stop() # 💥 GHIGLIOTTINA: Impedisce ai tecnici di vedere il pulsante blu o i testi
+
+else:
+    # 📱 VISTA TECNICI STANDARD: Qualsiasi altro nome vede solo il tasto per uscire allineato a sinistra
+    if st.button("🚪 DISCONNETTI", key="btn_logout_tecnico_definitivo"):
+        st.session_state.authenticated = False
+        st.session_state.user_nome = ""
+        st.rerun()
+    st.stop() # 💥 GHIGLIOTTINA: Impedisce ai tecnici di vedere il pulsante blu o i testi
 
 
     # =====================================================================================
