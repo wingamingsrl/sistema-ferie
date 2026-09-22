@@ -26,16 +26,20 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA ANTISOPRAVVOSCRIZIONE DI MANUELA: BLOCCA LO SCHERMO SE IL ROBOT STA GIRANDO
+# 🛡️ BARRIERA ANTISOPRAVVOSCRIZIONE DI MANUELA: SCANSIONE LOCK FILE CENTRALIZZATA
 # =====================================================================================
-if st.session_state.get("congelamento_sincro_attivo", False):
-    st.error("🚨 ATTENZIONE: Sincronizzazione forzata in corso su GitHub!")
-    st.info("⏳ Per evitare la perdita di dati, la plancia è temporaneamente CONGELATA. Attendi circa 2 minuti che il robot completi gli aggiornamenti e poi rinfresca la pagina.")
-    st.spinner("Allineamento database online in corso...")
-    if st.button("🔄 VERIFICA SE IL ROBOT HA FINITO (RINFRESCA)"):
-        st.session_state.congelamento_sincro_attivo = False
-        st.rerun()
-    st.stop() # 💥 GHIGLIOTTINA: Blocca lo smartphone qui se il processo è attivo!
+try:
+    df_controllo_lock = pd.read_excel("storico_ferie.xlsx").fillna("")
+    # Se il file cloud ha anche una sola riga in stato "In attesa" o "ELIMINA" significa che il robot sta macinando i dati online!
+    if not df_controllo_lock.empty and any(str(act).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for act in df_controllo_lock["ROBOT_ACTION"]):
+        st.error("🚨 ATTENZIONE: Sincronizzazione forzata o elaborazione in corso su GitHub!")
+        st.info("⏳ Per evitare la perdita di dati, la plancia aziendale è temporaneamente CONGELATA. Il robot sta aggiornando i portali. Attendi circa 2 minuti e poi rinfresca la pagina.")
+        st.spinner("Allineamento database online in corso...")
+        if st.button("🔄 VERIFICA SE IL ROBOT HA FINITO (RINFRESCA)"):
+            st.rerun()
+        st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente a QUALSIASI smartphone di procedere!
+except Exception:
+    pass
 # =====================================================================================
 
 st.markdown("""
