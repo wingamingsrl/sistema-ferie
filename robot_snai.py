@@ -645,7 +645,6 @@ def avvia_sincronizzazione_automatica():
 # =====================================================================================
 if __name__ == "__main__":
     # 📧 1. PRIMA DI TUTTO: Fa partire la scansione globale per inviare le e-mail dei 3 giorni prima!
-    # Spostato qui in cima così se Snaitech va in timeout, i promemoria interni sono già stati consegnati!
     print("📧 [Email Engine] Avvio scansione globale dello storico per l'invio dei promemoria automatici...")
     try:
         df_completo_promemoria = preleva_storico_diretto_da_cloud()
@@ -688,10 +687,9 @@ if __name__ == "__main__":
                         
         print("✅ [Email Engine] Scansione promemoria storici completata con successo!")
     except Exception as e_cron:
-        print(f"   ❌ Errore durante la scansione dei promemoria automatici: {str(e_cron)}")
+        print(f"   ❌ Errore Visualizzazione: {str(e_cron)}")
 
     print("\n----------------------------------------------------------------------")
     # 🌐 2. SUBITO DOPO: Attiva il motore principale per l'allineamento Snaitech ed NTS sui portali
-if __name__ == "__main__":
     avvia_sincronizzazione_automatica()
 
