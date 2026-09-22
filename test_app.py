@@ -722,17 +722,17 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             t_sys.sleep(1.5)
             st.rerun()
         else:
-            # Pulsante originale pulito, leggero e sempre pronto all'uso
-            if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-                st.session_state.sincro_attiva_visiva = True
-                with st.spinner("Inizializzazione server GitHub..."):
-                    try:
-                        esegui_sincronizzazione_robot_snai()
-                        t_sys.sleep(2)
-                    except Exception:
-                        pass
-                st.rerun()
-        
+        # Pulsante originale pulito, leggero e sempre pronto all'uso
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+            st.session_state.sincro_attiva_visiva = True
+            with st.spinner("Inizializzazione server GitHub..."):
+                try:
+                    esegui_sincronizzazione_robot_snai()
+                    t_sys.sleep(2)
+                except Exception:
+                    pass
+            st.rerun()
+    
         # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
         if os.path.exists(FILE_STORICO_PERMANENTE):
             # Rilegge il file fisico aggiornato dallo spazzino del robot
