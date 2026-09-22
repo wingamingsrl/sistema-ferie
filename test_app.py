@@ -738,27 +738,40 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
             st.rerun()
 
 
-    # =====================================================================================
-    # 🛡️ TABELLONE VISIVO DI MANUELA: MOSTRA SOLO LE PRATICHE DELL'UTENTE CONNESSO
-    # =====================================================================================
-    st.markdown("---")
+# =====================================================================================
+# 🛡️ TABELLONE VISIVO DI MANUELA: PRIVILEGI ADMIN (VEDE TUTTO) / TECNICI (VEDONO SOLO LE LORO)
+# =====================================================================================
+st.markdown("---")
+if str(st.session_state.user_nome).strip().upper() in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+    st.markdown("### 📊 [VISTA ADMIN] Tutte le chiusure della flotta in attesa")
+    # L'Admin vede TUTTI i locali in coda indipendentemente da chi li ha inseriti
+    righe_lavorazione_generiche = [
+        row for row in st.session_state.storico_cloud 
+        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+    ] if st.session_state.storico_cloud else []
+else:
     st.markdown("### 📊 Le tue chiusure in attesa di allineamento")
-    
-    # Filtra la RAM mostrando solo le scadenze del tecnico che ha effettuato l'accesso
+    # Il tecnico vede SOLO ed ESCLUSIVAMENTE i locali inseriti col suo nome
     righe_lavorazione_generiche = [
         row for row in st.session_state.storico_cloud 
         if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
         and str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == str(st.session_state.user_nome).strip().upper()
     ] if st.session_state.storico_cloud else []
-    
-    if righe_lavorazione_generiche:
-        df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
-        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
-        df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
-        st.dataframe(df_visibile_pulito, hide_index=True)
+
+if righe_lavorazione_generiche:
+    df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
+    # Per l'Admin aggiungiamo anche la colonna visiva del Tecnico per sapere chi ha fatto l'inserimento
+    if str(st.session_state.user_nome).strip().upper() in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
     else:
-        st.success(f"✅ Nessuna tua pratica in coda, {st.session_state.user_nome}. Tutto allineato!")
-    # =====================================================================================
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
+        
+    df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
+    st.dataframe(df_visibile_pulito, hide_index=True)
+else:
+    st.success(f"✅ Nessuna pratica in coda per la tua visualizzazione, {st.session_state.user_nome}!")
+# =====================================================================================
+
 
 
     # =====================================================================================
