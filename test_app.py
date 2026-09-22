@@ -727,6 +727,8 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
     if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU PORTALI / EMAIL"):
+        st.session_state.sincronizzazione_in_corso_globale = True
+        st.rerun()
         with st.spinner("Robot in azione sui sistemi dei Concessionari... Non chiudere la pagina..."):
             esegui_sincronizzazione_robot_snai()
             
