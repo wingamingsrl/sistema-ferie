@@ -883,20 +883,6 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
             st.rerun()
     except Exception as e_del: 
         st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
-
-# =====================================================================================
-# INTERFACCIA DI LOGOUT E PULSANTE BLU MANUALE (RIALLINEATO A FILO MARGINE)
-# =====================================================================================
-st.markdown("---")
-if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-    st.session_state.sincro_attiva_visiva = True
-    try:
-        esegui_sincronizzazione_robot_snai()
-        time.sleep(2)
-    except Exception: 
-        pass
-    st.rerun()
-
         
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
