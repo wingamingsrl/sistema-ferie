@@ -26,35 +26,27 @@ st.set_page_config(
 )
 
 # =====================================================================================
-# 🛡️ BARRIERA DI SICUREZZA DI MANUELA: CONGELAMENTO GENERALE ASSOLUTO (SENZA FLASH)
+# 🛡️ BARRIERA POST-LANCIO DI MANUELA: CONGELA DOPO CHE IL ROBOT È PARTITO REALMENTE
 # =====================================================================================
-import time as t_sys
-
-# Crea un frammento isolato che controlla il server in background senza far sfarfallare la grafica
-@st.fragment(run_every=4)
-def controllo_sicurezza_background_manuela():
-    if st.session_state.get("sincronizzazione_in_corso_globale", False):
-        try:
-            df_verifica = pd.read_excel("storico_ferie.xlsx").fillna("")
-            # Se non ci sono più locali con processi pendenti, spegne la barriera!
-            if df_verifica.empty or not any(str(a).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for a in df_verifica["ROBOT_ACTION"]):
-                st.session_state.sincronizzazione_in_corso_globale = False
-                st.success("✅ Sincronizzazione completata con successo! Sblocco in corso...")
-                t_sys.sleep(1)
-                st.rerun()
-        except Exception:
-            pass
-
-# Attiva il controllo silenziato in background
-controllo_sicurezza_background_manuela()
-
-# Se la spia è accesa, mostra il cartello di blocco fisso e solido come una roccia
 if st.session_state.get("sincronizzazione_in_corso_globale", False):
-    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot sta allineando i portali di Snaitech ed NTS...")
-    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Lo schermo si sbloccherà DA SOLO al termine del giro. Non toccare nulla.")
-    st.spinner("Allineamento database online in corso...")
-    st.stop() # 💥 BLOCCO FISSO: Nasconde i moduli impedendo qualsiasi modifica
+    st.error("🚨 SINCRO FORZATA IN CORSO: Il robot è partito con successo ed è visibile su GitHub Actions!")
+    st.info("⏳ L'applicazione è temporaneamente protetta per evitare sovrascritture. Attendi circa 2 minuti che il robot completi gli aggiornamenti. La pagina si sbloccherà da sola.")
+    
+    import time as t_sys
+    try:
+        df_verifica = pd.read_excel("storico_ferie.xlsx").fillna("")
+        if df_verifica.empty or not any(str(a).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"] for a in df_verifica["ROBOT_ACTION"]):
+            st.session_state.sincronizzazione_in_corso_globale = False
+            st.success("✅ Sincronizzazione completata! Sblocco in corso...")
+            t_sys.sleep(1)
+            st.rerun()
+    except Exception:
+        pass
+        
+    t_sys.sleep(5)
+    st.rerun()
 # =====================================================================================
+
 
 
 st.markdown("""
@@ -728,15 +720,21 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
     
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU PORTALI / EMAIL"):
-        st.session_state.sincronizzazione_in_corso_globale = True
-        st.rerun()
-        with st.spinner("Robot in azione sui sistemi dei Concessionari... Non chiudere la pagina..."):
-            esegui_sincronizzazione_robot_snai()
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+            # 🛡️ ARCHITETTURA DI MANUELA: Lancia PRIMA il comando a GitHub Actions per farlo apparire nella lista!
+            with st.spinner("Inizializzazione server GitHub in corso..."):
+                try:
+                    esegui_sincronizzazione_robot_snai()
+                    # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
+                    time.sleep(5)
+                except Exception:
+                    pass
             
-            # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
-            time.sleep(5)
-            
+            # 🔥 ORA CHE IL ROBOT È PARTITO DAVVERO: Accende la barriera e congela lo schermo di sicurezza!
+            st.session_state.sincronizzazione_in_corso_globale = True
+            st.rerun()
+
+           
             # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
             if os.path.exists(FILE_STORICO_PERMANENTE):
                 # Rilegge il file fisico aggiornato dallo spazzino del robot
