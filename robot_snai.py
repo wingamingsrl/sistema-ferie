@@ -669,16 +669,30 @@ if __name__ == "__main__":
                     giorni_alla_chiusura = (data_in_doc - oggi_server).days
                     giorni_alla_riapertura = (data_fi_doc - oggi_server).days
                     
-                    tecnico_titolare = row.get("TECNICO_INSERIMENTO", "Non specificato")
-                    collega_condiviso = row.get("PROMEMORIA_IN_COPIA", "Nessuno")
+                    tecnico_titolare = str(row.get("TECNICO_INSERIMENTO", "")).strip().upper()
+                    collega_condiviso = str(row.get("PROMEMORIA_IN_COPIA", "")).strip().upper()
                     
                     data_inizio_stampa = data_in_doc.strftime("%d/%m/%Y")
                     data_fine_stampa = data_fi_doc.strftime("%d/%m/%Y")
                     
+                    # 📧 INVIO CHIUSURA (TRA 3 GIORNI)
                     if giorni_alla_chiusura == 3:
-                        spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                        # 1. Tu (Admin) ricevi SEMPRE la notifica per qualsiasi locale di chiunque!
+                        spedisci_email_avviso_ufficio(EMAIL_MANUELA_RICEVENTE, tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                        
+                        # 2. Il tecnico riceve l'avviso in copia SOLO se il locale è suo (e non sei tu l'inseritore)
+                        if tecnico_titolare != "MANUELA ARIGONI" and tecnico_titolare != "":
+                            spedisci_email_avviso_ufficio("tecnico@wingaming.it", tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_inizio_stampa, "CHIUSURA LOCALE (TRA 3 GIORNI)")
+                    
+                    # 📧 INVIO RIAPERTURA (TRA 3 GIORNI)
                     if giorni_alla_riapertura == 3:
-                        spedisci_email_avviso_ufficio(tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                        # 1. Tu (Admin) ricevi SEMPRE la notifica per qualsiasi locale di chiunque!
+                        spedisci_email_avviso_ufficio(EMAIL_MANUELA_RICEVENTE, tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                        
+                        # 2. Il tecnico riceve l'avviso in copia SOLO se il locale è suo (e non sei tu l'inseritore)
+                        if tecnico_titolare != "MANUELA ARIGONI" and tecnico_titolare != "":
+                            spedisci_email_avviso_ufficio("tecnico@wingaming.it", tecnico_titolare, collega_condiviso, nome_locale_corrente, codice_aams, data_fine_stampa, "RIAPERTURA LOCALE (TRA 3 GIORNI)")
+                            
                 except Exception as e_data:
                     pass
                         
@@ -689,5 +703,6 @@ if __name__ == "__main__":
     print("\n----------------------------------------------------------------------")
     # 🌐 2. SUBITO DOPO: Attiva il motore principale per l'allineamento Snaitech ed NTS sui portali
     avvia_sincronizzazione_automatica()
+
 
 
