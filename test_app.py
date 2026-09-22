@@ -776,24 +776,43 @@ else:
         t_sys.sleep(5)
         st.rerun()
     else:
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
-            with st.spinner("Blindatura database aziendale e avvio server..."):
-                try:
-                    # Marchia le righe in coda come "In elaborazione" per accendere la spia sui telefoni dei tecnici
-                    for riga_ram in st.session_state.storico_cloud:
-                        if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
-                            riga_ram["STATO_INVIO"] = "In elaborazione"
-                    
-                    df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
-                    df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    push_excel_su_github(df_spingi_lock) # Spinge il lucchetto online
-                    
-                    # Lancia il robot dei ragazzi
-                    esegui_sincronizzazione_robot_snai()
-                    time.sleep(2)
-                except Exception:
-                    pass
-            st.rerun()
+    # 🛡️ PRIVILEGIO ADMIN DI MANUELA: Mostra il pulsante blu SOLO se l'utente è un supervisore
+    if utente_finale_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"]:
+        col_b1, col_b2 = st.columns([1, 2]) # Assegna pesi alle colonne per spingere il logout a sinistra vicino al blu
+        with col_b1:
+            if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA"):
+                with st.spinner("Blindatura database aziendale e avvio server..."):
+                    try:
+                        # Marchia le righe in coda come "In elaborazione" per accendere la spia sui telefoni dei tecnici
+                        for riga_ram in st.session_state.storico_cloud:
+                            if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
+                                riga_ram["STATO_INVIO"] = "In elaborazione"
+                        
+                        df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
+                        df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                        push_excel_su_github(df_spingi_lock) # Spinge il lucchetto online
+                        
+                        # Lancia il robot dei ragazzi
+                        esegui_sincronizzazione_robot_snai()
+                        time.sleep(2)
+                    except Exception:
+                        pass
+                st.rerun()
+                
+        with col_b2:
+            # Il tasto logout si posiziona subito di fianco a sinistra
+            if st.button("🚪 ESCI / LOGOUT SICURO"):
+                st.session_state.authenticated = False
+                st.session_state.user_nome = ""
+                st.rerun()
+    else:
+        # 📱 VISTA TECNICI: Il pulsante blu scompare del tutto e il Logout occupa elegantemente la sinistra dello schermo
+        col_tech_blocco = st.columns([1, 2])[0]
+        with col_tech_blocco:
+            if st.button("🚪 ESCI / LOGOUT SICURO"):
+                st.session_state.authenticated = False
+                st.session_state.user_nome = ""
+                st.rerun()
 
 
 # =====================================================================================
