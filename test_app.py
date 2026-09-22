@@ -722,15 +722,18 @@ st.markdown("---")
 email_loggata_pulita = str(st.session_state.get("user_email", "")).strip().lower()
 utente_loggato_maiuscolo = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
 
+# 🛡️ PARACADUTE DI SICUREZZA DI MANUELA: Previene il NameError in caso di logout azzerando la coda
+righe_giri_logistici = []
+
 if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
     st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
     righe_giri_logistici = st.session_state.get("storico_cloud", []) if st.session_state.get("storico_cloud", []) else []
 else:
-    st.markdown("### 📊 I tuoi Promemoria Giri Logistici")
-    righe_giri_logistici = [
-        row for row in st.session_state.get("storico_cloud", []) 
-        if str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
-    ] if st.session_state.get("storico_cloud", []) else []
+    if st.session_state.get("storico_cloud", []):
+        righe_giri_logistici = [
+            row for row in st.session_state.get("storico_cloud", []) 
+            if str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
+        ]
 
 if righe_giri_logistici:
     df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
@@ -742,6 +745,7 @@ if righe_giri_logistici:
     st.dataframe(df_visibile_giri_pulito, hide_index=True)
 else:
     st.success(f"✅ Nessun promemoria giro logistico registrato a sistema, {utente_loggato_maiuscolo}.")
+
 # =====================================================================================
 # BLOCCO 10: PANNELLO CANCELLAZIONE - SELEZIONE E RIMOZIONE RIGHE
 # =====================================================================================
