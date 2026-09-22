@@ -481,7 +481,7 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
     # Se il robot sta girando, il bottone diventa grigio e non cliccabile automaticamente in tutto il mondo
-    submit_button = st.form_submit_button("💾 INVIA CHIUSURA TEMPORANEA", disabled=robot_in_marcia)
+    submit_button = st.form_submit_button("💾 INVIA CHIUSURA TEMPORANEA")
 
 
 # =====================================================================================
