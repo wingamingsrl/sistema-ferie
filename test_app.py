@@ -791,12 +791,12 @@ if "MANUELA" in utente_chiaro_maiuscolo or "ADMIN" in utente_chiaro_maiuscolo or
                 st.session_state.clear() # 🧹 AZZERA LA RAM: Sblocca il click all'istante!
                 st.rerun()
 
-    else:
-        # 📱 VISTA TECNICI STANDARD: Qualsiasi altro nome vede solo il tasto per uscire allineato a sinistra
-        if st.button("🚪 DISCONNETTI", key="palo_logout_tecnico_unico"):
-            st.session_state.clear() # 🧹 AZZERA LA RAM: Sblocca il click all'istante!
-            st.rerun()
-        st.stop() # 💥 GHIGLIOTTINA: Impedisce ai tecnici di vedere il pulsante blu o i testi
+else:
+    # 📱 VISTA TECNICI STANDARD: Qualsiasi altro nome vede solo il tasto per uscire allineato a sinistra
+    if st.button("🚪 DISCONNETTI", key="palo_logout_tecnico_unico"):
+        st.session_state.clear() # 🧹 AZZERA LA RAM: Sblocca il click all'istante!
+        st.rerun()
+    st.stop() # 💥 GHIGLIOTTINA: Impedisce ai tecnici di vedere il pulsante blu o i testi
 
 
 
