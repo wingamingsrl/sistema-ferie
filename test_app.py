@@ -845,7 +845,7 @@ if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "uffi
         except Exception as e_load: 
             st.error(f"❌ Errore lettura: {str(e_load)}")
 # =====================================================================================
-# BLOCCO 11: PRIVILEGI ADMIN CON REFRESH REALE DI PAGINA (F5 AUTOMATICO)
+# BLOCCO 11: PRIVILEGI ADMIN CON REFRESH REALE DI PAGINA (F5 INESPLICABILE DA URL)
 # =====================================================================================
 st.markdown("---")
 email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
@@ -873,19 +873,16 @@ if is_amministrazione:
             # Scarica il file fresco direttamente dal cloud per verificare lo stato
             df_controllo_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
             
-            # Se il robot ha finito ed ha eseguito lo spazzino, aziona il refresh duro!
+            # Se il robot ha finito ed ha eseguito lo spazzino, innesca l'F5 nativo forzato!
             if not any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_controllo_fresco.iterrows()):
                 st.session_state.storico_cloud = df_controllo_fresco.to_dict('records')
-                st.success("✅ Sincronizzazione conclusa! Eseguo il rinfresco totale (F5)...")
+                st.success("✅ Sincronizzazione conclusa! Ricarico la pagina...")
                 t_sys.sleep(1.5)
                 
-                # 💥 IL RIGENERATORE DI MANUELA: Inietta il comando JavaScript per costringere il browser a fare F5 duro!
-                st.components.v1.html("""
-                    <script>
-                        window.top.location.reload();
-                    </script>
-                """, height=0, width=0)
-                st.stop()
+                # 💥 L'INNESCATORE NATIVO DI MANUELA: Modifica l'URL aggiungendo il marcatore del tempo corrente.
+                # Questo costringe il browser (PC e smartphone) a fare un F5 hardware totale azzerando la cache!
+                st.query_params["force_refresh"] = str(int(t_sys.time()))
+                st.rerun()
         except Exception:
             pass
         st.rerun() # Continua l'ascolto se il robot sta ancora girando
