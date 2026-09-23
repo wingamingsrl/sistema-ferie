@@ -845,7 +845,7 @@ if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "uffi
         except Exception as e_load: 
             st.error(f"❌ Errore lettura: {str(e_load)}")
 # =====================================================================================
-# BLOCCO 11: PRIVILEGI ADMIN CON REFRESH REALE DI PAGINA (F5 INESPLICABILE DA URL)
+# BLOCCO 11: PRIVILEGI ADMIN CON MESSAGGIO DI SUCCESSO E TASTO DI AGGIORNAMENTO
 # =====================================================================================
 st.markdown("---")
 email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
@@ -861,7 +861,7 @@ if is_amministrazione:
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
 
-    # 🔄 IL RADAR DI MANUELA: Se l'Excel online risulta 'In elaborazione', interroga GitHub ogni 6 secondi
+    # 🔄 IL RADAR DI MANUELA: Interroga GitHub in background ogni 6 secondi senza flash
     if robot_sta_girando_ora:
         st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... INTERROGO SERVER", disabled=True)
         st.warning("⏳ Il robot sta allineando i database online. I tasti si riaccenderanno DA SOLI non appena l'operazione sarà conclusa sui portali.")
@@ -873,16 +873,18 @@ if is_amministrazione:
             # Scarica il file fresco direttamente dal cloud per verificare lo stato
             df_controllo_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
             
-            # Se il robot ha finito ed ha eseguito lo spazzino, innesca l'F5 nativo forzato!
+            # Se il robot ha finito ed ha eseguito lo spazzino, mostra il messaggio di successo definitivo di Manuela!
             if not any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_controllo_fresco.iterrows()):
                 st.session_state.storico_cloud = df_controllo_fresco.to_dict('records')
-                st.success("✅ Sincronizzazione conclusa! Ricarico la pagina...")
-                t_sys.sleep(1.5)
                 
-                # 💥 L'INNESCATORE NATIVO DI MANUELA: Modifica l'URL aggiungendo il marcatore del tempo corrente.
-                # Questo costringe il browser (PC e smartphone) a fare un F5 hardware totale azzerando la cache!
-                st.query_params["force_refresh"] = str(int(t_sys.time()))
-                st.rerun()
+                # 📢 MESSAGGIO CHIARO A VIDEO RICHESTO DA MANUELA
+                st.success("✅ SINCRONIZZAZIONE AVVENUTA CON SUCCESSO!")
+                st.info("💡 Il robot ha completato tutte le operazioni. Clicca sul pulsante qui sotto per ricaricare la pagina ed aggiornare i tabelloni.")
+                
+                # Tasto di ricarica assistita che distrugge la cache e rinfresca lo schermo al clic del mouse
+                if st.button("🔄 RICARICA PAGINA / AGGIORNA", key="btn_refresh_assistito_manuela"):
+                    st.rerun()
+                st.stop()
         except Exception:
             pass
         st.rerun() # Continua l'ascolto se il robot sta ancora girando
