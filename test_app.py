@@ -845,78 +845,99 @@ if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "uffi
         except Exception as e_load: 
             st.error(f"❌ Errore lettura: {str(e_load)}")
 # =====================================================================================
-# BLOCCO 11: PRIVILEGI ADMIN CON MESSAGGIO DI SUCCESSO E TASTO DI AGGIORNAMENTO
+# BLOCCO 11: PRIVILEGI ADMIN CON RADAR ASSISTITO PASSO DOPO PASSO (STEP-BY-STEP)
 # =====================================================================================
 st.markdown("---")
 email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
 nome_finale_pulito = str(st.session_state.get("user_nome", "")).strip().upper()
 
-# Verifica se l'utente fa parte dell'amministrazione aziendale
+# 🧭 STEP 1: Verifica se l'utente fa parte dell'amministrazione (Admin/Ufficio)
 is_amministrazione = (
     "manuela" in email_finale_pulita or "admin" in email_finale_pulita or "ufficio" in email_finale_pulita or
     "MANUELA" in nome_finale_pulito or "ADMIN" in nome_finale_pulito or "UFFICIO" in nome_finale_pulito
 )
 
 if is_amministrazione:
+    print("🧭 [STEP 1] Utente Amministratore riconosciuto. Carico i comandi di sincronizzazione.")
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
 
-    # 🔄 IL RADAR DI MANUELA: Interroga GitHub in background ogni 6 secondi senza flash
+    # 🧭 STEP 2: Controllo di Sicurezza di Rete (Se il robot sta già girando online)
     if robot_sta_girando_ora:
+        print("🧭 [STEP 2] Il robot è attivo online. Accendo il radar di attesa.")
         st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... INTERROGO SERVER", disabled=True)
         st.warning("⏳ Il robot sta allineando i database online. I tasti si riaccenderanno DA SOLI non appena l'operazione sarà conclusa sui portali.")
         
+        # Mantiene lo schermo fermo senza flash per 6 secondi
         import time as t_sys
-        t_sys.sleep(6) # Pausa silente anti-flash
+        t_sys.sleep(6) 
         
+        # 🧭 STEP 3: Interrogazione del file Excel Cloud su GitHub
         try:
-            # Scarica il file fresco direttamente dal cloud per verificare lo stato
+            print("🧭 [STEP 3] Scarico l'Excel fresco dal cloud per vedere se il robot ha finito...")
             df_controllo_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
             
-            # Se il robot ha finito ed ha eseguito lo spazzino, mostra il messaggio di successo definitivo di Manuela!
-            if not any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_controllo_fresco.iterrows()):
+            # Verifica se ci sono ancora righe bloccate in stato "In elaborazione"
+            robot_ha_finito = not any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_controllo_fresco.iterrows())
+            
+            # 🧭 STEP 4: Il robot ha completato il giro e ha ripulito l'Excel online!
+            if robot_ha_finito:
+                print("🧭 [STEP 4] Ottimo! Il file online è pulito. Mostro il messaggio di successo a Manuela.")
                 st.session_state.storico_cloud = df_controllo_fresco.to_dict('records')
                 
-                # 📢 MESSAGGIO CHIARO A VIDEO RICHESTO DA MANUELA
+                # Spara a video i messaggi di conferma richiesti
                 st.success("✅ SINCRONIZZAZIONE AVVENUTA CON SUCCESSO!")
                 st.info("💡 Il robot ha completato tutte le operazioni. Clicca sul pulsante qui sotto per ricaricare la pagina ed aggiornare i tabelloni.")
                 
-                # Tasto di ricarica assistita che distrugge la cache e rinfresca lo schermo al clic del mouse
+                # Tasto manuale assistito che forza il refresh dello schermo azzerando la cache
                 if st.button("🔄 RICARICA PAGINA / AGGIORNA", key="btn_refresh_assistito_manuela"):
+                    print("🧭 [FINE CORSA] Manuela ha cliccato su Aggiorna. Rinfresco lo schermo.")
                     st.rerun()
                 st.stop()
-        except Exception:
-            pass
-        st.rerun() # Continua l'ascolto se il robot sta ancora girando
+                
+        except Exception as e_radar:
+            print(f"   ❌ Errore durante l'interrogazione del radar: {str(e_radar)}")
+            
+        st.rerun() # Forza Streamlit a rileggere il file online dall'alto
         
     else:
-        # Pulsante originale intatto dell'Admin pronto al lancio
+        # 🧭 STEP 5: Plancia Libera (Il pulsante blu è bianco, attivo e pronto al lancio)
+        print("🧭 [STEP 5] Nessun processo attivo di rete. Pulsante blu pronto per essere premuto.")
         if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_elastico_assoluto"):
+            print("🚀 [LANCIO] Cliccato Pulsante Blu! Avvio la procedura di blindatura...")
             with st.spinner("Blindatura database aziendale e avvio server..."):
                 try:
+                    # Marchia tutte le righe in coda impostando lo STATO_INVIO "In elaborazione"
                     for riga_ram in st.session_state.storico_cloud:
                         if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
                             riga_ram["STATO_INVIO"] = "In elaborazione"
+                            
                     df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
                     df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                    push_excel_su_github(df_spingi_lock)
+                    push_excel_su_github(df_spingi_lock) # Invia il lucchetto online
+                    print("   -> Lucchetto 'In elaborazione' caricato correttamente su GitHub.")
+                    
+                    # Innesca il server esterno delle GitHub Actions
                     esegui_sincronizzazione_robot_snai()
                     time.sleep(2)
-                except Exception: pass
+                except Exception as e_lancio:
+                    print(f"   ❌ Errore durante il lancio forzato: {str(e_lancio)}")
             st.rerun()
             
         # Il tasto disconnetti dell'Admin posizionato sotto il blu a sinistra
         if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_elastico_assoluto"):
+            print("🚪 Logout richiesto dall'Admin. Svuoto la sessione.")
             st.session_state.clear()
             if "st" in locals() and hasattr(st, "query_params"):
                 st.query_params.clear()
             st.rerun()
 
 else:
-    # 📱 VISTA TECNICI STANDARD: Se l'utente è un ragazzo, vede SOLO il logout ed esegue lo STOP!
+    # 📱 STEP UTENTI TECNICI STANDARD (Ghigliottina Automatica)
+    print(f"📱 [Tecnici] Rilevato utente con ruolo Standard: {nome_finale_pulito}. Oscuro la sincronizzazione.")
     if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_elastico_assoluto"):
         st.session_state.clear()
         if "st" in locals() and hasattr(st, "query_params"):
             st.query_params.clear()
         st.rerun()
-    st.stop() # 💥 GHIGLIOTTINA UTENTI
+    st.stop() # Trancia il codice per i ragazzi impedendogli di leggere il pulsante blu scritto sotto
