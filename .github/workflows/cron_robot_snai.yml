@@ -3,8 +3,8 @@ name: Sincronizzazione Automatica Ferie Snaitech WG
 on:
   workflow_dispatch:
   schedule:
-     #- cron: '0 4 * * *'
-     - cron: '15 10 * * *'
+     - cron: '0 3 * * *'
+     
      
 jobs:
   run-robot-snai:
