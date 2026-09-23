@@ -25,6 +25,23 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# =====================================================================================
+# 🛡️ BLOCCO DI RETE DI MANUELA: DISATTIVA I BOTTONI DI TUTTI I TECNICI SE IL ROBOT GIRA
+# =====================================================================================
+robot_sta_girando_ora = False
+try:
+    # Rilegge il file fisico presente sul server di GitHub per verificare i processi
+    df_lock_rete = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+    
+    # Condizione di sicurezza: Se nel cloud ci sono righe con lo STATO_INVIO impostato dal robot 
+    # o se la sincronizzazione forzata visiva è attiva sulla rete, blocca tutti i telefoni!
+    if not df_lock_rete.empty and any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_lock_rete.iterrows()):
+        robot_sta_girando_ora = True
+except Exception:
+    pass
+# =====================================================================================
+
+
 st.markdown("""
     <link rel="apple-touch-icon" sizes="180x190" href="logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
@@ -44,7 +61,8 @@ st.markdown("""
     .stMarkdown h3, label, p, [data-testid="stWidgetLabel"] p, .stSelectbox label { color: #1e293b !important; font-weight: 800 !important; font-size: 16px !important; opacity: 1 !important; }
     div[data-testid="stForm"] { background-color: #ffffff !important; border: 2px solid #94a3b8 !important; border-radius: 14px !important; padding: 25px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     input, div[data-baseweb="select"], div[data-baseweb="input"], select { background-color: #ffffff !important; color: #0f172a !important; border: 2px solid #64748b !important; border-radius: 8px !important; font-weight: 700 !important; }
-    .stButton>button { background: linear-gradient(135deg, #0f766e 0%, #115e59 100%) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 17px !important; width: 100%; border-radius: 10px !important; height: 54px !important; border: none !important; box-shadow: 0 4px 14px rgba(17, 94, 89, 0.3); }
+    .stButton>button { background-color: #f1f5f9 !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important; font-weight: 600 !important; font-size: 15px !important; width: 100%; border-radius: 8px !important; height: 42px !important; box-shadow: none !important; transition: all 0.2s ease; }
+    .stButton>button:hover { background-color: #e2e8f0 !important; border-color: #94a3b8 !important; color: #020617 !important; }
     .user-badge { background-color: #ffffff; padding: 14px; border-radius: 10px; border: 2px solid #115e59; margin-bottom: 30px; text-align: center; color: #115e59 !important; font-weight: 800; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
@@ -314,8 +332,11 @@ if "token_sessione" in st.query_params:
             ut = df_tecnici[df_tecnici["EMAIL"].astype(str).str.lower().str.strip() == email_t]
             if not ut.empty:
                 st.session_state.user_nome = str(ut["NOME"].values[0]).replace("[","").replace("]","").replace("'","").strip()
+                # 🛡️ LA SERRATURA DI MANUELA: Estrae il ruolo corretto rimuovendo la parentesi di troppo!
+                st.session_state.user_ruolo = str(ut["RUOLO"].values[0]).strip().upper()
         except Exception:
             pass
+
 
 if not st.session_state.autenticato:
     st.markdown("<h1>🛡️ ACCESSO AREA TECNICI</h1>", unsafe_allow_html=True)
@@ -330,7 +351,12 @@ if not st.session_state.autenticato:
             if not utente_trovato.empty:
                 st.session_state.user_nome = str(utente_trovato.iloc[0]["NOME"]).strip()
                 st.session_state.user_email = str(utente_trovato.iloc[0]["EMAIL"]).strip()
+                
+                # 🛡️ LA CHIAVE DI MANUELA: Salva il ruolo reale della colonna dell'Excel dei tecnici!
+                st.session_state.user_ruolo = str(utente_trovato.iloc[0]["RUOLO"]).strip().upper()
+                
                 st.session_state.autenticato = True
+
                 # 🛡️ ALLINEAMENTO LIVE DI MANUELA: Scrive il token nell'URL della barra internet per mantenere la sessione 2 ore
                 st.query_params["token_sessione"] = f"{st.session_state.user_email}_attivo"
 
@@ -376,9 +402,9 @@ if not st.session_state.autenticato:
                 st.error("❌ Credenziali errate. Riprova.")
     st.stop()
 
+esecutore_nome = st.session_state.get("user_nome", "UFFICIO")
+esecutore_email = st.session_state.get("user_email", "manuela.arigoni@wingaming.it")
 
-esecutore_nome = st.session_state.user_nome
-esecutore_email = st.session_state.user_email
 
 st.markdown("<h1>🧳 PORTALE FERIE ESERCENTI</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='user-badge'>👤 {esecutore_nome} ({esecutore_email})</div>", unsafe_allow_html=True)
@@ -427,25 +453,27 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     co_destinatario = st.selectbox("Invia copia promemoria a:", ["Nessun collega"] + elenco_c)
     
     st.markdown("---")
-    locali_raggruppati = {}
-    mappa_concessionari = {}
-    for _, r in df_locali.iterrows():
-        cod_loc = str(r['CODICE_LOCALE']).strip()
-        nome_loc = str(r['NOME_LOCALE']).strip()
-        conc_loc = str(r['CONCESSIONARIO']).strip()
-        chiave_chiave = f"{cod_loc} - {nome_loc}"
-        if chiave_chiave not in locali_raggruppati:
-            locali_raggruppati[chiave_chiave] = []
-        if conc_loc and conc_loc not in locali_raggruppati[chiave_chiave]:
-            locali_raggruppati[chiave_chiave].append(conc_loc)
-
+    # =====================================================================================
+    # 🛡️ ARCHITETTURA DI MANUELA: MENÙ A TENDINA NATIVO SCOMPATTATO RIGA PER RIGA DA EXCEL
+    # =====================================================================================
     lista_pvd = ["- Selezionare il Locale -"]
-    for etichetta, lista_conc in locali_raggruppati.items():
-        concessionari_uniti = ", ".join(lista_conc)
-        mappa_concessionari[etichetta] = concessionari_uniti
-        lista_pvd.append(f"{etichetta} ({concessionari_uniti})")
-        
+    mappa_concessionari = {}
+    
+    if not df_locali.empty:
+        for _, r in df_locali.iterrows():
+            cod_loc = str(r.get('CODICE_LOCALE', '')).strip()
+            nome_loc = str(r.get('NOME_LOCALE', '')).strip()
+            conc_loc = str(r.get('CONCESSIONARIO', '')).strip()
+            
+            # Genera la dicitura pulita e distinta per ogni singola riga dell'Excel aziendale
+            etichetta_singola = f"{cod_loc} - {nome_loc} ({conc_loc})"
+            lista_pvd.append(etichetta_singola)
+            
+            # Salva l'associazione esatta per recuperare il concessionario al volo al momento del clic
+            mappa_concessionari[etichetta_singola] = conc_loc
+
     scelta_pvd = st.selectbox("Seleziona o cerca locale:", lista_pvd, index=0)
+
     
     st.markdown("---")
     col1, col2 = st.columns(2)
@@ -477,10 +505,10 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     with col4: ora_riapertura = st.time_input("Ora Riapertura:", dtime(12, 0))
     
     forza_sovrascrittura = st.checkbox("⚠️ Spunta questa casella per confermare la modifica/sovrascrittura del periodo passato")
-    submit_button = st.form_submit_button("🚀 INVIA E REGISTRA CHIUSURA")
+    submit_button = st.form_submit_button("💾 INVIA CHIUSURA TEMPORANEA", disabled=robot_sta_girando_ora)
 
 # =====================================================================================
-# BLOCCO 6 - PARTE A: ELABORAZIONE INSERIMENTI E MOTORE EMAIL DINAMICO MODIFICHE
+# BLOCCO 6: ELABORAZIONE INSERIMENTI (VERSIONE PULITA - INIEZIONE SINGOLA)
 # =====================================================================================
 if submit_button:
     if scelta_pvd == "- Selezionare il Locale -":
@@ -495,7 +523,7 @@ if submit_button:
         data_inizio_nuova = datetime.combine(data_chiusura, ora_chiusura)
         data_fine_nuova = datetime.combine(data_riapertura, ora_riapertura)
         
-        for idx, row in enumerate(st.session_state.storico_cloud):
+        for idx, row in enumerate(st.session_state.get("storico_cloud", [])):
             if str(row.get("NOME_LOCALE", "")).strip() in testo_pvd or testo_pvd.strip() in str(row.get("NOME_LOCALE", "")):
                 try:
                     old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip(), "%d-%m-%Y %H:%M")
@@ -505,16 +533,9 @@ if submit_button:
                         dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
                         break
                 except Exception:
-                    try:
-                        old_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
-                        old_f = datetime.strptime(str(row.get("FINE_FERIE", "")).split(" ").strip(), "%d-%m-%Y")
-                        if (data_chiusura <= old_f.date()) and (data_riapertura >= old_i.date()):
-                            sovrapposizione_rilevata, riga_conflitto_idx = True, idx
-                            dettagli_conflitto = f"Dal {row.get('INIZIO_FERIE','')} al {row.get('FINE_FERIE','')}"
-                            break
-                    except Exception: continue
+                    pass
 
-        if './' in str(scelta_pvd) or '/' in str(scelta_pvd):
+        if './' in str(testo_pvd) or '/' in str(testo_pvd):
             st.error("Rilevato elemento non conforme nella stringa di testo.")
         elif sovrapposizione_rilevata and not forza_sovrascrittura:
             st.error(f"⚠️ ATTENZIONE: Questo locale risulta già inserito nel periodo richiesto!\n\n📌 **Periodo registrato:** {dettagli_conflitto}.\n\nSe si tratta di una modifica spunta la casella in fondo e reinvia.")
@@ -537,35 +558,49 @@ if submit_button:
             else:
                 nome_puro_locale = resto_s
                 concessionario_estratto = mappa_concessionari.get(testo_pvd, "")
-            # 🛡️ FIX DATA INSERIMENTO ALL'ITALIANA: Formato Giorno-Mese-Anno con secondi reali
+            
             data_inserimento_it = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
-            # 🛡️ AUTOMAZIONE DI MANUELA: Calcola l'azione esatta usando solo la variabile nativa dell'App
-            tipo_azione_snai = "MODIFICA" if forza_sovrascrittura else "NUOVA"
+            try:
+                df_filtro_anagrafica = df_locali[df_locali["CODICE_LOCALE"].astype(str).str.strip() == str(codice_estratto).strip()]
+                lista_concessionari_rilevati = df_filtro_anagrafica["CONCESSIONARIO"].astype(str).str.strip().unique().tolist()
+                lista_concessionari_rilevati = [c for c in lista_concessionari_rilevati if c and c != "nan"]
+            except Exception:
+                lista_concessionari_rilevati = []
 
-            nuova = {
-                "DATA_INSERIMENTO": str(data_inserimento_it),
-                "TECNICO_INSERIMENTO": str(esecutore_nome),
-                "CODICE_LOCALE": str(codice_estratto),
-                "NOME_LOCALE": str(nome_puro_locale),
-                "CONCESSIONARIO": str(concessionario_estratto),
-                "INIZIO_FERIE": str(str_c),
-                "FINE_FERIE": str(str_r),
-                "PROMEMORIA_IN_COPIA": str(co_destinatario),
-                "STATO_INVIO": "In attesa",
-                "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
-            }
+            if not lista_concessionari_rilevati:
+                lista_concessionari_rilevati = [str(concessionario_estratto).strip()] if concessionario_estratto else ["Snaitech Spa WG"]
 
+            lista_provider_puliti = []
+            for pvd in lista_concessionari_rilevati:
+                pvd_up = pvd.upper()
+                if "SNAI" in pvd_up: lista_provider_puliti.append("Snaitech Spa WG")
+                elif "NTS" in pvd_up: lista_provider_puliti.append("NTS Networks")
+                elif "SISAL" in pvd_up: lista_provider_puliti.append("Sisal")
+                elif "GLOBAL" in pvd_up: lista_provider_puliti.append("Global Starnet")
+                else: lista_provider_puliti.append(pvd)
 
-
-
-            
+            righe_sdoppiate_da_salvare = []
+            for provider_singolo in lista_provider_puliti:
+                riga_singola = {
+                    "DATA_INSERIMENTO": str(data_inserimento_it),
+                    "TECNICO_INSERIMENTO": str(esecutore_nome),
+                    "CODICE_LOCALE": str(codice_estratto),
+                    "NOME_LOCALE": str(nome_puro_locale),
+                    "CONCESSIONARIO": str(provider_singolo),
+                    "INIZIO_FERIE": str(str_c),
+                    "FINE_FERIE": str(str_r),
+                    "PROMEMORIA_IN_COPIA": str(co_destinatario),
+                    "STATO_INVIO": "In attesa",
+                    "ROBOT_ACTION": "MODIFICA" if forza_sovrascrittura else "NUOVA"
+                }
+                righe_sdoppiate_da_salvare.append(riga_singola)
+       
             lista_m = [EMAIL_MANUELA_RICEVENTE, esecutore_email]
             if co_destinatario != "Nessun collega" and " (" in str(co_destinatario):
                 try: lista_m.append(co_destinatario.split(" (")[-1].replace(")", "").strip())
                 except Exception: pass
             
-                      # --- SEZIONE SALVATAGGIO E INVIO EMAIL ALLINEATA AL MILLIMETRO ---
             titolo_azione = "Modifica Chiusura" if (sovrapposizione_rilevata and forza_sovrascrittura) else "Registrazione Chiusura"
             invio_ok = False
             risposta_server = "OK"
@@ -578,8 +613,8 @@ if submit_button:
                     msg['To'] = ", ".join(lista_m)
                     msg['Subject'] = f"🛡️ {titolo_azione} Ferie - {nome_puro_locale}"
                     
-                    linee_concessionari = f" {concessionario_estratto}"
-                    corpo = f"Rilevato aggiornamento chiusura ferie nel sistema WinGaming.\n\nDettagli della pratica:\n--------------------------------------------------\n🔔 Stato Operazione:  {titolo_azione.upper()}\n👤 Tecnico Esecutore: {esecutore_nome}\n📍 Locale Coinvolto:  {nome_puro_locale}\n🏢 Concessionario/i:{linee_concessionari}\n📅 Inizio Chiusura:   {str_c}\n🚚 Data Riapertura:   {str_r}\n--------------------------------------------------\n\nWINGAMING SRL"
+                    testo_concessionari_mail = ", ".join(lista_provider_puliti)
+                    corpo = f"Rilevato aggiornamento chiusura ferie nel sistema WinGaming.\n\nDettagli della prima nota:\n--------------------------------------------------\n🔔 Stato Operazione:  {titolo_azione.upper()}\n👤 Tecnico Esecutore: {esecutore_nome}\n📍 Locale Coinvolto:  {nome_puro_locale}\n🏢 Concessionario/i:  {testo_concessionari_mail}\n📅 Inizio Chiusura:   {str_c}\n🚚 Data Riapertura:   {str_r}\n--------------------------------------------------\n\nWINGAMING SRL"
                     msg.attach(MIMEText(corpo, 'plain'))
                     
                     server = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
@@ -591,163 +626,196 @@ if submit_button:
                     risposta_server = str(e_mail)
             
             if invio_ok:
-                nuova["STATO_INVIO"] = "Inviato OK" # Lascia traccia dell'e-mail partita
                 if sovrapposizione_rilevata and riga_conflitto_idx is not None:
-                    st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    try: st.session_state.storico_cloud.pop(riga_conflitto_idx)
+                    except Exception: pass
                 
-                st.session_state.storico_cloud.append(nuova)
+                # 🛡️ INIEZIONE UNICA GARANTITA: Una sola volta senza raddoppi!
+                for record_sdoppiato in righe_sdoppiate_da_salvare:
+                    record_sdoppiato["STATO_INVIO"] = "Inviato OK"
+                    if "storico_cloud" not in st.session_state:
+                        st.session_state.storico_cloud = []
+                    st.session_state.storico_cloud.append(record_sdoppiato)
+                    
                 df_salva = pd.DataFrame(st.session_state.storico_cloud)
-                
-                # Forza l'inclusione strutturale della nuova colonna nell'Excel aziendale permanente
                 if "ROBOT_ACTION" not in df_salva.columns:
                     df_salva["ROBOT_ACTION"] = ""
-                    
+        
                 df_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
                 push_excel_su_github(df_salva)
 
+                utente_corrente_maiuscolo = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
+                if utente_corrente_maiuscolo in ["MANUELA ARIGONI", "ADMIN", "UFFICIO"] or utente_corrente_maiuscolo == str(esecutore_nome).strip().upper():
+                    st.success(f"✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema per tutti i provider di: {nome_puro_locale}.")
                 
-                st.success("✅ OPERAZIONE COMPLETATA!\n\nPratica registrata correttamente a sistema e notifica e-mail inviata.")
                 st.session_state.form_id += 1
                 time.sleep(4.0)
                 st.rerun()
-
-
             else:
                 st.error(f"❌ Errore Google SMTP: {risposta_server}. Spedizione e-mail fallita.")
-
+# =====================================================================================
+# BLOCCO 7: PROMEMORIA LOGISTICI 3 GG E ALLERTA GIALLA VISIVA DI MANUELA
+# =====================================================================================
+st.markdown("### 🔔 Scadenze Logistiche Imminenti (3 Giorni)")
+try:
+    oggi_plancia = datetime.now().date()
+    ha_avvisi = False
+    
+    email_corrente_check = str(st.session_state.get("user_email", "")).strip().lower()
+    utente_corrente_check = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
+    
+    if st.session_state.get("storico_cloud", []):
+        for row in st.session_state.storico_cloud:
+            tecnico_riga = str(row.get("TECNICO_INSERIMENTO", "")).strip().upper()
+            
+            if "manuela" in email_corrente_check or "admin" in email_corrente_check or "ufficio" in email_corrente_check or utente_corrente_check == tecnico_riga:
+                data_in_raw = str(row.get("INIZIO_FERIE", "")).strip()
+                data_fi_raw = str(row.get("FINE_FERIE", "")).strip()
+                nome_loc_avviso = str(row.get("NOME_LOCALE", "")).strip()
+                
+                str_in_pax = data_in_raw.replace("-", "/").replace(".", "/").strip()[:10]
+                str_fi_pax = data_fi_raw.replace("-", "/").replace(".", "/").strip()[:10]
+                
+                try:
+                    dt_in_check = datetime.strptime(str_in_pax, "%d/%m/%Y").date()
+                    dt_fi_check = datetime.strptime(str_fi_pax, "%d/%m/%Y").date()
+                    giorni_chiusura = (dt_in_check - oggi_plancia).days
+                    giorni_riapertura = (dt_fi_check - oggi_plancia).days
+                    
+                    if giorni_chiusura == 3:
+                        st.warning(f"⚠️ **PROMEMORIA CHIUSURA (TRA 3 GG):** Il locale **{nome_loc_avviso}** chiude il {dt_in_check.strftime('%d/%m/%Y')} (Tecnico: {row.get('TECNICO_INSERIMENTO','')})")
+                        ha_avvisi = True
+                    if giorni_riapertura == 3:
+                        st.warning(f"🚚 **PROMEMORIA RIAPERTURA (TRA 3 GG):** Il locale **{nome_loc_avviso}** riapre il {dt_fi_check.strftime('%d/%m/%Y')} (Tecnico: {row.get('TECNICO_INSERIMENTO','')})")
+                        ha_avvisi = True
+                except Exception: pass
+                    
+    if not ha_avvisi:
+        st.info("💡 Nessun locale in scadenza a 3 giorni per la tua utenza.")
+except Exception: pass
 
 # =====================================================================================
-# BLOCCO 6 - PARTE B: PROMEMORIA LOGISTICI 3 GG E PLANCIA DI VISUALIZZAZIONE ADMIN
+# BLOCCO 8: TABELLONE VISIVO DI MANUELA: PRIVILEGI ADMIN / TECNICI (VISTA IN ATTESA)
 # =====================================================================================
 st.markdown("---")
-st.markdown("### 📅 Promemoria Giri Logistici (Preavviso 3 Giorni)")
-oggi = datetime.now().date()
-alert_c, alert_r = [], []
-for row in st.session_state.storico_cloud:
-    try:
-        d_i = datetime.strptime(str(row.get("INIZIO_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
-        d_f = datetime.strptime(str(row.get("FINE_FERIE", "")).strip().split(" ")[0], "%d-%m-%Y").date()
-        if d_i - oggi == timedelta(days=3): alert_c.append(f"⚠️ **{row.get('NOME_LOCALE', 'Locale')}** chiude tra 3 giorni")
-        if d_f - oggi == timedelta(days=3): alert_r.append(f"🚚 **{row.get('NOME_LOCALE', 'Locale')}** riapre tra 3 giorni")
-    except Exception: continue
-for a in alert_c: st.error(a)
-for r in alert_r: st.warning(r)
+email_tab_check = str(st.session_state.get("user_email", "")).strip().lower()
+utente_tab_check = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
 
-if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
-    st.markdown("<br>### 📊 Registro Storico Chiusure Centralizzato", unsafe_allow_html=True)
-    colonne_reali_ufficio = ["DATA_INSERIMENTO", "TECNICO_INSERIMENTO", "CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "PROMEMORIA_IN_COPIA", "STATO_INVIO"]
-    
-    if st.session_state.storico_cloud:
-        # 🛡️ FILTRO DI MANUELA INTEGRALE: Scansiona la RAM e nasconde i locali da eliminare senza usare Pandas
-        lista_visibile = [
-            riga for riga in st.session_state.storico_cloud 
-            if str(riga.get("ROBOT_ACTION", "")).strip().upper() != "ELIMINA" and 
-               str(riga.get("robot_action", "")).strip().upper() != "ELIMINA"
-        ]
-        
-        # Genera la tabella solo con i locali rimasti attivi
-        df_vis = pd.DataFrame(lista_visibile)
-        
-        if not df_vis.empty:
-            df_vis = df_vis.reindex(columns=colonne_reali_ufficio).fillna("")
-            st.dataframe(df_vis, hide_index=True)
-        else:
-            st.info("📭 Nessuna chiusura attiva presente nel registro storico.")
-
-
-
-        
-        with io.BytesIO() as buffer:
-            df_vis.to_excel(buffer, index=False)
-            st.download_button(label="📥 Scarica Registro Excel Storico", data=buffer.getvalue(), file_name="storico_ferie.xlsx", mime="application/vnd.ms-excel")
-    else:
-        st.info("📭 Nessuna chiusura presente in memoria. Trascina il file Excel storico in fondo per ripopolare la plancia.")
-        
-
-    # =====================================================================================
-    # TABELLA SINCRO PORTALE SNAITECH - MOSTRA SOLO I LOCALI CON UN'ACTION DA FARE
-    # =====================================================================================
-    st.markdown("---")
-    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
-    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
-    
-    if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA SU PORTALI / EMAIL"):
-        with st.spinner("Robot in azione sui sistemi dei Concessionari... Non chiudere la pagina..."):
-            esegui_sincronizzazione_robot_snai()
-            
-            # 🛡️ RE-SHAPE DI MANUELA: Pausa per dare tempo a GitHub di digerire il file Excel inviato dal robot
-            time.sleep(5)
-            
-            # Svuota lo stato precedente e costringe lo smartphone a ricaricare l'Excel pulito dal server cloud
-            if os.path.exists(FILE_STORICO_PERMANENTE):
-                # Rilegge il file fisico aggiornato dallo spazzino del robot
-                df_aggiornato_cloud = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
-                st.session_state.storico_cloud = df_aggiornato_cloud.to_dict('records')
-            
-            # Rinfresca l'interfaccia eliminando le righe azzerate
-            st.rerun()
-
-
-    # 🛡️ FILTRO INTERCETTATORE DI MANUELA: Mostra in tabella TUTTI i locali pronti (SNAI + NTS) con un'azione reale da compiere
+if "manuela" in email_tab_check or "admin" in email_tab_check or "ufficio" in email_tab_check:
+    st.markdown("### 📊 [VISTA ADMIN] Tutte le chiusure della flotta in attesa")
     righe_lavorazione_generiche = [
-        row for row in st.session_state.storico_cloud 
+        row for row in st.session_state.get("storico_cloud", []) 
         if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
-    ] if st.session_state.storico_cloud else []
-    
-    if righe_lavorazione_generiche:
-        df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
-        # 🛡️ COLONNA INSERITA: Aggiunta la colonna CONCESSIONARIO nel tabellone visivo dello smartphone
-        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
-        df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
-        st.dataframe(df_visibile_pulito, hide_index=True)
-    else:
-        st.success("✅ Nessun locale in attesa. Tutte le chiusure dei Concessionari sono allineate!")
+    ]
+else:
+    st.markdown("### 📊 Le tue chiusure in attesa di allineamento")
+    righe_lavorazione_generiche = [
+        row for row in st.session_state.get("storico_cloud", []) 
+        if str(row.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]
+        and str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_tab_check
+    ]
 
-    # =====================================================================================
-    # PANNELLO CANCELLAZIONE - COMPRESSIONE MENÙ A TENDINA E SPARIZIONE TASTO SMARTPHONE
-    # =====================================================================================
-    st.markdown("---")
-    st.markdown("### 🗑️ Cancella un Periodo Registrato")
-    
-    opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
-    mappa_indici_reali = {}
-    
-    # 🛡️ FILTRO MENÙ DI MANUELA: Scansiona la RAM e inserisce nella tendina SOLO i locali che non sono già in stato ELIMINA
-    if st.session_state.storico_cloud:
-        for idx, row in enumerate(st.session_state.storico_cloud):
-            azione_corrente = str(row.get("ROBOT_ACTION", "")).strip().upper()
-            if azione_corrente != "ELIMINA":
-                testo_opzione = f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} (Dal {row.get('INIZIO_FERIE', '')})"
-                opzioni_cancellazione.append(testo_opzione)
-                mappa_indici_reali[testo_opzione] = idx
-            
-    selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=len(opzioni_cancellazione) <= 1)
-    
-    # 🛡️ BOTTONE FANTASMA DI MANUELA: Il tasto compare SOLO se hai selezionato un locale valido, se rimetti la voce standard sparisce nel nulla!
-    if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete in mappa_indici_reali:
-        try:
-            idx_da_eliminare = mappa_indici_reali[selezione_delete]
-                
-            if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-                st.session_state.congelamento_sincro_attivo = True  # Protezione RAM
-                
-                # Marchia con la parola chiave per il robot
-                st.session_state.storico_cloud[idx_da_eliminare]["ROBOT_ACTION"] = "ELIMINA"
-                df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
-                
-                # Forza la scrittura fisica dell'Excel su disco prima di inviarlo
-                df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-                
-                # Spinge il file modificato su GitHub
-                push_excel_su_github(df_nuovo_salva)
-                
-                st.session_state.congelamento_sincro_attivo = False  # Sblocca RAM
-                st.success("🗑️ Richiesta di eliminazione inviata! La riga è stata nascosta. Il robot la rimuoverà da Snaitech.")
-                time.sleep(1.5)
-                st.rerun()
-        except Exception as e_del: 
-            st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+if righe_lavorazione_generiche:
+    df_lavorazione = pd.DataFrame(righe_lavorazione_generiche)
+    if "manuela" in email_tab_check or "admin" in email_tab_check or "ufficio" in email_tab_check:
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+    else:
+        colonne_visibili = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
+    df_visibile_pulito = df_lavorazione.reindex(columns=colonne_visibili).fillna("")
+    st.dataframe(df_visibile_pulito, hide_index=True)
+else:
+    st.success(f"✅ Nessuna pratica in coda per la tua visualizzazione, {utente_tab_check}!")
+# =====================================================================================
+# BLOCCO 9: TABELLONE GIRI LOGISTICI DI MANUELA: PRIVILEGI GERARCHICI TOTALI (STORICO INCLUSO)
+# =====================================================================================
+st.markdown("---")
+email_loggata_pulita = str(st.session_state.get("user_email", "")).strip().lower()
+utente_loggato_maiuscolo = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
+
+# 🛡️ PARACADUTE DI SICUREZZA DI MANUELA: Previene il NameError in caso di logout azzerando la coda
+righe_giri_logistici = []
+
+if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
+    st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
+    righe_giri_logistici = st.session_state.get("storico_cloud", []) if st.session_state.get("storico_cloud", []) else []
+else:
+    if st.session_state.get("storico_cloud", []):
+        righe_giri_logistici = [
+            row for row in st.session_state.get("storico_cloud", []) 
+            if str(row.get("TECNICO_INSERIMENTO", "")).strip().upper() == utente_loggato_maiuscolo
+        ]
+
+if righe_giri_logistici:
+    df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
+    if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
+        colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
+    else:
+        colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
+    df_visibile_giri_pulito = df_lavorazione_giri.reindex(columns=colonne_visibili_giri).fillna("")
+    st.dataframe(df_visibile_giri_pulito, hide_index=True)
+else:
+    st.success(f"✅ Nessun promemoria giro logistico registrato a sistema, {utente_loggato_maiuscolo}.")
+
+# =====================================================================================
+# BLOCCO 10: PANNELLO CANCELLAZIONE - AUTO-CANCELLAZIONE RIGHE NON PROCESDATE (ZERO BUG)
+# =====================================================================================
+st.markdown("---")
+st.markdown("### 🗑️ Cancella un Periodo Registrato")
+
+opzioni_cancellazione = ["- Seleziona la riga da eliminare -"]
+mappa_indici_reali = {}
+
+if "storico_cloud" in st.session_state and st.session_state.storico_cloud:
+    for idx, row in enumerate(st.session_state.storico_cloud):
+        azione_corrente = str(row.get("ROBOT_ACTION", "")).strip().upper()
+        if azione_corrente != "ELIMINA":
+            testo_opzione = f"ID {idx} | {row.get('CODICE_LOCALE', '')} - {row.get('NOME_LOCALE', '')} [{row.get('CONCESSIONARIO','')}] (Dal {row.get('INIZIO_FERIE', '')})"
+            opzioni_cancellazione.append(testo_opzione)
+            mappa_indici_reali[testo_opzione] = idx
         
+selezione_delete = st.selectbox("Scegli la chiusura da eliminare dal database:", opzioni_cancellazione, disabled=len(opzioni_cancellazione) <= 1)
+
+if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete in mappa_indici_reali:
+    try:
+        idx_selezionato = mappa_indici_reali[selezione_delete]
+        riga_scelta = st.session_state.storico_cloud[idx_selezionato]
+        codice_locale_target = str(riga_scelta.get("CODICE_LOCALE", "")).strip()
+        nome_locale_target = str(riga_scelta.get("NOME_LOCALE", "")).strip()
+        azione_attuale_riga = str(riga_scelta.get("ROBOT_ACTION", "")).strip().upper()
+            
+        if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
+            # 🛡️ CILIEGINA DI MANUELA: Se la riga è NUOVA o MODIFICA, la cancella fisicamente dall'Excel!
+            if azione_attuale_riga in ["NUOVA", "MODIFICA"]:
+                # Rimuove fisicamente il record dalla memoria dello smartphone usando una lista filtrata
+                st.session_state.storico_cloud = [
+                    r for r in st.session_state.storico_cloud 
+                    if str(r.get("CODICE_LOCALE", "")).strip() != codice_locale_target
+                ]
+                st.success(f"🧹 Pulizia istantanea: Pratica rimossa fisicamente dall'Excel perché non ancora inviata ai portali!")
+            else:
+                # Se la riga era già stata processata (cella vuota), mette il marchio ELIMINA per il robot
+                for riga_cloud in st.session_state.storico_cloud:
+                    if str(riga_cloud.get("CODICE_LOCALE", "")).strip() == codice_locale_target:
+                        riga_cloud["ROBOT_ACTION"] = "ELIMINA"
+                st.success(f"🗑️ Richiesta di eliminazione inviata sul portale Snaitech per: {nome_locale_target}!")
+            
+            # Salva il database aggiornato su disco e spinge la modifica pulita su GitHub
+            df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
+            df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
+            try: 
+                push_excel_su_github(df_nuovo_salva)
+            except Exception: 
+                pass
+                
+            time.sleep(2.0)
+            st.rerun()
+    except Exception as e_del: 
+        st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
+
+# =====================================================================================
+# AREA AMMINISTRATORE: UPLOADER EXCEL (VERSIONE INTEGRALE CONVERTITRICE)
+# =====================================================================================
+if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
     st.markdown("---")
     st.markdown("### 📤 Ricarica Registro Excel Aggiornato dall'Ufficio")
     file_caricato = st.file_uploader("Trascina il file storico_ferie.xlsx modificato per caricare i dati nel portale:", type=["xlsx"])
@@ -774,17 +842,102 @@ if esecutore_email.lower() == EMAIL_MANUELA_RICEVENTE.lower():
                     st.rerun()
             else:
                 st.error("❌ Struttura file non valida. Controlla che i nomi delle colonne siano in orizzontale.")
-        except Exception as e_load: st.error(f"❌ Errore lettura: {str(e_load)}")
+        except Exception as e_load: 
+            st.error(f"❌ Errore lettura: {str(e_load)}")
+# =====================================================================================
+# BLOCCO 11: PRIVILEGI ADMIN CON RADAR ASSISTITO PASSO DOPO PASSO (STEP-BY-STEP)
+# =====================================================================================
+st.markdown("---")
+email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
+nome_finale_pulito = str(st.session_state.get("user_nome", "")).strip().upper()
 
+# 🧭 STEP 1: Verifica se l'utente fa parte dell'amministrazione (Admin/Ufficio)
+is_amministrazione = (
+    "manuela" in email_finale_pulita or "admin" in email_finale_pulita or "ufficio" in email_finale_pulita or
+    "MANUELA" in nome_finale_pulito or "ADMIN" in nome_finale_pulito or "UFFICIO" in nome_finale_pulito
+)
 
+if is_amministrazione:
+    print("🧭 [STEP 1] Utente Amministratore riconosciuto. Carico i comandi di sincronizzazione.")
+    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
+    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
 
-# PULSANTE LOGOUT PRINCIPALE STRUTTURALE MARGINE ZERO
-st.markdown("<br>", unsafe_allow_html=True)
-col_out1, col_out2, col_out3 = st.columns([1, 2, 1])
-with col_out2:
-    if st.button("🚪 DISCONNETTI ACCOUNT / LOGOUT"):
-        st.query_params.clear()
-        st.session_state.autenticato = False
-        st.success("Uscita effettuata con successo!")
-        time.sleep(0.5)
+    # 🧭 STEP 2: Controllo di Sicurezza di Rete (Se il robot sta già girando online)
+    if robot_sta_girando_ora:
+        print("🧭 [STEP 2] Il robot è attivo online. Accendo il radar di attesa.")
+        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... INTERROGO SERVER", disabled=True)
+        st.warning("⏳ Il robot sta allineando i database online. I tasti si riaccenderanno DA SOLI non appena l'operazione sarà conclusa sui portali.")
+        
+        # Mantiene lo schermo fermo senza flash per 6 secondi
+        import time as t_sys
+        t_sys.sleep(6) 
+        
+        # 🧭 STEP 3: Interrogazione del file Excel Cloud su GitHub
+        try:
+            print("🧭 [STEP 3] Scarico l'Excel fresco dal cloud per vedere se il robot ha finito...")
+            df_controllo_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+            
+            # Verifica se ci sono ancora righe bloccate in stato "In elaborazione"
+            robot_ha_finito = not any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_controllo_fresco.iterrows())
+            
+            # 🧭 STEP 4: Il robot ha completato il giro e ha ripulito l'Excel online!
+            if robot_ha_finito:
+                print("🧭 [STEP 4] Ottimo! Il file online è pulito. Mostro il messaggio di successo a Manuela.")
+                st.session_state.storico_cloud = df_controllo_fresco.to_dict('records')
+                
+                # Spara a video i messaggi di conferma richiesti
+                st.success("✅ SINCRONIZZAZIONE AVVENUTA CON SUCCESSO!")
+                st.info("💡 Il robot ha completato tutte le operazioni. Clicca sul pulsante qui sotto per ricaricare la pagina ed aggiornare i tabelloni.")
+                
+                # Tasto manuale assistito che forza il refresh dello schermo azzerando la cache
+                if st.button("🔄 RICARICA PAGINA / AGGIORNA", key="btn_refresh_assistito_manuela"):
+                    print("🧭 [FINE CORSA] Manuela ha cliccato su Aggiorna. Rinfresco lo schermo.")
+                    st.rerun()
+                st.stop()
+                
+        except Exception as e_radar:
+            print(f"   ❌ Errore durante l'interrogazione del radar: {str(e_radar)}")
+            
+        st.rerun() # Forza Streamlit a rileggere il file online dall'alto
+        
+    else:
+        # 🧭 STEP 5: Plancia Libera (Il pulsante blu è bianco, attivo e pronto al lancio)
+        print("🧭 [STEP 5] Nessun processo attivo di rete. Pulsante blu pronto per essere premuto.")
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_elastico_assoluto"):
+            print("🚀 [LANCIO] Cliccato Pulsante Blu! Avvio la procedura di blindatura...")
+            with st.spinner("Blindatura database aziendale e avvio server..."):
+                try:
+                    # Marchia tutte le righe in coda impostando lo STATO_INVIO "In elaborazione"
+                    for riga_ram in st.session_state.storico_cloud:
+                        if str(riga_ram.get("ROBOT_ACTION", "")).strip().upper() in ["NUOVA", "MODIFICA", "ELIMINA"]:
+                            riga_ram["STATO_INVIO"] = "In elaborazione"
+                            
+                    df_spingi_lock = pd.DataFrame(st.session_state.storico_cloud)
+                    df_spingi_lock.to_excel(FILE_STORICO_PERMANENTE, index=False)
+                    push_excel_su_github(df_spingi_lock) # Invia il lucchetto online
+                    print("   -> Lucchetto 'In elaborazione' caricato correttamente su GitHub.")
+                    
+                    # Innesca il server esterno delle GitHub Actions
+                    esegui_sincronizzazione_robot_snai()
+                    time.sleep(2)
+                except Exception as e_lancio:
+                    print(f"   ❌ Errore durante il lancio forzato: {str(e_lancio)}")
+            st.rerun()
+            
+        # Il tasto disconnetti dell'Admin posizionato sotto il blu a sinistra
+        if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_elastico_assoluto"):
+            print("🚪 Logout richiesto dall'Admin. Svuoto la sessione.")
+            st.session_state.clear()
+            if "st" in locals() and hasattr(st, "query_params"):
+                st.query_params.clear()
+            st.rerun()
+
+else:
+    # 📱 STEP UTENTI TECNICI STANDARD (Ghigliottina Automatica)
+    print(f"📱 [Tecnici] Rilevato utente con ruolo Standard: {nome_finale_pulito}. Oscuro la sincronizzazione.")
+    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_elastico_assoluto"):
+        st.session_state.clear()
+        if "st" in locals() and hasattr(st, "query_params"):
+            st.query_params.clear()
         st.rerun()
+    st.stop() # Trancia il codice per i ragazzi impedendogli di leggere il pulsante blu scritto sotto
