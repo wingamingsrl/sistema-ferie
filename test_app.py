@@ -453,25 +453,27 @@ with st.form(key=f"modulo_ferie_{st.session_state.form_id}"):
     co_destinatario = st.selectbox("Invia copia promemoria a:", ["Nessun collega"] + elenco_c)
     
     st.markdown("---")
-    locali_raggruppati = {}
-    mappa_concessionari = {}
-    for _, r in df_locali.iterrows():
-        cod_loc = str(r['CODICE_LOCALE']).strip()
-        nome_loc = str(r['NOME_LOCALE']).strip()
-        conc_loc = str(r['CONCESSIONARIO']).strip()
-        chiave_chiave = f"{cod_loc} - {nome_loc}"
-        if chiave_chiave not in locali_raggruppati:
-            locali_raggruppati[chiave_chiave] = []
-        if conc_loc and conc_loc not in locali_raggruppati[chiave_chiave]:
-            locali_raggruppati[chiave_chiave].append(conc_loc)
-
+    # =====================================================================================
+    # 🛡️ ARCHITETTURA DI MANUELA: MENÙ A TENDINA NATIVO SCOMPATTATO RIGA PER RIGA DA EXCEL
+    # =====================================================================================
     lista_pvd = ["- Selezionare il Locale -"]
-    for etichetta, lista_conc in locali_raggruppati.items():
-        concessionari_uniti = ", ".join(lista_conc)
-        mappa_concessionari[etichetta] = concessionari_uniti
-        lista_pvd.append(f"{etichetta} ({concessionari_uniti})")
-        
+    mappa_concessionari = {}
+    
+    if not df_locali.empty:
+        for _, r in df_locali.iterrows():
+            cod_loc = str(r.get('CODICE_LOCALE', '')).strip()
+            nome_loc = str(r.get('NOME_LOCALE', '')).strip()
+            conc_loc = str(r.get('CONCESSIONARIO', '')).strip()
+            
+            # Genera la dicitura pulita e distinta per ogni singola riga dell'Excel aziendale
+            etichetta_singola = f"{cod_loc} - {nome_loc} ({conc_loc})"
+            lista_pvd.append(etichetta_singola)
+            
+            # Salva l'associazione esatta per recuperare il concessionario al volo al momento del clic
+            mappa_concessionari[etichetta_singola] = conc_loc
+
     scelta_pvd = st.selectbox("Seleziona o cerca locale:", lista_pvd, index=0)
+
     
     st.markdown("---")
     col1, col2 = st.columns(2)
