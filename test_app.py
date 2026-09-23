@@ -757,7 +757,7 @@ else:
     st.success(f"✅ Nessun promemoria giro logistico registrato a sistema, {utente_loggato_maiuscolo}.")
 
 # =====================================================================================
-# BLOCCO 10: PANNELLO CANCELLAZIONE - SELEZIONE E RIMOZIONE RIGHE
+# BLOCCO 10: PANNELLO CANCELLAZIONE - AUTO-CANCELLAZIONE RIGHE NON PROCESDATE (ZERO BUG)
 # =====================================================================================
 st.markdown("---")
 st.markdown("### 🗑️ Cancella un Periodo Registrato")
@@ -781,18 +781,33 @@ if selezione_delete != "- Seleziona la riga da eliminare -" and selezione_delete
         riga_scelta = st.session_state.storico_cloud[idx_selezionato]
         codice_locale_target = str(riga_scelta.get("CODICE_LOCALE", "")).strip()
         nome_locale_target = str(riga_scelta.get("NOME_LOCALE", "")).strip()
+        azione_attuale_riga = str(riga_scelta.get("ROBOT_ACTION", "")).strip().upper()
             
         if st.button("❌ ELIMINA DEFINITIVAMENTE QUESTA CHIUSURA"):
-            for riga_cloud in st.session_state.storico_cloud:
-                if str(riga_cloud.get("CODICE_LOCALE", "")).strip() == codice_locale_target:
-                    riga_cloud["ROBOT_ACTION"] = "ELIMINA"
+            # 🛡️ CILIEGINA DI MANUELA: Se la riga è NUOVA o MODIFICA, la cancella fisicamente dall'Excel!
+            if azione_attuale_riga in ["NUOVA", "MODIFICA"]:
+                # Rimuove fisicamente il record dalla memoria dello smartphone usando una lista filtrata
+                st.session_state.storico_cloud = [
+                    r for r in st.session_state.storico_cloud 
+                    if str(r.get("CODICE_LOCALE", "")).strip() != codice_locale_target
+                ]
+                st.success(f"🧹 Pulizia istantanea: Pratica rimossa fisicamente dall'Excel perché non ancora inviata ai portali!")
+            else:
+                # Se la riga era già stata processata (cella vuota), mette il marchio ELIMINA per il robot
+                for riga_cloud in st.session_state.storico_cloud:
+                    if str(riga_cloud.get("CODICE_LOCALE", "")).strip() == codice_locale_target:
+                        riga_cloud["ROBOT_ACTION"] = "ELIMINA"
+                st.success(f"🗑️ Richiesta di eliminazione inviata sul portale Snaitech per: {nome_locale_target}!")
             
+            # Salva il database aggiornato su disco e spinge la modifica pulita su GitHub
             df_nuovo_salva = pd.DataFrame(st.session_state.storico_cloud)
             df_nuovo_salva.to_excel(FILE_STORICO_PERMANENTE, index=False)
-            try: push_excel_su_github(df_nuovo_salva)
-            except Exception: pass
-            st.success(f"🗑️ Richiesta di eliminazione inviata per tutti i provider di: {nome_locale_target}!")
-            time.sleep(1.5)
+            try: 
+                push_excel_su_github(df_nuovo_salva)
+            except Exception: 
+                pass
+                
+            time.sleep(2.0)
             st.rerun()
     except Exception as e_del: 
         st.error(f"❌ Errore durante la rimozione: {str(e_del)}")
