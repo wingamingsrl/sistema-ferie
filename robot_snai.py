@@ -642,6 +642,62 @@ def avvia_sincronizzazione_automatica():
         except Exception as e: print(f"❌ Errore durante la navigazione sul portale partner.snai.it: {str(e)}")
         finally: browser.close()
 
+        # =====================================================================================
+        # 📊 MOTORE DI REVISIONE DI MANUELA: SCANSIONE ANOMALIE E SPEDIZIONE RIEPILOGO
+        # =====================================================================================
+        print("📊 [Audit Engine] Avvio scansione del registro per rilevamento anomalie...")
+        lista_anomalie_rilevate = []
+        
+        try:
+            # Rilegge l'Excel finale per vedere cosa è rimasto escluso dall'allineamento
+            df_audit = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+            
+            for _, row in df_audit.iterrows():
+                azione_rimasta = str(row.get("ROBOT_ACTION", "")).strip().upper()
+                nome_loc_audit = str(row.get("NOME_LOCALE", "")).strip()
+                conc_audit = str(row.get("CONCESSIONARIO", "")).strip()
+                stato_invio_audit = str(row.get("STATO_INVIO", "")).strip()
+                
+                # 🚨 ANOMALIA 1: Una riga è rimasta in stato NUOVA/MODIFICA/ELIMINA dopo la corsa del robot
+                if azione_rimasta in ["NUOVA", "MODIFICA", "ELIMINA"]:
+                    lista_anomalie_rilevate.append(f"• Locale: {nome_loc_audit} [{conc_audit}] -> Rimasto bloccato in stato [{azione_rimasta}] (Errore Portale)")
+                    
+                # 🚨 ANOMALIA 2: Lo STATO_INVIO ha registrato un fallimento o un blocco di rete
+                elif "ERR" in stato_invio_audit.upper() or "FALLITO" in stato_invio_audit.upper():
+                    lista_anomalie_rilevate.append(f"• Locale: {nome_loc_audit} [{conc_audit}] -> Fallimento notifica: {stato_invio_audit}")
+        except Exception as e_audit_file:
+            lista_anomalie_rilevate.append(f"• Impossibile leggere il file Excel per il controllo: {str(e_audit_file)}")
+
+        # 📧 SPEDIZIONE DEL REPORT DI SUPERVISIONE A MANUELA
+        try:
+            import smtplib
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+
+            EMAIL_LOGIN = "wingamingsrl@gmail.com"
+            pass_applicativa_ufficio = "zndjprxjvhiustio"
+
+            msg_audit = MIMEMultipart()
+            msg_audit['From'] = "WinGaming Audit <tecnico@wingaming.it>"
+            msg_audit['To'] = "manuela.arigoni@wingaming.it"
+            
+            if lista_anomalie_rilevate:
+                msg_audit['Subject'] = f"🚨 [ANOMALIE RILEVATE] Report Supervisione Ferie WinGaming"
+                corpo_audit = f"Attenzione Manuela,\n\nIl robot ha completato il giro di sincronizzazione ma ha riscontrato delle anomalie che richiedono un controllo manuale.\n\nElenco dei blocchi riscontrati:\n--------------------------------------------------\n" + "\n".join(lista_anomalie_rilevate) + "\n--------------------------------------------------\n\nVerificare lo stato dei portali partner.\nWinGaming S.r.l."
+            else:
+                msg_audit['Subject'] = f"✅ [TUTTO ALLINEATO] Report Supervisione Ferie WinGaming"
+                corpo_audit = f"Buongiorno Manuela,\n\nIl robot ha completato con successo il giro logistico di allineamento.\n\n🔍 Risultato Scansione: ZERO anomalie riscontrate.\nTutti i locali inseriti dalla flotta sono stati regolarmente processati e trasmessi a sistema.\n\nBuon lavoro,\nWinGaming S.r.l."
+
+            msg_audit.attach(MIMEText(corpo_audit, 'plain', 'utf-8'))
+            server_audit = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+            server_audit.login(EMAIL_LOGIN, pass_applicativa_ufficio)
+            server_audit.sendmail("tecnico@wingaming.it", ["manuela.arigoni@wingaming.it"], msg_audit.as_string())
+            server_audit.quit()
+            print("   ✅ [Audit Engine] Report delle anomalie spedito correttamente in ufficio!")
+        except Exception as e_spedisci_audit:
+            print(f"   ❌ [Audit Engine] Errore spedizione report: {str(e_spedisci_audit)}")
+
+
 # =====================================================================================
 # 🛡️ INTERRUTTORE DI AVVIO UNIFICATO DI MANUELA: SCANSIONE PROMEMORIA GLOBALE 3 GIORNI
 # =====================================================================================
