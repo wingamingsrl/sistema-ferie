@@ -845,25 +845,47 @@ if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "uffi
         except Exception as e_load: 
             st.error(f"❌ Errore lettura: {str(e_load)}")
 # =====================================================================================
-# BLOCCO 11: PRIVILEGI STRUTTURALI AUTOMATICI DA RUOLO EXCEL (INMANNABILE)
+# BLOCCO 11: PRIVILEGI ADMIN CON RINFRESCO AUTOMATICO A FINE CORSA ROBOT (ZERO FLASH)
 # =====================================================================================
 st.markdown("---")
-ruolo_utente_verificato = str(st.session_state.get("user_ruolo", "TECNICO")).strip().upper()
+email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
+nome_finale_pulito = str(st.session_state.get("user_nome", "")).strip().upper()
 
-# 🛡️ PRIVILEGIO ADMIN: Si attiva SOLO se il ruolo nell'Excel è ADMIN, SUPERVISORE o UFFICIO
-if ruolo_utente_verificato in ["ADMIN", "SUPERVISORE", "UFFICIO"]:
+# Verifica se l'utente fa parte dell'amministrazione aziendale
+is_amministrazione = (
+    "manuela" in email_finale_pulita or "admin" in email_finale_pulita or "ufficio" in email_finale_pulita or
+    "MANUELA" in nome_finale_pulito or "ADMIN" in nome_finale_pulito or "UFFICIO" in nome_finale_pulito
+)
+
+if is_amministrazione:
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
 
+    # 🔄 IL RADAR DI MANUELA: Se l'Excel online risulta 'In elaborazione', interroga GitHub ogni 6 secondi in silenzio
     if robot_sta_girando_ora:
-        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... ATTENDI", disabled=True)
-        st.warning("⏳ Un altro utente o l'Admin ha avviato il robot. La plancia è protetta. I tasti si riaccenderanno DA SOLI in automatico tra circa 2 minuti.")
+        st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... INTERROGO SERVER", disabled=True)
+        st.warning("⏳ Il robot sta allineando i database online. I tasti si riaccenderanno DA SOLI non appena l'operazione sarà conclusa sui portali.")
+        
         import time as t_sys
-        t_sys.sleep(5)
-        st.rerun()
+        t_sys.sleep(6) # Pausa silente anti-flash
+        
+        try:
+            # Forza lo scaricamento del file fresco direttamente dal cloud distruggendo la cache
+            df_controllo_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+            
+            # Se la colonna non ha più stati "In elaborazione", significa che il robot ha FINITO ed ha eseguito lo spazzino!
+            if not any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_controllo_fresco.iterrows()):
+                st.session_state.storico_cloud = df_controllo_fresco.to_dict('records')
+                st.success("✅ Sincronizzazione conclusa con successo sui portali! Ricarico le tabelle...")
+                t_sys.sleep(1.5)
+                st.rerun() # 🚀 REFRESH FINALE AUTOMATICO: Ricarica lo schermo mostrando i dati puliti!
+        except Exception:
+            pass
+        st.rerun() # Continua l'ascolto se il robot sta ancora girando
+        
     else:
-        # Il tuo pulsante originale intatto riga per riga
-        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_ruolo_assoluto"):
+        # Pulsante originale intatto dell'Admin pronto al lancio
+        if st.button("🚀 AVVIA SINCRONIZZAZIONE FORZATA", key="palo_sincro_admin_elastico_assoluto"):
             with st.spinner("Blindatura database aziendale e avvio server..."):
                 try:
                     for riga_ram in st.session_state.storico_cloud:
@@ -877,18 +899,18 @@ if ruolo_utente_verificato in ["ADMIN", "SUPERVISORE", "UFFICIO"]:
                 except Exception: pass
             st.rerun()
             
-        # Il tasto disconnetti dell'Admin posizionato a sinistra sotto il blu
-        if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_ruolo_assoluto"):
+        # Il tasto disconnetti dell'Admin posizionato sotto il blu a sinistra
+        if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_admin_elastico_assoluto"):
             st.session_state.clear()
             if "st" in locals() and hasattr(st, "query_params"):
                 st.query_params.clear()
             st.rerun()
 
 else:
-    # 📱 VISTA TECNICI STANDARD: Se il ruolo è 'TECNICO' o qualsiasi altra cosa, si blocca qui!
-    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_ruolo_assoluto"):
+    # 📱 VISTA TECNICI STANDARD: Se l'utente è un ragazzo, vede SOLO il logout ed esegue lo STOP!
+    if st.button("🚪 DISCONNETTI ACCOUNT", key="palo_logout_tecnico_elastico_assoluto"):
         st.session_state.clear()
         if "st" in locals() and hasattr(st, "query_params"):
             st.query_params.clear()
         st.rerun()
-    st.stop() # 💥 GHIGLIOTTINA ASSOLUTA: Impedisce fisicamente al telefono del tecnico di leggere oltre!
+    st.stop() # 💥 GHIGLIOTTINA UTENTI
