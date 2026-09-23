@@ -845,7 +845,7 @@ if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "uffi
         except Exception as e_load: 
             st.error(f"❌ Errore lettura: {str(e_load)}")
 # =====================================================================================
-# BLOCCO 11: PRIVILEGI ADMIN CON RINFRESCO AUTOMATICO A FINE CORSA ROBOT (ZERO FLASH)
+# BLOCCO 11: PRIVILEGI ADMIN CON REFRESH REALE DI PAGINA (F5 AUTOMATICO)
 # =====================================================================================
 st.markdown("---")
 email_finale_pulita = str(st.session_state.get("user_email", "")).strip().lower()
@@ -861,7 +861,7 @@ if is_amministrazione:
     st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
     st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
 
-    # 🔄 IL RADAR DI MANUELA: Se l'Excel online risulta 'In elaborazione', interroga GitHub ogni 6 secondi in silenzio
+    # 🔄 IL RADAR DI MANUELA: Se l'Excel online risulta 'In elaborazione', interroga GitHub ogni 6 secondi
     if robot_sta_girando_ora:
         st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... INTERROGO SERVER", disabled=True)
         st.warning("⏳ Il robot sta allineando i database online. I tasti si riaccenderanno DA SOLI non appena l'operazione sarà conclusa sui portali.")
@@ -870,15 +870,22 @@ if is_amministrazione:
         t_sys.sleep(6) # Pausa silente anti-flash
         
         try:
-            # Forza lo scaricamento del file fresco direttamente dal cloud distruggendo la cache
+            # Scarica il file fresco direttamente dal cloud per verificare lo stato
             df_controllo_fresco = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
             
-            # Se la colonna non ha più stati "In elaborazione", significa che il robot ha FINITO ed ha eseguito lo spazzino!
+            # Se il robot ha finito ed ha eseguito lo spazzino, aziona il refresh duro!
             if not any(str(row.get("STATO_INVIO", "")).strip() == "In elaborazione" for _, row in df_controllo_fresco.iterrows()):
                 st.session_state.storico_cloud = df_controllo_fresco.to_dict('records')
-                st.success("✅ Sincronizzazione conclusa con successo sui portali! Ricarico le tabelle...")
+                st.success("✅ Sincronizzazione conclusa! Eseguo il rinfresco totale (F5)...")
                 t_sys.sleep(1.5)
-                st.rerun() # 🚀 REFRESH FINALE AUTOMATICO: Ricarica lo schermo mostrando i dati puliti!
+                
+                # 💥 IL RIGENERATORE DI MANUELA: Inietta il comando JavaScript per costringere il browser a fare F5 duro!
+                st.components.v1.html("""
+                    <script>
+                        window.top.location.reload();
+                    </script>
+                """, height=0, width=0)
+                st.stop()
         except Exception:
             pass
         st.rerun() # Continua l'ascolto se il robot sta ancora girando
