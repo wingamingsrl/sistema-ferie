@@ -171,10 +171,50 @@ def esegui_estrazione_gameslodi():
                     print("✅ [MIRACOLO] Allineamento anagrafico incrociato completato! File spinto online!")
                     
         except Exception as e:
-            print(f"💥 ERRORE CRITICO DURANTE LA NAVIGAZIONE: {str(e)}")
+            errore_rilevato = str(e)
+            print(f"💥 ERRORE CRITICO DURANTE LA NAVIGAZIONE: {errore_rilevato}")
+            
+            # 📸 Scatta la foto visiva del blocco sul server
             try: page.screenshot(path="screenshot_errore_blocco.png")
             except Exception: pass
-        finally:
+            
+            # 📧 SPEDIZIONE ALLERTA EMAIL IMMEDIATA A MANUELA
+            try:
+                import smtplib
+                from email.mime.multipart import MIMEMultipart
+                from email.mime.text import MIMEText
+
+                EMAIL_LOGIN = "wingamingsrl@gmail.com"
+                # Recupera la password applicativa aziendale inserita nei Secrets di GitHub
+                PASS_APP = os.environ.get("GAMESLODI_PASSWORD", "zndjprxjvhiustio") 
+
+                msg_allerta = MIMEMultipart()
+                msg_allerta['From'] = "WinGaming Backup System <tecnico@wingaming.it>"
+                msg_allerta['To'] = "manuela.arigoni@wingaming.it"
+                msg_allerta['Subject'] = f"🚨 [FALLIMENTO NOTTURNO] Errore Estrattore GamesLodi"
+                
+                corpo_allerta = (
+                    f"Attenzione Manuela,\n\n"
+                    f"Il robot notturno delle 05:45 ha riscontrato un fallimento bloccante durante l'estrazione dei locali da GamesLodi.\n\n"
+                    f"Il database elenco_locali.xlsx NON è stato aggiornato per evitare di danneggiare la plancia.\n\n"
+                    f"Dettaglio dell'errore tecnico riscontrato:\n"
+                    f"--------------------------------------------------\n"
+                    f"⚠️ {errore_rilevato}\n"
+                    f"--------------------------------------------------\n\n"
+                    f"Verificare se il gestionale Sansone è in manutenzione o se è cambiata la grafica dei pulsanti.\n"
+                    f"Su GitHub Actions trovi lo screenshot salvato del blocco.\n\n"
+                    f"WinGaming S.r.l."
+                )
+
+                msg_allerta.attach(MIMEText(corpo_allerta, 'plain', 'utf-8'))
+                server_allerta = smtplib.SMTP_SSL('64.233.184.108', 465, timeout=10)
+                server_allerta.login(EMAIL_LOGIN, PASS_APP)
+                server_allerta.sendmail("tecnico@wingaming.it", ["manuela.arigoni@wingaming.it"], msg_allerta.as_string())
+                server_allerta.quit()
+                print("   ✅ Allerta e-mail inviata con successo in ufficio a Manuela!")
+            except Exception as e_mail_allerta:
+                print(f"   ❌ Impossibile spedire l'e-mail di allerta: {str(e_mail_allerta)}")
+
             browser.close()
 
 if __name__ == "__main__":
