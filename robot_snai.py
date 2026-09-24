@@ -650,7 +650,7 @@ def avvia_sincronizzazione_automatica():
         
         try:
             # Rilegge l'Excel finale per vedere cosa è rimasto escluso dall'allineamento
-            df_audit = pd.read_excel(FILE_STORICO_PERMANENTE).fillna("")
+            df_audit = pd.read_excel("storico_ferie.xlsx").fillna("")
             
             for _, row in df_audit.iterrows():
                 azione_rimasta = str(row.get("ROBOT_ACTION", "")).strip().upper()
