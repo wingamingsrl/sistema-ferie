@@ -879,8 +879,8 @@ if ruolo_utente_verificato in ["ADMIN", "SUPERVISORE", "UFFICIO"]:
                 
                 print("🧭 [STEP 2] Ricompongo l'indirizzo API di rete anti-filtro...")
                 s_api = "api" + "." + "github" + "." + "com"
-                url_wf_lodi = f"https://{s_api}/repos/wingamingsrl/sistema-ferie-test/actions/workflows/cron_scarica_locali.yml/dispatches"
-                #url_wf_lodi = f"https://{s_api}/repos/wingamingsrl/sistema-ferie/actions/workflows/cron_scarica_locali.yml/dispatches"
+                #url_wf_lodi = f"https://{s_api}/repos/wingamingsrl/sistema-ferie-test/actions/workflows/cron_scarica_locali.yml/dispatches"
+                url_wf_lodi = f"https://{s_api}/repos/wingamingsrl/sistema-ferie/actions/workflows/cron_scarica_locali.yml/dispatches"
                 
                 print("🧭 [STEP 3] Configuro le intestazioni ed effettuo il lancio verso i server di GitHub Actions...")
                 headers_lodi = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github+json", "User-Agent": "WinGaming-Cloud-App"}
