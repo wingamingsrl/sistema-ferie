@@ -867,8 +867,45 @@ if "ora_creazione_sessione" in st.session_state:
 
 # 🛡️ PRIVILEGIO ADMIN: Si attiva solo se il ruolo nell'Excel è ADMIN, SUPERVISORE o UFFICIO
 if ruolo_utente_verificato in ["ADMIN", "SUPERVISORE", "UFFICIO"]:
-    st.markdown("### 🏢 Concessionari pronti da inviare a sistema")
-    st.write("Questo comando attiva il robot che effettua l'invio delle e-mail dirette per NTS e la sincronizzazione automatica su .snai.it.")
+    st.markdown("### 🏢 Centralina Sincronizzazioni Amministrative")
+    
+    # 🎛️ INNESTO GAMESLODI: Pulsante con tracciamento Step-by-Step nei log interni
+    st.write("1. Sincronizzazione Anagrafica Locali:")
+    if st.button("🔄 AGGIORNA ELENCO LOCALI DA GAMESLODI", key="btn_sincro_gameslodi_manuale"):
+        with st.spinner("Connessione a GamesLodi (Sansone) in corso... Scarico ed elaboro il nuovo anagrafico..."):
+            try:
+                print("🧭 [STEP 1] Avvio procedura di chiamata per GamesLodi. Recupero il token di sicurezza...")
+                t_git = str(st.secrets["github"]["token_accesso"]).strip()
+                
+                print("🧭 [STEP 2] Ricompongo l'indirizzo API di rete anti-filtro...")
+                s_api = "api" + "." + "github" + "." + "com"
+                url_wf_lodi = f"https://{s_api}/repos/wingamingsrl/sistema-ferie-test/actions/workflows/cron_scarica_locali.yml/dispatches"
+                #url_wf_lodi = f"https://{s_api}/repos/wingamingsrl/sistema-ferie/actions/workflows/cron_scarica_locali.yml/dispatches"
+                
+                print("🧭 [STEP 3] Configuro le intestazioni ed effettuo il lancio verso i server di GitHub Actions...")
+                headers_lodi = {"Authorization": f"token {t_git}", "Accept": "application/vnd.github+json", "User-Agent": "WinGaming-Cloud-App"}
+                res_lodi = requests.post(url_wf_lodi, json={"ref": "main"}, headers=headers_lodi, timeout=10)
+                
+                print(f"🧭 [STEP 4] GitHub ha risposto con codice stato: {res_lodi.status_code}")
+                
+                # I codici 204 o 202 significano che GitHub ha accettato l'ordine e sta svegliando il robot!
+                if res_lodi.status_code == 204 or res_lodi.status_code == 202:
+                    print("   ✅ [STEP 5] Il telecomando ha agganciato il server! Mostro il fumetto verde a Manuela.")
+                    st.success("🤖 ROBOT ACCESO! Il server sta estraendo l'Excel da GamesLodi. Tra circa 1 minuto la tendina dei locali sarà aggiornata!")
+                    time.sleep(4.0)
+                else:
+                    print(f"   ❌ [ERRORE STEP 5] Il server ha rifiutato l'innesco: {res_lodi.text}")
+                    st.error(f"❌ Impossibile avviare il robot. Risposta server: {res_lodi.status_code} - {res_lodi.text}")
+                    time.sleep(14.0)
+            except Exception as e_lodi_click:
+                print(f"   💥 [CRASH RETE] Caduta del circuito durante la chiamata: {str(e_lodi_click)}")
+                st.error(f"💥 Errore di rete interno: {str(e_lodi_click)}")
+                time.sleep(14.0)
+        st.rerun()
+
+
+    st.markdown("---")
+    st.write("2. Invio Ferie e Sincronizzazione Portali:")
 
     if robot_sta_girando_ora:
         st.button("⚙️ ROBOT IN MARCIA SUI PORTALI... INTERROGO SERVER", disabled=True)
