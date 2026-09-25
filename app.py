@@ -731,14 +731,17 @@ else:
 st.markdown("---")
 email_loggata_pulita = str(st.session_state.get("user_email", "")).strip().lower()
 utente_loggato_maiuscolo = str(st.session_state.get("user_nome", "UFFICIO")).strip().upper()
+ruolo_utente_verificato = str(st.session_state.get("user_ruolo", "TECNICO")).strip().upper()
 
 # 🛡️ PARACADUTE DI SICUREZZA DI MANUELA: Previene il NameError in caso di logout azzerando la coda
 righe_giri_logistici = []
 
-if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
+# SBLOCCO DIREZIONE: Se l'utente è ADMIN, SUPERVISORE o UFFICIO nell'Excel, vede tutta la flotta
+if ruolo_utente_verificato in ["ADMIN", "SUPERVISORE", "UFFICIO"] or "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
     st.markdown("### 📊 [VISTA ADMIN] Tutti i Promemoria Giri Logistici della Flotta")
     righe_giri_logistici = st.session_state.get("storico_cloud", []) if st.session_state.get("storico_cloud", []) else []
 else:
+    # Vista Tecnici limitata: vedono solo i locali dove il loro NOME coincide con il titolare
     if st.session_state.get("storico_cloud", []):
         righe_giri_logistici = [
             row for row in st.session_state.get("storico_cloud", []) 
@@ -747,7 +750,7 @@ else:
 
 if righe_giri_logistici:
     df_lavorazione_giri = pd.DataFrame(righe_giri_logistici)
-    if "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
+    if ruolo_utente_verificato in ["ADMIN", "SUPERVISORE", "UFFICIO"] or "manuela" in email_loggata_pulita or "admin" in email_loggata_pulita or "ufficio" in email_loggata_pulita:
         colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION", "TECNICO_INSERIMENTO"]
     else:
         colonne_visibili_giri = ["CODICE_LOCALE", "NOME_LOCALE", "CONCESSIONARIO", "INIZIO_FERIE", "FINE_FERIE", "ROBOT_ACTION"]
@@ -755,6 +758,7 @@ if righe_giri_logistici:
     st.dataframe(df_visibile_giri_pulito, hide_index=True)
 else:
     st.success(f"✅ Nessun promemoria giro logistico registrato a sistema, {utente_loggato_maiuscolo}.")
+
 
 # =====================================================================================
 # BLOCCO 10: PANNELLO CANCELLAZIONE - AUTO-CANCELLAZIONE RIGHE NON PROCESDATE (ZERO BUG)
